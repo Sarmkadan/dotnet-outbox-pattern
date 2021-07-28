@@ -23,7 +23,7 @@ public static class SerializationHelper
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = false,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters = new JsonConverter[]
+        Converters =
         {
             new JsonStringEnumConverter(JsonNamingPolicy.CamelCase),
             new GuidConverter(),
@@ -39,7 +39,7 @@ public static class SerializationHelper
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters = new JsonConverter[]
+        Converters =
         {
             new JsonStringEnumConverter(JsonNamingPolicy.CamelCase),
             new GuidConverter(),

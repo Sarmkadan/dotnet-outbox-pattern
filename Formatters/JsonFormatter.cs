@@ -15,7 +15,7 @@ namespace DotnetOutboxPattern.Formatters;
 /// </summary>
 public class JsonFormatter : IDataFormatter
 {
-    public string Format => "json";
+    public string FormatName => "json";
     public string ContentType => "application/json";
 
     /// <summary>

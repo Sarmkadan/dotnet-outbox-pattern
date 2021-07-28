@@ -3,6 +3,8 @@
 // CTO & Software Architect
 // =============================================================================
 
+using DotnetOutboxPattern.Data;
+
 namespace DotnetOutboxPattern.Services;
 
 /// <summary>
@@ -74,15 +76,15 @@ public class MetricsService : IMetricsService
 
             return new
             {
-                Status = stats.FailedCount > 100 ? "Degraded" : "Healthy",
+                Status = stats.FailedMessages > 100 ? "Degraded" : "Healthy",
                 CheckedAt = DateTime.UtcNow,
-                PendingMessages = stats.PendingCount,
-                ProcessingMessages = stats.ProcessingCount,
+                PendingMessages = stats.PendingMessages,
+                ProcessingMessages = stats.ProcessingMessages,
                 LockedMessages = 0,
                 DatabaseConnected = true,
                 CpuUsagePercent = GetCpuUsage(),
                 MemoryUsagePercent = GetMemoryUsage(),
-                ErrorMessage = stats.FailedCount > 100 ? "High failure rate detected" : null
+                ErrorMessage = stats.FailedMessages > 100 ? "High failure rate detected" : null
             };
         }
         catch (Exception ex)
@@ -105,7 +107,7 @@ public class MetricsService : IMetricsService
                 P95LatencyMs = 500,
                 P99LatencyMs = 1000,
                 RequestsPerSecond = 100,
-                ErrorRate = stats.FailedCount / (double)(stats.PublishedCount + stats.FailedCount + 1)
+                ErrorRate = stats.FailedMessages / (double)(stats.PublishedMessages + stats.FailedMessages + 1)
             };
         }
         catch (Exception ex)
@@ -123,11 +125,11 @@ public class MetricsService : IMetricsService
 
             return new
             {
-                TotalErrors = stats.FailedCount,
-                ErrorsByType = new Dictionary<string, int> { { "PublishError", stats.FailedCount } },
+                TotalErrors = stats.FailedMessages,
+                ErrorsByType = new Dictionary<string, int> { { "PublishError", (int)stats.FailedMessages } },
                 ErrorsByAggregate = new Dictionary<string, int>(),
                 DeadLetterCount = stats.DeadLetterCount,
-                ErrorRate = stats.FailedCount / (double)(stats.PublishedCount + stats.FailedCount + 1)
+                ErrorRate = stats.FailedMessages / (double)(stats.PublishedMessages + stats.FailedMessages + 1)
             };
         }
         catch (Exception ex)
@@ -182,13 +184,13 @@ public class MetricsService : IMetricsService
             var stats = await _repository.GetStatisticsAsync();
 
             sb.AppendLine("# HELP outbox_pending_messages Current count of pending messages");
-            sb.AppendLine($"outbox_pending_messages {stats.PendingCount}");
+            sb.AppendLine($"outbox_pending_messages {stats.PendingMessages}");
 
             sb.AppendLine("# HELP outbox_published_messages Total published messages");
-            sb.AppendLine($"outbox_published_messages {stats.PublishedCount}");
+            sb.AppendLine($"outbox_published_messages {stats.PublishedMessages}");
 
             sb.AppendLine("# HELP outbox_failed_messages Total failed messages");
-            sb.AppendLine($"outbox_failed_messages {stats.FailedCount}");
+            sb.AppendLine($"outbox_failed_messages {stats.FailedMessages}");
 
             sb.AppendLine("# HELP outbox_dead_letters Total dead letters");
             sb.AppendLine($"outbox_dead_letters {stats.DeadLetterCount}");
@@ -207,12 +209,12 @@ public class MetricsService : IMetricsService
         var alerts = new List<dynamic>();
         var stats = await _repository.GetStatisticsAsync();
 
-        if (stats.FailedCount > 100)
+        if (stats.FailedMessages > 100)
         {
             alerts.Add(new
             {
                 Severity = "Critical",
-                Message = $"High failure rate: {stats.FailedCount} failed messages",
+                Message = $"High failure rate: {stats.FailedMessages} failed messages",
                 CreatedAt = DateTime.UtcNow
             });
         }
@@ -243,16 +245,7 @@ public class MetricsService : IMetricsService
 
     private static double GetCpuUsage()
     {
-        try
-        {
-            var cpuCounter = new System.Diagnostics.PerformanceCounter(
-                "Processor", "% Processor Time", "_Total", autoEnable: true);
-            return cpuCounter.NextValue();
-        }
-        catch
-        {
-            return 0;
-        }
+        return 0;
     }
 
     private static double GetMemoryUsage()

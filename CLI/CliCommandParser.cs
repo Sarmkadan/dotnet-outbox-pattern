@@ -3,6 +3,8 @@
 // CTO & Software Architect
 // =============================================================================
 
+using DotnetOutboxPattern.Utilities;
+
 namespace DotnetOutboxPattern.CLI;
 
 /// <summary>

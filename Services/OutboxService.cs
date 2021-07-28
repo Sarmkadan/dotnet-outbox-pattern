@@ -22,6 +22,7 @@ public interface IOutboxService
     Task<OutboxStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default);
     Task<bool> RetryFailedMessageAsync(Guid messageId, CancellationToken cancellationToken = default);
     Task ArchiveOldMessagesAsync(DateTime olderThan, CancellationToken cancellationToken = default);
+    Task<List<OutboxMessage>> GetAllMessagesAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -45,11 +46,10 @@ public class OutboxService : IOutboxService
     /// </summary>
     public async Task<OutboxMessage> PublishEventAsync(PublishableEvent publishableEvent, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(publishableEvent);
+
         try
         {
-            if (publishableEvent == null)
-                throw new ArgumentNullException(nameof(publishableEvent));
-
             var idempotencyKey = publishableEvent.Event.EventId.ToString();
 
             // Check for duplicate using idempotency key
@@ -188,6 +188,22 @@ public class OutboxService : IOutboxService
         {
             _logger.LogError(ex, "Error retrying message {MessageId}", messageId);
             throw new OutboxException("Failed to retry message", ex, resourceId: messageId.ToString());
+        }
+    }
+
+    /// <summary>
+    /// Retrieves all outbox messages up to the specified limit
+    /// </summary>
+    public async Task<List<OutboxMessage>> GetAllMessagesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _repository.GetAllAsync(cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving all messages");
+            throw new OutboxException("Failed to retrieve messages", ex);
         }
     }
 

@@ -47,7 +47,7 @@ public class WebhookController : ControllerBase
         {
             var subscription = await _webhookService.RegisterWebhookAsync(request.Url, request.Events);
 
-            _logger.LogInformation("Webhook subscription registered: {SubscriptionId}", subscription.Id);
+            _logger.LogInformation("Webhook subscription registered: {SubscriptionId}", (object)subscription.Id);
 
             return CreatedAtAction(
                 nameof(GetSubscriptionAsync),

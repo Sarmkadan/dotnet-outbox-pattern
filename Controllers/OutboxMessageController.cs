@@ -41,9 +41,7 @@ public class OutboxMessageController : ControllerBase
 
         try
         {
-            _logger.LogInformation(
-                "Publishing event for aggregate {AggregateId} of type {AggregateType}",
-                request.AggregateId, request.AggregateType);
+            _logger.LogInformation("Publishing event to topic {Topic}", request.Topic);
 
             var message = await _outboxService.PublishEventAsync(request);
 
@@ -94,8 +92,7 @@ public class OutboxMessageController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieves messages by aggregate ID - returns all events for a specific entity
-    /// Useful for auditing and understanding entity history
+    /// Retrieves messages filtered by aggregate ID
     /// </summary>
     [HttpGet("messages/aggregate/{aggregateId}")]
     [ProducesResponseType(typeof(List<OutboxMessageDto>), StatusCodes.Status200OK)]
@@ -106,7 +103,12 @@ public class OutboxMessageController : ControllerBase
             if (string.IsNullOrWhiteSpace(aggregateId))
                 return BadRequest(new ErrorResponse { Message = "AggregateId is required" });
 
-            var messages = await _outboxService.GetMessagesByAggregateAsync(aggregateId, limit ?? 50);
+            var all = await _outboxService.GetAllMessagesAsync();
+            var messages = all
+                .Where(m => m.AggregateId == aggregateId)
+                .Take(limit ?? 50)
+                .ToList();
+
             return Ok(messages.Select(m => new OutboxMessageDto(m)).ToList());
         }
         catch (Exception ex)
@@ -118,11 +120,11 @@ public class OutboxMessageController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieves pending outbox messages with pagination - shows which events are waiting to be published
+    /// Retrieves outbox messages with optional state filter and pagination
     /// </summary>
     [HttpGet("messages")]
     [ProducesResponseType(typeof(PaginatedResponse<OutboxMessageDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetPendingMessagesAsync(
+    public async Task<IActionResult> GetMessagesAsync(
         [FromQuery] OutboxMessageState? state = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
@@ -132,23 +134,27 @@ public class OutboxMessageController : ControllerBase
             if (page < 1 || pageSize < 1 || pageSize > 500)
                 return BadRequest(new ErrorResponse { Message = "Invalid pagination parameters" });
 
-            var messages = await _outboxService.GetPendingMessagesAsync(
-                state: state,
-                page: page,
-                pageSize: pageSize);
+            var all = await _outboxService.GetAllMessagesAsync();
+
+            var filtered = state.HasValue
+                ? all.Where(m => m.State == state.Value).ToList()
+                : all;
+
+            var paged = filtered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
             var result = new PaginatedResponse<OutboxMessageDto>
             {
                 Page = page,
                 PageSize = pageSize,
-                Items = messages.Select(m => new OutboxMessageDto(m)).ToList()
+                TotalItems = filtered.Count(),
+                Items = paged.Select(m => new OutboxMessageDto(m)).ToList()
             };
 
             return Ok(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving pending messages");
+            _logger.LogError(ex, "Error retrieving messages");
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new ErrorResponse { Message = "Error retrieving messages" });
         }
@@ -164,11 +170,11 @@ public class OutboxMessageController : ControllerBase
     {
         try
         {
-            var success = await _outboxService.RetryMessageAsync(id);
+            var success = await _outboxService.RetryFailedMessageAsync(id);
 
             if (!success)
             {
-                _logger.LogWarning("Message not found for retry: {MessageId}", id);
+                _logger.LogWarning("Message not found or not eligible for retry: {MessageId}", id);
                 return NotFound();
             }
 
@@ -184,8 +190,7 @@ public class OutboxMessageController : ControllerBase
     }
 
     /// <summary>
-    /// Archives published messages - moves them from active processing to archive
-    /// Improves performance by reducing the active message set
+    /// Archives published messages older than the specified number of days
     /// </summary>
     [HttpPost("messages/archive")]
     [ProducesResponseType(typeof(ArchiveResult), StatusCodes.Status200OK)]
@@ -196,9 +201,12 @@ public class OutboxMessageController : ControllerBase
             if (daysOld < 1 || daysOld > 365)
                 return BadRequest(new ErrorResponse { Message = "daysOld must be between 1 and 365" });
 
-            var result = await _outboxService.ArchivePublishedMessagesAsync(daysOld);
+            var olderThan = DateTime.UtcNow.AddDays(-daysOld);
+            await _outboxService.ArchiveOldMessagesAsync(olderThan);
 
-            _logger.LogInformation("Archived {Count} messages", result.ArchivedCount);
+            var result = new ArchiveResult { Status = "Success" };
+
+            _logger.LogInformation("Archived messages older than {DaysOld} days", daysOld);
             return Ok(result);
         }
         catch (Exception ex)

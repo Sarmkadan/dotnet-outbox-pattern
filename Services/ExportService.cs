@@ -67,7 +67,7 @@ public class ExportService : IExportService
         try
         {
             var format = request.Format.ToLower();
-            var formatter = _formatters.FirstOrDefault(f => f.Format == format);
+            var formatter = _formatters.FirstOrDefault(f => f.FormatName == format);
 
             if (formatter == null)
                 throw new InvalidOperationException($"Unsupported export format: {format}");
@@ -129,7 +129,7 @@ public class ExportService : IExportService
 
     public List<string> GetSupportedFormats()
     {
-        return _formatters.Select(f => f.Format).ToList();
+        return _formatters.Select(f => f.FormatName).ToList();
     }
 
     private async Task<List<Domain.OutboxMessage>> GetMessagesToExportAsync(ExportRequest request)

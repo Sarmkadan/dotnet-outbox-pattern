@@ -21,15 +21,12 @@ namespace Examples
     public class BasicEventPublishingExample
     {
         // Define your domain event
-        public class UserRegisteredEvent : PublishableEvent
+        public class UserRegisteredEvent : DomainEvent
         {
             public string UserId { get; set; } = string.Empty;
             public string Email { get; set; } = string.Empty;
             public string FullName { get; set; } = string.Empty;
             public DateTime RegisteredAt { get; set; }
-
-            public override string EventType => "user.registered";
-            public override int Version => 1;
         }
 
         public class UserService
@@ -70,10 +67,9 @@ namespace Examples
                 // Publish the event
                 // This stores it in the OutboxMessages table atomically
                 var outboxMessage = await _outboxService.PublishEventAsync(
-                    @event: userEvent,
-                    topic: "users.registered",
-                    partitionKey: userId,
-                    idempotencyKey: $"user-{userId}-registered");
+                    userEvent,
+                    "users.registered",
+                    userId);
 
                 _logger.LogInformation(
                     "User event published with ID: {MessageId}",

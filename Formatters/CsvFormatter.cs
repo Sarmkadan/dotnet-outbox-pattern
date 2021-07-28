@@ -14,7 +14,7 @@ namespace DotnetOutboxPattern.Formatters;
 /// </summary>
 public class CsvFormatter : IDataFormatter
 {
-    public string Format => "csv";
+    public string FormatName => "csv";
     public string ContentType => "text/csv";
 
     /// <summary>
@@ -82,7 +82,7 @@ public class CsvFormatter : IDataFormatter
 /// </summary>
 public interface IDataFormatter
 {
-    string Format { get; }
+    string FormatName { get; }
     string ContentType { get; }
     string Format(List<OutboxMessage> messages);
 }

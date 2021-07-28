@@ -140,9 +140,9 @@ public class InMemoryNotificationChannel : INotificationChannel
 /// </summary>
 public class ConsoleNotificationChannel : INotificationChannel
 {
-    private readonly ILogger<ConsoleNotificationChannel> _logger;
+    private readonly ILogger _logger;
 
-    public ConsoleNotificationChannel(ILogger<ConsoleNotificationChannel> logger)
+    public ConsoleNotificationChannel(ILogger logger)
     {
         _logger = logger;
     }
@@ -170,10 +170,10 @@ public class ConsoleNotificationChannel : INotificationChannel
 /// </summary>
 public class FileNotificationChannel : INotificationChannel
 {
-    private readonly ILogger<FileNotificationChannel> _logger;
+    private readonly ILogger _logger;
     private readonly string _notificationFile = "logs/notifications.log";
 
-    public FileNotificationChannel(ILogger<FileNotificationChannel> logger)
+    public FileNotificationChannel(ILogger logger)
     {
         _logger = logger;
     }

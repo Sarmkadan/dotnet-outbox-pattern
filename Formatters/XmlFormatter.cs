@@ -15,7 +15,7 @@ namespace DotnetOutboxPattern.Formatters;
 /// </summary>
 public class XmlFormatter : IDataFormatter
 {
-    public string Format => "xml";
+    public string FormatName => "xml";
     public string ContentType => "application/xml";
 
     /// <summary>
@@ -36,7 +36,7 @@ public class XmlFormatter : IDataFormatter
             Encoding = System.Text.Encoding.UTF8
         };
 
-        using var writer = new System.Text.StringWriter();
+        using var writer = new System.IO.StringWriter();
         using var xmlWriter = XmlWriter.Create(writer, settings);
         root.WriteTo(xmlWriter);
         xmlWriter.Flush();

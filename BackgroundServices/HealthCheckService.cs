@@ -69,8 +69,8 @@ public class HealthCheckService : BackgroundService
             var stats = await repository.GetStatisticsAsync();
 
             // Check for high failure rate
-            var totalMessages = stats.PublishedCount + stats.FailedCount;
-            var failureRate = totalMessages > 0 ? stats.FailedCount / (double)totalMessages : 0;
+            var totalMessages = stats.PublishedMessages + stats.FailedMessages;
+            var failureRate = totalMessages > 0 ? stats.FailedMessages / (double)totalMessages : 0;
 
             if (failureRate > _options.HighFailureRateThreshold)
             {
@@ -84,11 +84,11 @@ public class HealthCheckService : BackgroundService
             }
 
             // Check for stuck messages
-            if (stats.ProcessingCount > _options.StuckMessageThreshold)
+            if (stats.ProcessingMessages > _options.StuckMessageThreshold)
             {
                 RaiseAlert(
                     "StuckMessages",
-                    $"Found {stats.ProcessingCount} messages stuck in processing");
+                    $"Found {stats.ProcessingMessages} messages stuck in processing");
             }
             else
             {
