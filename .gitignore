@@ -39,6 +39,7 @@ _ReSharper*/
 *.snupkg
 NuGet.Config
 nuget.idcache
+*.DotSettings.user
 
 # Rider
 .idea/
@@ -51,6 +52,7 @@ nuget.idcache
 Thumbs.db
 
 # Local environment
+appsettings.Development.json
 appsettings.local.json
 .env
 .env.local
