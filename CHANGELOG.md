@@ -10,128 +10,83 @@ All notable changes to the Outbox Pattern project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.0] - 2024-02-15
+## [1.0.0] - 2025-04-07
 
 ### Added
-- Health check endpoint improvements with detailed status reporting
-- Configurable alert thresholds for monitoring
-- Metrics collection background job with Prometheus integration
-- Support for message priority levels in outbox messages
-- Bulk requeue operation for dead letters
-- Archive operation for published messages with TTL
-- Custom serialization hooks for extensibility
-- Webhook publisher implementation example
-- Kubernetes deployment manifests and HPA configuration
-- Azure App Service deployment guide
-
-### Changed
-- Optimized database queries for better performance on large tables
-- Improved retry policy algorithm with jitter to prevent thundering herd
-- Enhanced logging with structured fields for better observability
-- Updated Entity Framework Core to 9.0.0
-- Refactored processor to batch by partition for better ordering guarantees
-
-### Fixed
-- Fix issue where messages could be processed multiple times with certain lock durations
-- Prevent DLQ messages from being requeued if processor is disabled
-- Handle null partition keys correctly in ordering logic
-- Correct timeout calculation in exponential backoff strategy
-
-### Deprecated
-- Direct database access patterns (use repositories instead)
-
-## [1.1.0] - 2024-01-20
-
-### Added
-- Dead Letter Queue (DLQ) with review workflow
-- Requeue functionality for failed messages
-- Batch export of messages (CSV, JSON, XML formats)
-- Comprehensive examples for RabbitMQ and Kafka integration
+- Dead Letter Queue (DLQ) with review and requeue workflow
+- Batch export of messages in CSV, JSON, and XML formats
+- Comprehensive RabbitMQ and Azure Service Bus publisher examples
 - Docker and docker-compose setup for local development
-- Integration test suite with in-memory database
+- Integration test suite with in-memory database support
 - Message search and filtering API
-- Detailed metrics and statistics endpoint
-- Getting Started guide and Architecture documentation
-- Contributing guidelines
+- Detailed metrics and statistics endpoint (`/api/outbox/statistics`)
+- Rate limiting middleware to protect API endpoints
+- Kubernetes deployment manifests and liveness probes
+- Health check endpoint with detailed component status
+- Getting Started guide, Architecture documentation, and FAQ
 
 ### Changed
-- Split OutboxService into separate publishing and query concerns
+- Split `OutboxService` into separate publishing and query concerns
+- Configuration schema now uses strongly-typed options with validation
 - Improved error messages with actionable guidance
-- Configuration schema now uses strongly-typed options
 - Database migrations now use descriptive names
-- Tests now use xUnit instead of NUnit
+- Tests migrated from NUnit to xUnit
 
 ### Fixed
-- Issue with idempotency key collision detection
-- Race condition in processor lock acquisition
-- Memory leak in background processor shutdown
-- Incorrect retry count in statistics calculation
+- Race condition in processor lock acquisition under concurrent instances
+- Memory leak in background processor during graceful shutdown
+- Idempotency key collision detection on high-throughput writes
+- Incorrect retry count shown in statistics calculation
 
 ### Security
-- Added input validation on all API endpoints
-- Implement query parameter length limits
-- Add rate limiting middleware
-- Sanitize error messages in responses
+- Input validation added to all API endpoints
+- Query parameter length limits enforced
+- Rate limiting middleware applied globally
+- Error messages sanitized to avoid leaking internal details
 
-## [1.0.0] - 2023-12-01
-
-### Added
-- Core outbox pattern implementation
-- Support for SQL Server with Entity Framework Core
-- Configurable retry policies (Fixed, Linear, Exponential backoff)
-- Background processor for message publishing
-- IMessagePublisher abstraction for broker integration
-- Partition key support for ordered delivery
-- Idempotency key support to prevent duplicates
-- Health check endpoint
-- Structured logging with Serilog
-- REST API for publishing events
-- Swagger/OpenAPI documentation
-- Configuration via appsettings.json
-- Comprehensive README and documentation
-- MIT License
-
-### Features
-- **Guaranteed Delivery**: Messages persisted before publishing
-- **Deduplication**: Idempotency keys prevent duplicate processing
-- **Ordering**: Partition keys maintain FIFO per logical group
-- **Extensible**: IMessagePublisher interface for any broker
-- **Observable**: Health checks, metrics, structured logs
-- **Configurable**: Retry policies, batch size, processing delays
-- **Thread-safe**: Safe for multi-instance deployments
-
-## [0.3.0] - 2023-11-15 (Pre-release)
+## [0.3.0] - 2025-03-17
 
 ### Added
-- Message ordering based on partition keys
-- Configurable retry policies
-- Background processor improvements
-- Initial performance optimizations
-
-### Fixed
-- Issue with message state transitions
-- Database connection pooling issues
-
-## [0.2.0] - 2023-10-20 (Pre-release)
-
-### Added
-- Basic IMessagePublisher interface
-- Default console publisher for testing
-- Initial database schema
-- Entity Framework Core integration
+- Message ordering based on partition keys (FIFO per logical group)
+- Configurable retry policies: Fixed, Linear, and Exponential backoff
+- Background processor improvements with configurable batch delays
+- Initial performance benchmarks and optimization notes
 
 ### Changed
-- Simplified configuration structure
+- Processor now batches messages by partition key for correct ordering
+- Improved retry delay calculation to include jitter
 
-## [0.1.0] - 2023-09-15 (Pre-release)
+### Fixed
+- Message state transition edge case when lock expired mid-processing
+- Database connection pooling exhaustion under sustained load
+
+## [0.2.0] - 2025-02-24
 
 ### Added
-- Initial project structure
-- Core OutboxMessage domain model
-- Basic OutboxService interface
-- SQL Server data access layer
-- Entity Framework Core setup
-- Initial documentation
+- `IMessagePublisher` abstraction for pluggable broker implementations
+- Default console publisher for local development and testing
+- Entity Framework Core integration with SQL Server
+- Initial database schema with EF Core migrations
+- Strongly-typed `OutboxConfiguration` options class
+
+### Changed
+- Simplified configuration structure — single `Outbox` section in appsettings
+- Switched from raw ADO.NET to EF Core repository pattern
+
+## [0.1.0] - 2025-02-03
+
+### Added
+- Initial project structure targeting .NET 10.0
+- Core `OutboxMessage` domain model with state machine
+- `IOutboxService` interface and `OutboxService` implementation
+- SQL Server data access layer via `OutboxRepository`
+- `OutboxProcessor` hosted service for background message polling
+- Idempotency key support to prevent duplicate delivery
+- Structured logging with Serilog
+- Basic REST API for publishing events
+- Swagger/OpenAPI documentation
+- `appsettings.json` configuration scaffolding
+- MIT License
 
 ---
 
@@ -139,36 +94,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### From 0.x to 1.0
 
-1. Update package references to 1.0.0
+1. Update package references to `1.0.0`
 2. Run database migrations: `dotnet ef database update`
-3. Update configuration to use new strongly-typed options
-4. Implement custom IMessagePublisher for your broker
-5. Review examples for usage patterns
-
-### From 1.0 to 1.1
-
-1. Update package references to 1.1.0
-2. Run database migrations for DLQ support
-3. Implement IDeadLetterService in your application
-4. Update monitoring to watch DLQ endpoint
-5. No breaking changes - fully backward compatible
-
-### From 1.1 to 1.2
-
-1. Update package references to 1.2.0
-2. (Optional) Implement health check with new detailed reporting
-3. (Optional) Configure alert thresholds for monitoring
-4. No database schema changes required
-5. Review new monitoring examples
-6. Fully backward compatible
-
----
-
-## Release Schedule
-
-- **v1.3.0** (Q2 2024): Event sourcing integration, CQRS patterns
-- **v2.0.0** (Q4 2024): Multi-database support (PostgreSQL, MySQL), Event versioning
-- **v3.0.0** (Q2 2025): Distributed transaction support, Saga patterns
+3. Update configuration to use the new strongly-typed options
+4. Implement a custom `IMessagePublisher` for your message broker
+5. Review examples for idempotent subscriber patterns
 
 ---
 
@@ -177,4 +107,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Report bugs: https://github.com/sarmkadan/dotnet-outbox-pattern/issues
 - Ask questions: https://github.com/sarmkadan/dotnet-outbox-pattern/discussions
 - Security issues: security@sarmkadan.com
-

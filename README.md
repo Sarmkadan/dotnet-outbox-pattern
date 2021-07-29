@@ -1,8 +1,8 @@
-# .NET Outbox Pattern
-
 [![Build](https://github.com/sarmkadan/dotnet-outbox-pattern/actions/workflows/build.yml/badge.svg)](https://github.com/sarmkadan/dotnet-outbox-pattern/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)](https://dotnet.microsoft.com/)
+
+# .NET Outbox Pattern
 
 A production-ready implementation of the **transactional outbox pattern** for .NET 10, providing guaranteed message delivery, deduplication, ordering, and dead letter handling. Enterprise-grade reliability for distributed systems.
 
