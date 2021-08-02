@@ -1,0 +1,66 @@
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# ReSharper
+.idea/
+*.sln.iml
+_ReSharper*/
+*.resharper.user
+
+# Entity Framework
+*.edmx.diagrams.xml
+
+# NuGet
+*.nupkg
+*.snupkg
+NuGet.Config
+nuget.idcache
+*.DotSettings.user
+
+# Rider
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local environment
+appsettings.Development.json
+appsettings.local.json
+.env
+.env.local
+
+# Test Results
+TestResults/
+*.trx
+
+# Dependencies
+packages/
+node_modules/
