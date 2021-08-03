@@ -10,6 +10,26 @@ All notable changes to the Outbox Pattern project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-03-17
+
+### Changed
+- Default application port changed from 5000/5001 to 8080 (HTTP only)
+- Dockerfile rebuilt with multi-stage build, non-root user, and proper HEALTHCHECK
+- Docker Compose updated to V2 format (removed deprecated `version` field)
+- SQL Server healthcheck updated for mssql-tools18 compatibility
+- SA password now configurable via environment variable
+- Container runs as non-root `appuser` for improved security
+- Added `restart: unless-stopped` policy to all services
+- Connection string includes `TrustServerCertificate=true` for SQL Server 2022
+
+### Added
+- Migration guide for v1.x to v2.0 (`docs/MIGRATION_v2.md`)
+- `.dockerignore` best practices in Dockerfile layer caching
+
+### Security
+- Runtime container no longer runs as root
+- Reduced attack surface with `--no-install-recommends` in apt-get
+
 ## [1.0.0] - 2025-04-07
 
 ### Added
