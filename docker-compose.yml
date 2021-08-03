@@ -1,0 +1,69 @@
+# =============================================================================
+# Author: Vladyslav Zaiets | https://sarmkadan.com
+# CTO & Software Architect
+# =============================================================================
+
+version: '3.8'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: outbox-sqlserver
+    environment:
+      ACCEPT_EULA: 'Y'
+      SA_PASSWORD: 'YourStrongPassword123!'
+      MSSQL_PID: 'Developer'
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    networks:
+      - outbox-network
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "YourStrongPassword123!", "-Q", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: outbox-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: https://+:5001;http://+:5000
+      ConnectionStrings__DefaultConnection: >
+        Server=sqlserver;
+        Database=OutboxPattern;
+        User Id=sa;
+        Password=YourStrongPassword123!;
+        Encrypt=false;
+      Outbox__ProcessorEnabled: 'true'
+      Outbox__BatchSize: '100'
+      Outbox__DelayBetweenBatches: '5000'
+      Outbox__MaxRetries: '5'
+      Outbox__RetryPolicy: 'ExponentialBackoff'
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - outbox-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "https://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  outbox-network:
+    driver: bridge
+
+volumes:
+  sqlserver-data:
