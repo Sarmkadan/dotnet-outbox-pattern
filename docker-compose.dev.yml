@@ -1,0 +1,50 @@
+# =============================================================================
+# Author: Vladyslav Zaiets | https://sarmkadan.com
+# CTO & Software Architect
+# =============================================================================
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build  # Use build stage for development
+    container_name: outbox-api-dev
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      DOTNET_ENVIRONMENT: Development
+      DOTNET_HOST_BUILDER_ALLOW_MULTIPLE_HOSTING: "true"
+    ports:
+      - "8080:8080"
+      - "5003:5003"  # Debug port
+    volumes:
+      - .:/src  # Mount source code for hot reload
+      - ./logs:/app/logs
+    networks:
+      - outbox-network
+    stdin_open: true
+    tty: true
+    restart: "no"
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: outbox-sqlserver-dev
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "${SA_PASSWORD:-YourStrongPassword123!}"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    networks:
+      - outbox-network
+    restart: "no"
+
+networks:
+  outbox-network:
+    driver: bridge
+
+volumes:
+  sqlserver-data:
