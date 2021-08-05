@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -9,7 +10,7 @@ namespace DotnetOutboxPattern.CLI;
 /// Registers and manages CLI commands for administrative tasks
 /// Provides command infrastructure for database operations, cleanup, diagnostics
 /// </summary>
-public class CliCommandRegistry
+public sealed class CliCommandRegistry
 {
     private readonly CliCommandParser _parser;
     private readonly IServiceProvider _serviceProvider;
@@ -41,7 +42,7 @@ public class CliCommandRegistry
                 return 1;
             }
 
-            if (context.Command?.Handler != null)
+            if (context.Command?.Handler is not null)
             {
                 await context.Command.Handler(context);
                 return 0;

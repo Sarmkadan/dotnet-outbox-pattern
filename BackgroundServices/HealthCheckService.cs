@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -13,7 +14,7 @@ namespace DotnetOutboxPattern.BackgroundServices;
 /// Background service that periodically checks system health and alerts on issues
 /// Monitors message processing rates, error patterns, and resource usage
 /// </summary>
-public class HealthCheckService : BackgroundService
+public sealed class HealthCheckService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<HealthCheckService> _logger;
@@ -149,7 +150,7 @@ public class HealthCheckService : BackgroundService
     private void ClearAlert(string alertType)
     {
         var alert = _activeAlerts.FirstOrDefault(a => a.Type == alertType);
-        if (alert != null)
+        if (alert is not null)
         {
             _activeAlerts.Remove(alert);
             _logger.LogInformation("Alert cleared: {AlertType}", alertType);
@@ -162,7 +163,7 @@ public class HealthCheckService : BackgroundService
 /// <summary>
 /// Configuration options for health checks
 /// </summary>
-public class HealthCheckOptions
+public sealed class HealthCheckOptions
 {
     /// <summary>
     /// How often to run health checks (default: every 5 minutes)
@@ -188,7 +189,7 @@ public class HealthCheckOptions
 /// <summary>
 /// Represents a system health alert
 /// </summary>
-public class HealthAlert
+public sealed class HealthAlert
 {
     public string Type { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;

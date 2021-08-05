@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -14,7 +15,7 @@ namespace DotnetOutboxPattern.Infrastructure;
 /// <summary>
 /// Configuration options for the outbox processor background service
 /// </summary>
-public class OutboxProcessorOptions
+public sealed class OutboxProcessorOptions
 {
     /// <summary>
     /// Whether to enable the background processor
@@ -51,7 +52,7 @@ public class OutboxProcessorOptions
 /// Background service for processing outbox messages
 /// Continuously polls for pending messages and publishes them
 /// </summary>
-public class OutboxProcessor : BackgroundService
+public sealed class OutboxProcessor : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly OutboxProcessorOptions _options;

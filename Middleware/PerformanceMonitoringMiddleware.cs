@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -11,7 +12,7 @@ namespace DotnetOutboxPattern.Middleware;
 /// Captures request/response performance metrics for monitoring and alerting
 /// Tracks latency, throughput, and identifies performance bottlenecks
 /// </summary>
-public class PerformanceMonitoringMiddleware
+public sealed class PerformanceMonitoringMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<PerformanceMonitoringMiddleware> _logger;
@@ -66,7 +67,7 @@ public class PerformanceMonitoringMiddleware
 /// <summary>
 /// Singleton service that tracks performance metrics across requests
 /// </summary>
-public class PerformanceMonitor
+public sealed class PerformanceMonitor
 {
     private readonly List<RequestMetric> _metrics = new();
     private readonly object _lock = new();
@@ -128,7 +129,7 @@ public class PerformanceMonitor
 /// <summary>
 /// Represents a single request metric
 /// </summary>
-public class RequestMetric
+public sealed class RequestMetric
 {
     public string Path { get; set; } = string.Empty;
     public string Method { get; set; } = string.Empty;
@@ -140,7 +141,7 @@ public class RequestMetric
 /// <summary>
 /// Aggregated performance statistics
 /// </summary>
-public class PerformanceStats
+public sealed class PerformanceStats
 {
     public int RequestCount { get; set; }
     public long AverageDurationMs { get; set; }

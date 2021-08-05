@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -9,7 +10,7 @@ namespace DotnetOutboxPattern.Domain;
 /// Represents a message in the transactional outbox pattern.
 /// Guarantees reliable message delivery with ordering and deduplication.
 /// </summary>
-public class OutboxMessage
+public sealed class OutboxMessage
 {
     /// <summary>
     /// Unique identifier for the outbox message

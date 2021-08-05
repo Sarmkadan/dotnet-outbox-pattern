@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -45,7 +46,7 @@ public interface IWebhookService
 /// <summary>
 /// Default implementation of webhook service
 /// </summary>
-public class WebhookService : IWebhookService
+public sealed class WebhookService : IWebhookService
 {
     private readonly ILogger<WebhookService> _logger;
     private readonly Dictionary<Guid, dynamic> _webhooks = new(); // In-memory storage for demo
@@ -105,7 +106,7 @@ public class WebhookService : IWebhookService
     public async Task<dynamic?> TestWebhookAsync(Guid id)
     {
         var webhook = await GetWebhookAsync(id);
-        if (webhook == null)
+        if (webhook is null)
             return null;
 
         try

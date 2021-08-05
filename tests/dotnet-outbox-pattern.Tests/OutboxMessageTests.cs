@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -8,7 +9,7 @@ using FluentAssertions;
 
 namespace DotnetOutboxPattern.Tests;
 
-public class OutboxMessageTests
+public sealed class OutboxMessageTests
 {
     private static OutboxMessage CreateValidMessage() => new()
     {

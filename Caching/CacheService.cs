@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -22,7 +23,7 @@ public interface ICacheService
 /// In-memory cache implementation with TTL support
 /// Suitable for distributed systems using cache invalidation
 /// </summary>
-public class MemoryCacheService : ICacheService
+public sealed class MemoryCacheService : ICacheService
 {
     private readonly Dictionary<string, CacheEntry> _cache = new();
     private readonly object _lock = new();
@@ -107,7 +108,7 @@ public class MemoryCacheService : ICacheService
     public async Task<T> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null)
     {
         var cached = await GetAsync<T>(key);
-        if (cached != null)
+        if (cached is not null)
             return cached;
 
         var value = await factory();

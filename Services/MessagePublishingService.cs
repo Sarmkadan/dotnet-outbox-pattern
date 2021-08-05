@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -34,7 +35,7 @@ public interface IMessagePublishingService
 /// Service for processing and publishing outbox messages
 /// Handles retries, dead letter routing, and lock management
 /// </summary>
-public class MessagePublishingService : IMessagePublishingService
+public sealed class MessagePublishingService : IMessagePublishingService
 {
     private readonly IOutboxRepository _outboxRepository;
     private readonly IDeadLetterRepository _deadLetterRepository;
@@ -211,7 +212,7 @@ public class MessagePublishingService : IMessagePublishingService
         try
         {
             message = await _outboxRepository.GetByIdAsync(messageId, cancellationToken);
-            if (message == null)
+            if (message is null)
             {
                 _logger.LogWarning("Message {MessageId} not found", messageId);
                 return false;
@@ -259,7 +260,7 @@ public class MessagePublishingService : IMessagePublishingService
         try
         {
             var message = await _outboxRepository.GetByIdAsync(messageId, cancellationToken);
-            if (message != null && message.IsLocked)
+            if (message is not null && message.IsLocked)
             {
                 message.IsLocked = false;
                 message.LockExpiresAt = null;
@@ -287,7 +288,7 @@ public class MessagePublishingService : IMessagePublishingService
         string? stackTrace,
         CancellationToken cancellationToken)
     {
-        if (message == null) return;
+        if (message is null) return;
 
         try
         {

@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -9,7 +10,7 @@ using FluentAssertions;
 
 namespace DotnetOutboxPattern.Tests;
 
-public class DeadLetterTests
+public sealed class DeadLetterTests
 {
     private static OutboxMessage CreateFailedMessage() => new()
     {
@@ -109,7 +110,7 @@ public class DeadLetterTests
     }
 }
 
-public class StringHelperTests
+public sealed class StringHelperTests
 {
     [Theory]
     [InlineData("Hello World", "hello-world")]
@@ -210,7 +211,7 @@ public class StringHelperTests
     }
 }
 
-public class PaginationHelperTests
+public sealed class PaginationHelperTests
 {
     [Theory]
     [InlineData(1, 20, 0)]
@@ -301,7 +302,7 @@ public class PaginationHelperTests
     }
 }
 
-public class CollectionExtensionsTests
+public sealed class CollectionExtensionsTests
 {
     [Fact]
     public void Chunk_DividesIntoCorrectGroups()
@@ -407,7 +408,7 @@ public class CollectionExtensionsTests
     }
 }
 
-public class ValidationHelperTests
+public sealed class ValidationHelperTests
 {
     [Fact]
     public void ValidateNotEmpty_WithNullValue_ThrowsArgumentException()

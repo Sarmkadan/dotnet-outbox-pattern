@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -19,7 +20,7 @@ public interface IEventPublisher
 /// In-process event publisher implementation
 /// Uses delegate pattern for simple pub-sub within same process
 /// </summary>
-public class EventPublisher : IEventPublisher
+public sealed class EventPublisher : IEventPublisher
 {
     private readonly Dictionary<Type, List<Delegate>> _subscribers = new();
     private readonly object _lock = new();
@@ -32,7 +33,7 @@ public class EventPublisher : IEventPublisher
 
     public async Task PublishAsync<T>(T @event) where T : class
     {
-        if (@event == null)
+        if (@event is null)
             throw new ArgumentNullException(nameof(@event));
 
         var eventType = typeof(T);
@@ -73,7 +74,7 @@ public class EventPublisher : IEventPublisher
 
     public IDisposable Subscribe<T>(Func<T, Task> handler) where T : class
     {
-        if (handler == null)
+        if (handler is null)
             throw new ArgumentNullException(nameof(handler));
 
         lock (_lock)
@@ -148,7 +149,7 @@ public abstract class DomainEvent
 /// <summary>
 /// Event fired when a message is published successfully
 /// </summary>
-public class MessagePublishedEvent : DomainEvent
+public sealed class MessagePublishedEvent : DomainEvent
 {
     public Guid MessageId { get; set; }
     public string AggregateId { get; set; } = string.Empty;
@@ -158,7 +159,7 @@ public class MessagePublishedEvent : DomainEvent
 /// <summary>
 /// Event fired when a message publishing fails
 /// </summary>
-public class MessagePublishFailedEvent : DomainEvent
+public sealed class MessagePublishFailedEvent : DomainEvent
 {
     public Guid MessageId { get; set; }
     public string AggregateId { get; set; } = string.Empty;
@@ -169,7 +170,7 @@ public class MessagePublishFailedEvent : DomainEvent
 /// <summary>
 /// Event fired when a message is moved to dead letter queue
 /// </summary>
-public class MessageMovedToDeadLetterEvent : DomainEvent
+public sealed class MessageMovedToDeadLetterEvent : DomainEvent
 {
     public Guid MessageId { get; set; }
     public string AggregateId { get; set; } = string.Empty;

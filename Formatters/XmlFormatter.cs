@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -13,7 +14,7 @@ namespace DotnetOutboxPattern.Formatters;
 /// Formatter for exporting outbox messages to XML format
 /// Useful for enterprise systems and legacy integrations
 /// </summary>
-public class XmlFormatter : IDataFormatter
+public sealed class XmlFormatter : IDataFormatter
 {
     public string FormatName => "xml";
     public string ContentType => "application/xml";

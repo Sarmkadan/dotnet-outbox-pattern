@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -12,7 +13,7 @@ namespace DotnetOutboxPattern.BackgroundServices;
 /// Background service that automatically archives old published messages
 /// Improves database performance by removing processed messages from active tables
 /// </summary>
-public class MessageArchivalService : BackgroundService
+public sealed class MessageArchivalService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MessageArchivalService> _logger;
@@ -70,7 +71,7 @@ public class MessageArchivalService : BackgroundService
 /// <summary>
 /// Configuration options for message archival
 /// </summary>
-public class MessageArchivalOptions
+public sealed class MessageArchivalOptions
 {
     /// <summary>
     /// How many days old a message must be before archival (default: 30 days)
