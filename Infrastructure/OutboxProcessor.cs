@@ -139,9 +139,16 @@ public sealed class OutboxProcessor : BackgroundService
                 "Processed {Processed} messages, {Failed} failed",
                 result.ProcessedCount, result.FailedCount);
 
-            _health.IsHealthy = result.Success;
+            if (result.Success)
+            {
+                _health.IsHealthy = true;
+                _health.ConsecutiveFailures = 0;
+            }
+            else
+            {
+                _health.IsHealthy = false;
+            }
             _health.LastSuccessfulPublish = DateTime.UtcNow;
-            _health.ConsecutiveFailures = 0;
         }
     }
 
