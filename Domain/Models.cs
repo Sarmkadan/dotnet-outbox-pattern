@@ -259,4 +259,9 @@ public sealed class HealthMetrics
     /// Whether there are messages with expired locks
     /// </summary>
     public bool HasExpiredLocks { get; set; }
+
+    /// <summary>
+    /// Age of the oldest unprocessed pending message, or <c>null</c> if there are no pending messages
+    /// </summary>
+    public TimeSpan? OldestMessageAge { get; set; }
 }

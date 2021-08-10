@@ -7,6 +7,7 @@
 using DotnetOutboxPattern.Data;
 using DotnetOutboxPattern.Domain;
 using DotnetOutboxPattern.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -46,6 +47,12 @@ public sealed class OutboxProcessorOptions
     /// Whether to process partitioned messages sequentially
     /// </summary>
     public bool PreservePartitionOrdering { get; set; } = true;
+
+    /// <summary>
+    /// Age threshold (in minutes) beyond which an unprocessed message triggers a warning log.
+    /// Default is 5 minutes.
+    /// </summary>
+    public int OldestMessageAgeThresholdMinutes { get; set; } = 5;
 }
 
 /// <summary>
@@ -93,6 +100,9 @@ public sealed class OutboxProcessor : BackgroundService
                     await ReleaseExpiredLocksAsync(stoppingToken);
                     _lastExpiredLockCheck = DateTime.UtcNow;
                 }
+
+                // Warn if messages are stuck / growing too old
+                await CheckOldestMessageAgeAsync(stoppingToken);
 
                 // Process pending messages
                 await ProcessPendingMessagesAsync(stoppingToken);
@@ -207,6 +217,46 @@ public sealed class OutboxProcessor : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking for expired locks");
+        }
+    }
+
+    /// <summary>
+    /// Checks the age of the oldest unprocessed message and logs a warning when it
+    /// exceeds <see cref="OutboxProcessorOptions.OldestMessageAgeThresholdMinutes"/>.
+    /// Updates <see cref="HealthMetrics.OldestMessageAge"/> so health-check consumers
+    /// can surface this data.
+    /// </summary>
+    private async Task CheckOldestMessageAgeAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var repository = scope.ServiceProvider.GetRequiredService<IOutboxRepository>();
+
+            var oldestCreatedAt = await repository.GetOldestPendingMessageCreatedAtAsync(cancellationToken);
+
+            if (oldestCreatedAt.HasValue)
+            {
+                var age = DateTime.UtcNow - oldestCreatedAt.Value;
+                _health.OldestMessageAge = age;
+
+                var threshold = TimeSpan.FromMinutes(_options.OldestMessageAgeThresholdMinutes);
+                if (age > threshold)
+                {
+                    _logger.LogWarning(
+                        "Oldest unprocessed outbox message is {AgeMinutes:F1} minutes old, which exceeds the threshold of {ThresholdMinutes} minutes. Check for processing failures.",
+                        age.TotalMinutes,
+                        _options.OldestMessageAgeThresholdMinutes);
+                }
+            }
+            else
+            {
+                _health.OldestMessageAge = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking oldest message age");
         }
     }
 
