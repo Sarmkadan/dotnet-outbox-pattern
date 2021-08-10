@@ -34,11 +34,16 @@ public sealed class OutboxService : IOutboxService
 {
     private readonly IOutboxRepository _repository;
     private readonly ILogger<OutboxService> _logger;
+    private readonly IOutboxSerializer _serializer;
 
-    public OutboxService(IOutboxRepository repository, ILogger<OutboxService> logger)
+    public OutboxService(
+        IOutboxRepository repository,
+        ILogger<OutboxService> logger,
+        IOutboxSerializer serializer)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
     }
 
     /// <summary>

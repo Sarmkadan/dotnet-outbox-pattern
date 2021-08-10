@@ -52,6 +52,9 @@ public static class DependencyInjectionExtensions
         // Add event publisher
         services.AddSingleton<IEventPublisher, EventPublisher>();
 
+        // Register the pluggable outbox serializer
+        services.AddSingleton<IOutboxSerializer, SystemTextJsonOutboxSerializer>();
+
         // Add HTTP client factory
         services.AddSingleton<DotnetOutboxPattern.Integration.IHttpClientFactory, CustomHttpClientFactory>();
 
