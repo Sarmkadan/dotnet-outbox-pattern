@@ -48,6 +48,11 @@ public interface IMetricsService
     /// Gets resource consumption metrics (CPU, memory, disk, connections)
     /// </summary>
     Task<dynamic> GetResourceMetricsAsync();
+
+    /// <summary>
+    /// Gets metrics formatted for Prometheus scraping
+    /// </summary>
+    Task<string> GetPrometheusMetricsAsync();
 }
 
 /// <summary>

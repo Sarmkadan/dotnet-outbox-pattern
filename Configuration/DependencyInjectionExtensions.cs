@@ -13,6 +13,8 @@ using DotnetOutboxPattern.Integration;
 using DotnetOutboxPattern.Middleware;
 using DotnetOutboxPattern.Services;
 using Microsoft.Extensions.DependencyInjection;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 
 namespace DotnetOutboxPattern.Configuration;
 
@@ -86,13 +88,10 @@ public static class DependencyInjectionExtensions
     public static IServiceCollection AddOutboxOpenTelemetry(this IServiceCollection services)
     {
         services.AddOpenTelemetry()
+            .ConfigureResource(resource => resource.AddService("dotnet-outbox-pattern"))
             .WithMetrics(builder =>
             {
                 builder
-                    .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("dotnet-outbox-pattern"))
-                    .AddAspNetCoreInstrumentation()
-                    .AddRuntimeInstrumentation()
-                    .AddHttpClientInstrumentation()
                     .AddMeter("DotnetOutboxPattern.Outbox") // The name of our custom meter
                     .AddPrometheusExporter();
             });
