@@ -256,11 +256,6 @@ public sealed class MessagePublishingService : IMessagePublishingService
                 }
             }
 
-            _logger.LogInformation(
-                "Message {MessageId} published successfully on attempt {Attempt}",
-                messageId, message.PublishAttempts + 1);
-
-            return true;
         }
         catch (OperationCanceledException)
         {
@@ -270,6 +265,10 @@ public sealed class MessagePublishingService : IMessagePublishingService
         }
         catch (Exception ex)
         {
+            if (startTime != DateTime.MinValue)
+            {
+                _outboxMetrics.ProcessingDurationSeconds.Record((DateTime.UtcNow - startTime).TotalSeconds);
+            }
             _logger.LogError(ex, "Error publishing message {MessageId}", messageId);
             await HandlePublishingFailureAsync(message, ex.Message, ex.StackTrace, cancellationToken);
             return false;
@@ -336,6 +335,10 @@ public sealed class MessagePublishingService : IMessagePublishingService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error handling publishing failure for message {MessageId}", message?.Id);
+        }
+    }
+}
+essage?.Id);
         }
     }
 }
