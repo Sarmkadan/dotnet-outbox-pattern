@@ -13,16 +13,64 @@ using Microsoft.Extensions.Logging;
 namespace DotnetOutboxPattern.Services;
 
 /// <summary>
-/// Interface for the outbox service that handles message publishing
+/// Interface for the outbox service that handles message publishing.
 /// </summary>
 public interface IOutboxService
 {
+    /// <summary>
+    /// Publishes an event to the outbox.
+    /// </summary>
+    /// <param name="publishableEvent">The event to publish.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The published outbox message.</returns>
     Task<OutboxMessage> PublishEventAsync(PublishableEvent publishableEvent, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Publishes a domain event to the outbox.
+    /// </summary>
+    /// <param name="domainEvent">The domain event to publish.</param>
+    /// <param name="topic">The topic name.</param>
+    /// <param name="partitionKey">The optional partition key.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The published outbox message.</returns>
     Task<OutboxMessage> PublishEventAsync(DomainEvent domainEvent, string topic, string? partitionKey = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves a message by its ID.
+    /// </summary>
+    /// <param name="messageId">The message ID.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The message if found, otherwise null.</returns>
     Task<OutboxMessage?> GetMessageAsync(Guid messageId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets outbox statistics.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The outbox statistics.</returns>
     Task<OutboxStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retries a failed message.
+    /// </summary>
+    /// <param name="messageId">The message ID.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the message was successfully queued for retry, false otherwise.</returns>
     Task<bool> RetryFailedMessageAsync(Guid messageId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Archives messages older than the specified date.
+    /// </summary>
+    /// <param name="olderThan">The date threshold for archiving.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the operation.</returns>
     Task ArchiveOldMessagesAsync(DateTime olderThan, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves all outbox messages.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of outbox messages.</returns>
     Task<List<OutboxMessage>> GetAllMessagesAsync(CancellationToken cancellationToken = default);
 }
 
