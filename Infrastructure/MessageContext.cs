@@ -77,7 +77,8 @@ public sealed class MessageContext
     /// </summary>
     public static void RecordEvent(string eventName, Dictionary<string, object>? attributes = null)
     {
-        Activity.Current?.AddEvent(new ActivityEvent(eventName, tags: new ActivityTagsCollection(attributes ?? new())));
+        var tags = attributes?.ToDictionary(k => k.Key, v => (object?)v.Value) ?? new();
+        Activity.Current?.AddEvent(new ActivityEvent(eventName, tags: new ActivityTagsCollection(tags)));
     }
 
     /// <summary>
