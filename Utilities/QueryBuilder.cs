@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -9,7 +10,7 @@ namespace DotnetOutboxPattern.Utilities;
 /// Fluent query builder for constructing complex filter conditions
 /// Simplifies building dynamic queries without SQL injection risks
 /// </summary>
-public class QueryBuilder
+public sealed class QueryBuilder
 {
     private readonly List<FilterCondition> _conditions = new();
     private string? _orderBy;
@@ -174,7 +175,7 @@ public class QueryBuilder
 /// <summary>
 /// Represents a single filter condition
 /// </summary>
-public class FilterCondition
+public sealed class FilterCondition
 {
     public string Field { get; set; } = string.Empty;
     public FilterOperator Operator { get; set; }

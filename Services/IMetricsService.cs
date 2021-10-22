@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -57,7 +58,7 @@ public interface IMetricsService
 /// <summary>
 /// Default implementation of metrics service
 /// </summary>
-public class MetricsService : IMetricsService
+public sealed class MetricsService : IMetricsService
 {
     private readonly IOutboxRepository _repository;
     private readonly ILogger<MetricsService> _logger;

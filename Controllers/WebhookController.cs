@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -16,7 +17,7 @@ namespace DotnetOutboxPattern.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/webhooks")]
-public class WebhookController : ControllerBase
+public sealed class WebhookController : ControllerBase
 {
     private readonly IWebhookService _webhookService;
     private readonly IWebhookHandler _webhookHandler;
@@ -40,7 +41,7 @@ public class WebhookController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SubscribeAsync([FromBody] RegisterWebhookRequest request)
     {
-        if (request == null || !Uri.IsWellFormedUriString(request.Url, UriKind.Absolute))
+        if (request is null || !Uri.IsWellFormedUriString(request.Url, UriKind.Absolute))
             return BadRequest(new ErrorResponse { Message = "Valid webhook URL is required" });
 
         try
@@ -74,7 +75,7 @@ public class WebhookController : ControllerBase
         {
             var subscription = await _webhookService.GetWebhookAsync(id);
 
-            if (subscription == null)
+            if (subscription is null)
                 return NotFound();
 
             return Ok(new WebhookSubscriptionDto(subscription));
@@ -201,7 +202,7 @@ public class WebhookController : ControllerBase
         {
             var result = await _webhookService.TestWebhookAsync(id);
 
-            if (result == null)
+            if (result is null)
                 return NotFound();
 
             return Ok(result);

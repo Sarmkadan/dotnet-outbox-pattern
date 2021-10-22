@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -20,7 +21,7 @@ using System.Text;
 namespace Examples
 {
     // Example 1: RabbitMQ Publisher
-    public class RabbitMqMessagePublisher : IMessagePublisher
+    public sealed class RabbitMqMessagePublisher : IMessagePublisher
     {
         private readonly ILogger<RabbitMqMessagePublisher> _logger;
 
@@ -63,7 +64,7 @@ namespace Examples
     }
 
     // Example 2: Kafka Publisher
-    public class KafkaMessagePublisher : IMessagePublisher
+    public sealed class KafkaMessagePublisher : IMessagePublisher
     {
         private readonly ILogger<KafkaMessagePublisher> _logger;
 
@@ -108,7 +109,7 @@ namespace Examples
     }
 
     // Example 3: Azure Service Bus Publisher
-    public class AzureServiceBusPublisher : IMessagePublisher
+    public sealed class AzureServiceBusPublisher : IMessagePublisher
     {
         private readonly ILogger<AzureServiceBusPublisher> _logger;
 
@@ -152,7 +153,7 @@ namespace Examples
     }
 
     // Example 4: HTTP Webhook Publisher (for webhook delivery)
-    public class WebhookPublisher : IMessagePublisher
+    public sealed class WebhookPublisher : IMessagePublisher
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<WebhookPublisher> _logger;

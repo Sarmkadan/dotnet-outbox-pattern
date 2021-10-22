@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -12,7 +13,7 @@ namespace DotnetOutboxPattern.Infrastructure;
 /// Manages distributed tracing context for outbox messages
 /// Provides correlation and causation IDs for message flow tracing
 /// </summary>
-public class MessageContext
+public sealed class MessageContext
 {
     private static readonly ActivitySource ActivitySource = new("DotnetOutboxPattern");
 
@@ -39,7 +40,7 @@ public class MessageContext
     {
         var activity = ActivitySource.StartActivity(operationName);
 
-        if (activity != null)
+        if (activity is not null)
         {
             activity.SetTag("outbox.message_id", message.Id);
             activity.SetTag("outbox.aggregate_id", message.AggregateId);
@@ -62,7 +63,7 @@ public class MessageContext
     {
         var activity = ActivitySource.StartActivity($"{serviceName}.{operationName}");
 
-        if (activity != null)
+        if (activity is not null)
         {
             activity.SetTag("service", serviceName);
             activity.SetTag("operation", operationName);
@@ -84,7 +85,7 @@ public class MessageContext
     /// </summary>
     public static void RecordException(Exception exception)
     {
-        if (Activity.Current != null)
+        if (Activity.Current is not null)
         {
             Activity.Current.SetTag("exception.type", exception.GetType().Name);
             Activity.Current.SetTag("exception.message", exception.Message);
@@ -96,7 +97,7 @@ public class MessageContext
 /// <summary>
 /// Scope for automatic activity disposal
 /// </summary>
-public class ActivityScope : IDisposable
+public sealed class ActivityScope : IDisposable
 {
     private readonly Activity? _activity;
 

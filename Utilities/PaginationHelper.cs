@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -138,7 +139,7 @@ public static class PaginationHelper
 /// <summary>
 /// Pagination metadata
 /// </summary>
-public class PaginationMetadata
+public sealed class PaginationMetadata
 {
     public int CurrentPage { get; set; }
     public int PageSize { get; set; }

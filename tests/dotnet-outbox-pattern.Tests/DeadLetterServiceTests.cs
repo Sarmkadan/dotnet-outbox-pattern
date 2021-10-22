@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -13,7 +14,7 @@ using Moq;
 
 namespace DotnetOutboxPattern.Tests;
 
-public class DeadLetterServiceTests
+public sealed class DeadLetterServiceTests
 {
     private readonly Mock<IDeadLetterRepository> _dlRepoMock;
     private readonly Mock<IOutboxRepository> _outboxRepoMock;

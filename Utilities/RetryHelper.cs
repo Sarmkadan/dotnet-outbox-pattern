@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -20,7 +21,7 @@ public static class RetryHelper
         int initialDelayMs = 100,
         double backoffMultiplier = 2.0)
     {
-        if (action == null)
+        if (action is null)
             throw new ArgumentNullException(nameof(action));
 
         int delay = initialDelayMs;
@@ -139,7 +140,7 @@ public static class RetryHelper
             return true;
 
         // Inner exceptions
-        if (ex.InnerException != null)
+        if (ex.InnerException is not null)
             return IsTransientError(ex.InnerException);
 
         return false;
@@ -177,7 +178,7 @@ public enum RetryStrategy
 /// <summary>
 /// Encapsulates retry policy configuration
 /// </summary>
-public class RetryPolicy
+public sealed class RetryPolicy
 {
     public int MaxRetries { get; set; } = 5;
     public RetryStrategy Strategy { get; set; } = RetryStrategy.ExponentialBackoff;

@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -10,7 +11,7 @@ namespace DotnetOutboxPattern.Dtos;
 /// <summary>
 /// Standard API error response
 /// </summary>
-public class ErrorResponse
+public sealed class ErrorResponse
 {
     public string Message { get; set; } = string.Empty;
     public string Code { get; set; } = "ERROR";
@@ -21,7 +22,7 @@ public class ErrorResponse
 /// <summary>
 /// Outbox message data transfer object
 /// </summary>
-public class OutboxMessageDto
+public sealed class OutboxMessageDto
 {
     public Guid Id { get; set; }
     public string IdempotencyKey { get; set; } = string.Empty;
@@ -62,7 +63,7 @@ public class OutboxMessageDto
 /// <summary>
 /// Paginated response wrapper
 /// </summary>
-public class PaginatedResponse<T>
+public sealed class PaginatedResponse<T>
 {
     public int Page { get; set; }
     public int PageSize { get; set; }
@@ -74,7 +75,7 @@ public class PaginatedResponse<T>
 /// <summary>
 /// Statistics about the outbox
 /// </summary>
-public class OutboxStatisticsDto
+public sealed class OutboxStatisticsDto
 {
     public int PendingCount { get; set; }
     public int ProcessingCount { get; set; }
@@ -102,7 +103,7 @@ public class OutboxStatisticsDto
 /// <summary>
 /// Archive operation result
 /// </summary>
-public class ArchiveResult
+public sealed class ArchiveResult
 {
     public int ArchivedCount { get; set; }
     public DateTime ExecutedAt { get; set; } = DateTime.UtcNow;
@@ -112,7 +113,7 @@ public class ArchiveResult
 /// <summary>
 /// Webhook subscription data transfer object
 /// </summary>
-public class WebhookSubscriptionDto
+public sealed class WebhookSubscriptionDto
 {
     public Guid Id { get; set; }
     public string Url { get; set; } = string.Empty;
@@ -141,7 +142,7 @@ public class WebhookSubscriptionDto
 /// <summary>
 /// Webhook delivery history entry
 /// </summary>
-public class WebhookDeliveryDto
+public sealed class WebhookDeliveryDto
 {
     public Guid Id { get; set; }
     public int HttpStatusCode { get; set; }
@@ -166,7 +167,7 @@ public class WebhookDeliveryDto
 /// <summary>
 /// Webhook test result
 /// </summary>
-public class WebhookTestResult
+public sealed class WebhookTestResult
 {
     public bool IsSuccessful { get; set; }
     public int HttpStatusCode { get; set; }
@@ -179,7 +180,7 @@ public class WebhookTestResult
 /// <summary>
 /// System health metrics
 /// </summary>
-public class SystemHealthDto
+public sealed class SystemHealthDto
 {
     public string Status { get; set; } = "Healthy";
     public DateTime CheckedAt { get; set; } = DateTime.UtcNow;
@@ -208,7 +209,7 @@ public class SystemHealthDto
 /// <summary>
 /// Performance metrics
 /// </summary>
-public class PerformanceMetricsDto
+public sealed class PerformanceMetricsDto
 {
     public long AverageLatencyMs { get; set; }
     public long P50LatencyMs { get; set; }
@@ -233,7 +234,7 @@ public class PerformanceMetricsDto
 /// <summary>
 /// Error analysis and distribution
 /// </summary>
-public class ErrorAnalyticsDto
+public sealed class ErrorAnalyticsDto
 {
     public int TotalErrors { get; set; }
     public Dictionary<string, int> ErrorsByType { get; set; } = new();
@@ -256,7 +257,7 @@ public class ErrorAnalyticsDto
 /// <summary>
 /// Message throughput metrics
 /// </summary>
-public class ThroughputMetricsDto
+public sealed class ThroughputMetricsDto
 {
     public List<ThroughputDataPoint> DataPoints { get; set; } = new();
     public int TotalMessages { get; set; }
@@ -272,7 +273,7 @@ public class ThroughputMetricsDto
     }
 }
 
-public class ThroughputDataPoint
+public sealed class ThroughputDataPoint
 {
     public DateTime Timestamp { get; set; }
     public int Count { get; set; }
@@ -281,7 +282,7 @@ public class ThroughputDataPoint
 /// <summary>
 /// Latency percentile metrics
 /// </summary>
-public class LatencyMetricsDto
+public sealed class LatencyMetricsDto
 {
     public long MinLatencyMs { get; set; }
     public long MaxLatencyMs { get; set; }
@@ -302,7 +303,7 @@ public class LatencyMetricsDto
 /// <summary>
 /// System resource metrics
 /// </summary>
-public class ResourceMetricsDto
+public sealed class ResourceMetricsDto
 {
     public double CpuUsagePercent { get; set; }
     public double MemoryUsagePercent { get; set; }
@@ -313,7 +314,7 @@ public class ResourceMetricsDto
 /// <summary>
 /// Alert data
 /// </summary>
-public class AlertDto
+public sealed class AlertDto
 {
     public string Severity { get; set; } = "Warning";
     public string Message { get; set; } = string.Empty;

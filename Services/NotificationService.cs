@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -18,7 +19,7 @@ public interface INotificationService
 /// <summary>
 /// Represents a notification to be sent
 /// </summary>
-public class Notification
+public sealed class Notification
 {
     public string Title { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
@@ -42,7 +43,7 @@ public enum NotificationSeverity
 /// <summary>
 /// Default implementation of notification service
 /// </summary>
-public class NotificationService : INotificationService
+public sealed class NotificationService : INotificationService
 {
     private readonly Dictionary<string, INotificationChannel> _channels = new();
     private readonly ILogger<NotificationService> _logger;
@@ -60,7 +61,7 @@ public class NotificationService : INotificationService
 
     public async Task SendAsync(Notification notification)
     {
-        if (notification == null)
+        if (notification is null)
             throw new ArgumentNullException(nameof(notification));
 
         // Send to all configured channels
@@ -111,7 +112,7 @@ public interface INotificationChannel
 /// <summary>
 /// In-memory notification channel - stores notifications in memory
 /// </summary>
-public class InMemoryNotificationChannel : INotificationChannel
+public sealed class InMemoryNotificationChannel : INotificationChannel
 {
     private readonly List<Notification> _notifications;
 
@@ -138,7 +139,7 @@ public class InMemoryNotificationChannel : INotificationChannel
 /// <summary>
 /// Console notification channel - outputs to console
 /// </summary>
-public class ConsoleNotificationChannel : INotificationChannel
+public sealed class ConsoleNotificationChannel : INotificationChannel
 {
     private readonly ILogger _logger;
 
@@ -168,7 +169,7 @@ public class ConsoleNotificationChannel : INotificationChannel
 /// <summary>
 /// File notification channel - writes to log file
 /// </summary>
-public class FileNotificationChannel : INotificationChannel
+public sealed class FileNotificationChannel : INotificationChannel
 {
     private readonly ILogger _logger;
     private readonly string _notificationFile = "logs/notifications.log";

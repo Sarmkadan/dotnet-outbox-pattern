@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -30,7 +31,7 @@ public interface IDeadLetterService
 /// Service for managing dead letter messages
 /// Handles review, requeue, and analysis of failed messages
 /// </summary>
-public class DeadLetterService : IDeadLetterService
+public sealed class DeadLetterService : IDeadLetterService
 {
     private readonly IDeadLetterRepository _dlRepository;
     private readonly IOutboxRepository _outboxRepository;
@@ -56,7 +57,7 @@ public class DeadLetterService : IDeadLetterService
     {
         try
         {
-            if (message == null)
+            if (message is null)
                 throw new ArgumentNullException(nameof(message));
 
             var deadLetter = DeadLetter.FromOutboxMessage(message);
@@ -115,7 +116,7 @@ public class DeadLetterService : IDeadLetterService
         try
         {
             var deadLetter = await _dlRepository.GetByIdAsync(deadLetterId, cancellationToken);
-            if (deadLetter == null)
+            if (deadLetter is null)
                 throw new DeadLetterException("Dead letter not found", Guid.Empty);
 
             deadLetter.MarkAsReviewed(notes);
@@ -138,12 +139,12 @@ public class DeadLetterService : IDeadLetterService
         try
         {
             var deadLetter = await _dlRepository.GetByIdAsync(deadLetterId, cancellationToken);
-            if (deadLetter == null)
+            if (deadLetter is null)
                 throw new DeadLetterException("Dead letter not found", Guid.Empty);
 
             var message = await _outboxRepository.GetByIdAsync(deadLetter.OutboxMessageId, cancellationToken);
 
-            if (message == null)
+            if (message is null)
             {
                 // Create a new message from the dead letter data
                 message = new OutboxMessage

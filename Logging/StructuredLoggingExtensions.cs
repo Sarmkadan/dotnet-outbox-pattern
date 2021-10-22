@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -36,7 +37,7 @@ public static class StructuredLoggingExtensions
         if (!string.IsNullOrEmpty(messageId))
             baseContext["MessageId"] = messageId;
 
-        if (context != null)
+        if (context is not null)
         {
             foreach (var kvp in context)
                 baseContext[kvp.Key] = kvp.Value;

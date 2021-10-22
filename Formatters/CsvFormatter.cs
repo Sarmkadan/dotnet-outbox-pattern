@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -12,7 +13,7 @@ namespace DotnetOutboxPattern.Formatters;
 /// Formatter for exporting outbox messages to CSV format
 /// Useful for reporting and data analysis
 /// </summary>
-public class CsvFormatter : IDataFormatter
+public sealed class CsvFormatter : IDataFormatter
 {
     public string FormatName => "csv";
     public string ContentType => "text/csv";

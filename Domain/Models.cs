@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -8,7 +9,7 @@ namespace DotnetOutboxPattern.Domain;
 /// <summary>
 /// Result of processing an outbox message
 /// </summary>
-public class OutboxProcessingResult
+public sealed class OutboxProcessingResult
 {
     /// <summary>
     /// Whether the processing was successful
@@ -69,7 +70,7 @@ public class OutboxProcessingResult
 /// <summary>
 /// Configuration for an outbox processor
 /// </summary>
-public class OutboxProcessorConfig
+public sealed class OutboxProcessorConfig
 {
     /// <summary>
     /// How many messages to process in a batch
@@ -115,7 +116,7 @@ public class OutboxProcessorConfig
 /// <summary>
 /// Statistics about the outbox
 /// </summary>
-public class OutboxStatistics
+public sealed class OutboxStatistics
 {
     /// <summary>
     /// Total number of messages
@@ -171,7 +172,7 @@ public class OutboxStatistics
 /// <summary>
 /// Message publishing options
 /// </summary>
-public class PublishingOptions
+public sealed class PublishingOptions
 {
     /// <summary>
     /// Maximum number of retries
@@ -217,7 +218,7 @@ public class PublishingOptions
 /// <summary>
 /// Publication health metrics
 /// </summary>
-public class HealthMetrics
+public sealed class HealthMetrics
 {
     /// <summary>
     /// Whether the outbox processor is healthy

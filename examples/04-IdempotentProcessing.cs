@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -26,7 +27,7 @@ namespace Examples
     /// - Unique (different events = different keys)
     /// - Collision-free (no false duplicates)
     /// </summary>
-    public class IdempotencyKeyGenerator
+    public sealed class IdempotencyKeyGenerator
     {
         /// <summary>
         /// For entity creation events - ensures creating the same entity twice
@@ -77,7 +78,7 @@ namespace Examples
     /// Example event handler that implements idempotent processing.
     /// Handles the same message multiple times without side effects.
     /// </summary>
-    public class IdempotentOrderEventHandler
+    public sealed class IdempotentOrderEventHandler
     {
         private readonly ILogger<IdempotentOrderEventHandler> _logger;
         // In production: inject IRepository<ProcessedEvent>, or your equivalent
@@ -165,7 +166,7 @@ namespace Examples
     /// Message deduplication service for detecting and filtering duplicates
     /// before they reach business logic.
     /// </summary>
-    public class MessageDeduplicator
+    public sealed class MessageDeduplicator
     {
         private readonly Dictionary<string, DateTime> _recentlyProcessed;
         private readonly TimeSpan _ttl;
@@ -247,7 +248,7 @@ namespace Examples
     /// <summary>
     /// Publishing events with idempotency guarantees.
     /// </summary>
-    public class IdempotentPublisher
+    public sealed class IdempotentPublisher
     {
         private readonly IOutboxService _outboxService;
         private readonly ILogger<IdempotentPublisher> _logger;
@@ -320,7 +321,7 @@ namespace Examples
     }
 
     // Test event for examples
-    public class TestEvent : DomainEvent
+    public sealed class TestEvent : DomainEvent
     {
         public string Data { get; set; } = string.Empty;
     }

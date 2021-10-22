@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -15,7 +16,7 @@ namespace DotnetOutboxPattern.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/metrics")]
-public class MetricsController : ControllerBase
+public sealed class MetricsController : ControllerBase
 {
     private readonly IMetricsService _metricsService;
     private readonly IOutboxService _outboxService;
