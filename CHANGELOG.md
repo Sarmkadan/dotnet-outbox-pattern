@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Runtime container no longer runs as root
 - Reduced attack surface with `--no-install-recommends` in apt-get
 
-## [1.0.0] - 2025-04-07
+## [2.0.0] - 2026-03-17
 
 ### Added
 - Dead Letter Queue (DLQ) with review and requeue workflow
