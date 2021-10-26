@@ -79,7 +79,9 @@ public static class RetryPolicyHelper
         }
 
         stats.TotalDelayTime = totalDelay;
-        stats.AverageRetryDelay = TimeSpan.FromSeconds(totalDelay.TotalSeconds / stats.TotalRetries);
+        stats.AverageRetryDelay = stats.TotalRetries > 0
+            ? TimeSpan.FromSeconds(totalDelay.TotalSeconds / stats.TotalRetries)
+            : TimeSpan.Zero;
 
         return stats;
     }
