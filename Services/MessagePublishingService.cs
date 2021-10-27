@@ -295,7 +295,8 @@ public sealed class MessagePublishingService : IMessagePublishingService
             message.RecordFailure(errorMessage, stackTrace);
 
             // If max attempts reached, move to dead letter
-            if (message.State == OutboxMessageState.Failed)
+            // Checking PublishAttempts >= MaxPublishAttempts directly to ensure dead-lettering even if message.State is not consistently updated
+            if (message.PublishAttempts >= message.MaxPublishAttempts)
             {
                 _logger.LogError(
                     "Message {MessageId} exhausted retries ({Attempts}). Moving to dead letter.",
@@ -303,6 +304,7 @@ public sealed class MessagePublishingService : IMessagePublishingService
 
                 var deadLetter = DeadLetter.FromOutboxMessage(message);
                 await _deadLetterRepository.AddAsync(deadLetter, cancellationToken);
+                message.State = OutboxMessageState.DeadLettered; // Explicitly mark as dead-lettered
             }
 
             await _outboxRepository.UpdateAsync(message, cancellationToken);
