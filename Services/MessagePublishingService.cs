@@ -226,11 +226,35 @@ public sealed class MessagePublishingService : IMessagePublishingService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(_options.PublishTimeout);
 
-            await _publisher.PublishAsync(message, cts.Token);
+            // Start a new database transaction to ensure the message status update is atomic and durable.
+            // This is crucial to prevent duplicate processing if the application crashes immediately after
+            // publishing but before the state is durably saved.
+            using (var transaction = await _outboxRepository.BeginTransactionAsync(cancellationToken))
+            {
+                try
+                {
+                    await _publisher.PublishAsync(message, cts.Token);
 
-            // Mark as published
-            message.MarkAsPublished();
-            await _outboxRepository.UpdateAsync(message, cancellationToken);
+                    // Mark as published
+                    message.MarkAsPublished();
+                    await _outboxRepository.UpdateAsync(message, cancellationToken);
+
+                    await transaction.CommitAsync(cancellationToken);
+
+                    _logger.LogInformation(
+                        "Message {MessageId} published successfully on attempt {Attempt}",
+                        messageId, message.PublishAttempts + 1);
+
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    // Rollback the transaction if anything fails during publishing or status update.
+                    // This ensures the message status reverts to its original state, allowing retries.
+                    await transaction.RollbackAsync(cancellationToken);
+                    throw; // Re-throw to be caught by the outer catch block
+                }
+            }
 
             _logger.LogInformation(
                 "Message {MessageId} published successfully on attempt {Attempt}",
