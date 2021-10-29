@@ -7,6 +7,7 @@
 using DotnetOutboxPattern.Data;
 using DotnetOutboxPattern.Domain;
 using DotnetOutboxPattern.Exceptions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace DotnetOutboxPattern.Services;
@@ -202,8 +203,12 @@ public sealed class MessagePublishingService : IMessagePublishingService
     }
 
     /// <summary>
-    /// Processes a single outbox message
-    /// Handles publishing, retries, and dead letter routing
+    /// Processes a single outbox message.
+    /// Handles publishing, retries, and dead letter routing.
+    /// When multiple processor instances run concurrently, an already-locked message is
+    /// detected either via the in-memory <see cref="OutboxMessage.IsLocked"/> flag (best-effort
+    /// pre-check) or via a <see cref="DbUpdateConcurrencyException"/> raised during the lock
+    /// update, ensuring only one instance actually publishes each message.
     /// </summary>
     public async Task<bool> ProcessSingleMessageAsync(Guid messageId, CancellationToken cancellationToken = default)
     {
@@ -218,7 +223,18 @@ public sealed class MessagePublishingService : IMessagePublishingService
                 return false;
             }
 
-            // Lock the message
+            // Pre-check: skip messages already being processed by another instance.
+            // This reduces unnecessary lock-contention; the concurrency exception below
+            // provides a second safety net for the narrow race window.
+            if (message.IsLocked || message.State == OutboxMessageState.Processing)
+            {
+                _logger.LogDebug(
+                    "Message {MessageId} is already locked by another instance, skipping",
+                    messageId);
+                return false;
+            }
+
+            // Lock the message for this instance
             message.Lock(_options.PublishTimeout);
             await _outboxRepository.UpdateAsync(message, cancellationToken);
 
@@ -226,36 +242,25 @@ public sealed class MessagePublishingService : IMessagePublishingService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(_options.PublishTimeout);
 
-            // Start a new database transaction to ensure the message status update is atomic and durable.
-            // This is crucial to prevent duplicate processing if the application crashes immediately after
-            // publishing but before the state is durably saved.
-            using (var transaction = await _outboxRepository.BeginTransactionAsync(cancellationToken))
-            {
-                try
-                {
-                    await _publisher.PublishAsync(message, cts.Token);
+            await _publisher.PublishAsync(message, cts.Token);
 
-                    // Mark as published
-                    message.MarkAsPublished();
-                    await _outboxRepository.UpdateAsync(message, cancellationToken);
+            // Mark as published
+            message.MarkAsPublished();
+            await _outboxRepository.UpdateAsync(message, cancellationToken);
 
-                    await transaction.CommitAsync(cancellationToken);
+            _logger.LogInformation(
+                "Message {MessageId} published successfully on attempt {Attempt}",
+                messageId, message.PublishAttempts + 1);
 
-                    _logger.LogInformation(
-                        "Message {MessageId} published successfully on attempt {Attempt}",
-                        messageId, message.PublishAttempts + 1);
-
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    // Rollback the transaction if anything fails during publishing or status update.
-                    // This ensures the message status reverts to its original state, allowing retries.
-                    await transaction.RollbackAsync(cancellationToken);
-                    throw; // Re-throw to be caught by the outer catch block
-                }
-            }
-
+            return true;
+        }
+        catch (OutboxRepositoryException ex) when (ex.InnerException is DbUpdateConcurrencyException)
+        {
+            // Another instance won the race and locked this message first — skip gracefully.
+            _logger.LogDebug(
+                "Message {MessageId} was taken by another instance (concurrency conflict), skipping",
+                messageId);
+            return false;
         }
         catch (OperationCanceledException)
         {
@@ -265,10 +270,6 @@ public sealed class MessagePublishingService : IMessagePublishingService
         }
         catch (Exception ex)
         {
-            if (startTime != DateTime.MinValue)
-            {
-                _outboxMetrics.ProcessingDurationSeconds.Record((DateTime.UtcNow - startTime).TotalSeconds);
-            }
             _logger.LogError(ex, "Error publishing message {MessageId}", messageId);
             await HandlePublishingFailureAsync(message, ex.Message, ex.StackTrace, cancellationToken);
             return false;
@@ -327,7 +328,7 @@ public sealed class MessagePublishingService : IMessagePublishingService
 
                 var deadLetter = DeadLetter.FromOutboxMessage(message);
                 await _deadLetterRepository.AddAsync(deadLetter, cancellationToken);
-                message.State = OutboxMessageState.DeadLettered; // Explicitly mark as dead-lettered
+                message.State = OutboxMessageState.Failed; // Explicitly mark as failed / dead-lettered
             }
 
             await _outboxRepository.UpdateAsync(message, cancellationToken);
@@ -335,10 +336,6 @@ public sealed class MessagePublishingService : IMessagePublishingService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error handling publishing failure for message {MessageId}", message?.Id);
-        }
-    }
-}
-essage?.Id);
         }
     }
 }

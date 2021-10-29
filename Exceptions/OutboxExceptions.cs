@@ -9,7 +9,7 @@ namespace DotnetOutboxPattern.Exceptions;
 /// <summary>
 /// Base exception for outbox pattern related errors
 /// </summary>
-public sealed class OutboxException : Exception
+public class OutboxException : Exception
 {
     /// <summary>
     /// Error code for this exception
