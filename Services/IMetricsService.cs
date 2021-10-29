@@ -40,11 +40,6 @@ public interface IMetricsService
     Task<dynamic> GetLatencyMetricsAsync();
 
     /// <summary>
-    /// Gets Prometheus-formatted metrics for external monitoring integration
-    /// </summary>
-    Task<string> GetPrometheusMetricsAsync();
-
-    /// <summary>
     /// Gets active alerts based on system thresholds
     /// </summary>
     Task<List<dynamic>> GetActiveAlertsAsync();
