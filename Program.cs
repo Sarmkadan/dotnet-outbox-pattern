@@ -146,3 +146,4 @@ public sealed class RequeueRequest
 {
     public string Reason { get; set; } = null!;
 }
+// TODO: implement batch outbox message processing for better throughput
