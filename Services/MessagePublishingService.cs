@@ -13,22 +13,63 @@ using Microsoft.Extensions.Logging;
 namespace DotnetOutboxPattern.Services;
 
 /// <summary>
-/// Interface for message publishing to external systems
+/// Interface for message publishing to external systems.
 /// </summary>
 public interface IMessagePublisher
 {
+    /// <summary>
+    /// Publishes a message to an external system.
+    /// </summary>
+    /// <param name="message">The message to publish.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the operation.</returns>
     Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
-/// Interface for the message publishing service
+/// Interface for the message publishing service.
 /// </summary>
 public interface IMessagePublishingService
 {
+    /// <summary>
+    /// Processes pending outbox messages in a batch.
+    /// </summary>
+    /// <param name="batchSize">The number of messages to process in the batch.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The result of the batch processing.</returns>
     Task<OutboxProcessingResult> ProcessPendingMessagesAsync(int batchSize, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Processes messages scheduled for future delivery.
+    /// </summary>
+    /// <param name="batchSize">The number of messages to process in the batch.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The result of the batch processing.</returns>
     Task<OutboxProcessingResult> ProcessScheduledMessagesAsync(int batchSize, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Processes messages for a specific partition to maintain ordering.
+    /// </summary>
+    /// <param name="partitionKey">The partition key.</param>
+    /// <param name="batchSize">The number of messages to process in the batch.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The result of the partition processing.</returns>
     Task<OutboxProcessingResult> ProcessPartitionAsync(string partitionKey, int batchSize, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Processes a single outbox message.
+    /// </summary>
+    /// <param name="messageId">The message ID.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the message was successfully processed, false otherwise.</returns>
     Task<bool> ProcessSingleMessageAsync(Guid messageId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Releases the lock on a message for reprocessing.
+    /// </summary>
+    /// <param name="messageId">The message ID.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the operation.</returns>
     Task ReleaseLockAsync(Guid messageId, CancellationToken cancellationToken = default);
 }
 
