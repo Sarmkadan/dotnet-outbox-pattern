@@ -220,7 +220,7 @@ docker build -t dotnet-outbox-pattern:latest .
 # Run with docker-compose (includes SQL Server)
 docker-compose up
 
-# Access the API at http://localhost:5001
+# Access the API at http://localhost:8080
 ```
 
 ### Method 3: Add as Library
