@@ -288,9 +288,10 @@ public sealed class OutboxRepository : IOutboxRepository
                 .OrderBy(x => x.CreatedAt)
                 .FirstOrDefault();
 
-            var avgPublishTime = messages
-                .Where(x => x.PublishedAt.HasValue)
-                .Average(x => (x.PublishedAt.Value - x.CreatedAt).TotalSeconds);
+            var publishedMessages = messages.Where(x => x.PublishedAt.HasValue).ToList();
+            var avgPublishTime = publishedMessages.Any()
+                ? publishedMessages.Average(x => (x.PublishedAt!.Value - x.CreatedAt).TotalSeconds)
+                : 0;
 
             return new OutboxStatistics
             {

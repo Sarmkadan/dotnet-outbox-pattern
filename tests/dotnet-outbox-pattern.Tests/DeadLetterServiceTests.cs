@@ -204,6 +204,167 @@ public sealed class DeadLetterServiceTests
         deadLetter.RequeueReason.Should().Be("infrastructure repaired");
     }
 
+    [Fact]
+    public async Task GetUnreviewedAsync_DelegatesToRepository()
+    {
+        var deadLetters = new List<DeadLetter> { new DeadLetter(), new DeadLetter() };
+        _dlRepoMock
+            .Setup(r => r.GetUnreviewedAsync(50, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(deadLetters);
+
+        var result = await _sut.GetUnreviewedAsync(50);
+
+        result.Should().BeSameAs(deadLetters);
+        _dlRepoMock.Verify(r => r.GetUnreviewedAsync(50, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetByTopicAsync_DelegatesToRepository()
+    {
+        var topic = "orders.failed";
+        var deadLetters = new List<DeadLetter> { new DeadLetter() };
+        _dlRepoMock
+            .Setup(r => r.GetByTopicAsync(topic, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(deadLetters);
+
+        var result = await _sut.GetByTopicAsync(topic);
+
+        result.Should().BeSameAs(deadLetters);
+        _dlRepoMock.Verify(r => r.GetByTopicAsync(topic, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_DelegatesToRepository()
+    {
+        var id = Guid.NewGuid();
+        _dlRepoMock
+            .Setup(r => r.DeleteAsync(id, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        await _sut.DeleteAsync(id);
+
+        _dlRepoMock.Verify(r => r.DeleteAsync(id, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RequeueAsync_WhenOriginalMessageDoesNotExist_CreatesNewMessage()
+    {
+        var message = BuildFailedMessage();
+        var deadLetter = DeadLetter.FromOutboxMessage(message);
+
+        _dlRepoMock
+            .Setup(r => r.GetByIdAsync(deadLetter.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(deadLetter);
+        _outboxRepoMock
+            .Setup(r => r.GetByIdAsync(deadLetter.OutboxMessageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OutboxMessage?)null);
+        _outboxRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OutboxMessage msg, CancellationToken _) => msg);
+        _dlRepoMock
+            .Setup(r => r.UpdateAsync(It.IsAny<DeadLetter>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        await _sut.RequeueAsync(deadLetter.Id, "new message created");
+
+        _outboxRepoMock.Verify(
+            r => r.AddAsync(It.Is<OutboxMessage>(m => m.AggregateId == message.AggregateId), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GetUnreviewedCountAsync_DelegatesToRepository()
+    {
+        _dlRepoMock
+            .Setup(r => r.GetUnreviewedCountAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(7);
+
+        var result = await _sut.GetUnreviewedCountAsync();
+
+        result.Should().Be(7);
+        _dlRepoMock.Verify(r => r.GetUnreviewedCountAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task MoveToDlqAsync_WhenRepositoryThrows_ThrowsDeadLetterException()
+    {
+        var message = BuildFailedMessage();
+        _dlRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<DeadLetter>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("db error"));
+
+        var act = async () => await _sut.MoveToDlqAsync(message);
+
+        await act.Should().ThrowAsync<DeadLetterException>();
+    }
+
+    [Fact]
+    public async Task ReviewAsync_WhenRepositoryThrows_ThrowsDeadLetterException()
+    {
+        var id = Guid.NewGuid();
+        _dlRepoMock
+            .Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("db error"));
+
+        var act = async () => await _sut.ReviewAsync(id, "notes");
+
+        await act.Should().ThrowAsync<DeadLetterException>();
+    }
+
+    [Fact]
+    public async Task RequeueAsync_WhenRepositoryThrows_ThrowsDeadLetterException()
+    {
+        var deadLetter = new DeadLetter { Id = Guid.NewGuid() };
+        _dlRepoMock
+            .Setup(r => r.GetByIdAsync(deadLetter.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(deadLetter);
+        _dlRepoMock
+            .Setup(r => r.UpdateAsync(It.IsAny<DeadLetter>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("db error"));
+
+        var act = async () => await _sut.RequeueAsync(deadLetter.Id, "reason");
+
+        await act.Should().ThrowAsync<DeadLetterException>();
+    }
+
+    [Fact]
+    public async Task GetHealthAsync_WhenRepositoryThrows_ThrowsDeadLetterException()
+    {
+        _dlRepoMock
+            .Setup(r => r.GetUnreviewedCountAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("db error"));
+
+        var act = async () => await _sut.GetHealthAsync();
+
+        await act.Should().ThrowAsync<DeadLetterException>();
+    }
+
+    [Fact]
+    public async Task GetByTopicAsync_WhenRepositoryThrows_ThrowsDeadLetterException()
+    {
+        var topic = "orders.failed";
+        _dlRepoMock
+            .Setup(r => r.GetByTopicAsync(topic, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("db error"));
+
+        var act = async () => await _sut.GetByTopicAsync(topic);
+
+        await act.Should().ThrowAsync<DeadLetterException>();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WhenRepositoryThrows_ThrowsDeadLetterException()
+    {
+        var id = Guid.NewGuid();
+        _dlRepoMock
+            .Setup(r => r.DeleteAsync(id, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("db error"));
+
+        var act = async () => await _sut.DeleteAsync(id);
+
+        await act.Should().ThrowAsync<DeadLetterException>();
+    }
+
     private static OutboxMessage BuildFailedMessage() => new()
     {
         Id = Guid.NewGuid(),

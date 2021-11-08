@@ -218,6 +218,165 @@ public sealed class MessagePublishingServiceTests
         _outboxRepoMock.Verify(r => r.UpdateAsync(message, It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task ProcessPendingMessagesAsync_WhenMessageIsLocked_DoesNotProcess()
+    {
+        var message = CreatePendingMessage();
+        message.IsLocked = true;
+        message.LockExpiresAt = DateTime.UtcNow.AddMinutes(5);
+
+        _outboxRepoMock
+            .Setup(r => r.GetPendingMessagesAsync(100, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<OutboxMessage> { message });
+
+        var result = await _sut.ProcessPendingMessagesAsync(100);
+
+        result.ProcessedCount.Should().Be(0);
+        result.FailedCount.Should().Be(0);
+        _publisherMock.Verify(p => p.PublishAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessPendingMessagesAsync_WhenMessageIsScheduled_DoesNotProcess()
+    {
+        var message = CreatePendingMessage();
+        message.ScheduledFor = DateTime.UtcNow.AddHours(1);
+
+        _outboxRepoMock
+            .Setup(r => r.GetPendingMessagesAsync(100, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<OutboxMessage> { message });
+
+        var result = await _sut.ProcessPendingMessagesAsync(100);
+
+        result.ProcessedCount.Should().Be(0);
+        result.FailedCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ProcessPendingMessagesAsync_WhenPublisherThrowsForAllMessages_RecordsAllFailures()
+    {
+        var message1 = CreatePendingMessage();
+        var message2 = CreatePendingMessage();
+        var message3 = CreatePendingMessage();
+
+        _outboxRepoMock
+            .Setup(r => r.GetPendingMessagesAsync(100, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<OutboxMessage> { message1, message2, message3 });
+        _publisherMock
+            .SetupSequence(p => p.PublishAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("error1"))
+            .ThrowsAsync(new InvalidOperationException("error2"))
+            .Returns(Task.CompletedTask);
+        _outboxRepoMock
+            .Setup(r => r.UpdateAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await _sut.ProcessPendingMessagesAsync(100);
+
+        result.ProcessedCount.Should().Be(1);
+        result.FailedCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ProcessSingleMessageAsync_WhenMessageIsNull_ReturnsFalse()
+    {
+        var messageId = Guid.NewGuid();
+        _outboxRepoMock
+            .Setup(r => r.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OutboxMessage?)null);
+
+        var result = await _sut.ProcessSingleMessageAsync(messageId);
+
+        result.Should().BeFalse();
+        _publisherMock.Verify(p => p.PublishAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessSingleMessageAsync_WhenMessageIsLocked_ReturnsFalse()
+    {
+        var message = CreatePendingMessage();
+        message.IsLocked = true;
+        message.LockExpiresAt = DateTime.UtcNow.AddMinutes(5);
+
+        _outboxRepoMock
+            .Setup(r => r.GetByIdAsync(message.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message);
+
+        var result = await _sut.ProcessSingleMessageAsync(message.Id);
+
+        result.Should().BeFalse();
+        _publisherMock.Verify(p => p.PublishAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessSingleMessageAsync_WhenMessageIsScheduled_ReturnsFalse()
+    {
+        var message = CreatePendingMessage();
+        message.ScheduledFor = DateTime.UtcNow.AddHours(1);
+
+        _outboxRepoMock
+            .Setup(r => r.GetByIdAsync(message.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message);
+
+        var result = await _sut.ProcessSingleMessageAsync(message.Id);
+
+        result.Should().BeFalse();
+        _publisherMock.Verify(p => p.PublishAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessScheduledMessagesAsync_WithPastSchedule_ProcessesMessages()
+    {
+        var message = CreatePendingMessage();
+        message.ScheduledFor = DateTime.UtcNow.AddMinutes(-30);
+
+        _outboxRepoMock
+            .Setup(r => r.GetScheduledMessagesAsync(100, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<OutboxMessage> { message });
+        _publisherMock
+            .Setup(p => p.PublishAsync(message, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _outboxRepoMock
+            .Setup(r => r.UpdateAsync(message, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await _sut.ProcessScheduledMessagesAsync(100);
+
+        result.ProcessedCount.Should().Be(1);
+        message.State.Should().Be(OutboxMessageState.Published);
+    }
+
+    [Fact]
+    public async Task ReleaseLockAsync_WhenMessageNotFound_DoesNotThrow()
+    {
+        var messageId = Guid.NewGuid();
+        _outboxRepoMock
+            .Setup(r => r.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OutboxMessage?)null);
+
+        await _sut.ReleaseLockAsync(messageId);
+
+        _outboxRepoMock.Verify(r => r.UpdateAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReleaseLockAsync_WhenMessageNotLocked_DoesNotUpdate()
+    {
+        var message = CreatePendingMessage();
+        message.IsLocked = false;
+
+        _outboxRepoMock
+            .Setup(r => r.GetByIdAsync(message.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message);
+        _outboxRepoMock
+            .Setup(r => r.UpdateAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        await _sut.ReleaseLockAsync(message.Id);
+
+        _outboxRepoMock.Verify(r => r.UpdateAsync(message, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static OutboxMessage CreatePendingMessage() => new()
     {
         Id = Guid.NewGuid(),
