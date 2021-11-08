@@ -30,6 +30,12 @@
     <Compile Remove="tests/**" />
     <Compile Remove="examples/**" />
     <Compile Remove="dotnet-outbox-pattern.Benchmarks/**" />
+    <Content Remove="tests/**" />
+    <Content Remove="examples/**" />
+    <Content Remove="dotnet-outbox-pattern.Benchmarks/**" />
+    <None Remove="tests/**" />
+    <None Remove="examples/**" />
+    <None Remove="dotnet-outbox-pattern.Benchmarks/**" />
   </ItemGroup>
 
   <ItemGroup>
