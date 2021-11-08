@@ -2,13 +2,14 @@
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
-// =============================================================================
+// =====================================================================
 
 using Serilog;
 using DotnetOutboxPattern.Configuration;
 using DotnetOutboxPattern.Data;
 using DotnetOutboxPattern.Infrastructure;
 using DotnetOutboxPattern.Services;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,30 +27,22 @@ try
 
     // Add services
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("DefaultConnection not configured");
+    ?? throw new InvalidOperationException("DefaultConnection not configured");
 
-    builder.Services.AddOutboxPattern(connectionString, options =>
-    {
-        options.MaxRetries = builder.Configuration.GetValue("Outbox:MaxRetries", 5);
-        options.RetryPolicy = Enum.Parse<DotnetOutboxPattern.Domain.RetryPolicyType>(
-            builder.Configuration["Outbox:RetryPolicy"] ?? "ExponentialBackoff");
-        options.DeliveryGuarantee = Enum.Parse<DotnetOutboxPattern.Domain.DeliveryGuarantee>(
-            builder.Configuration["Outbox:DeliveryGuarantee"] ?? "AtLeastOnce");
-    });
+    // Configure Outbox Pattern with IOptions pattern
+    builder.Services.Configure<DotnetOutboxPatternOptions>(builder.Configuration.GetSection(DotnetOutboxPatternOptions.SectionName));
+    builder.Services.AddOutboxPattern(connectionString);
 
     // Register default message publisher (replace with your implementation)
     builder.Services.AddMessagePublisher<DefaultMessagePublisher>();
 
-    // Register background processor
-    var processorOptions = new OutboxProcessorOptions
-    {
-        Enabled = builder.Configuration.GetValue("Outbox:ProcessorEnabled", true),
-        BatchSize = builder.Configuration.GetValue("Outbox:BatchSize", 100),
-        DelayBetweenBatches = builder.Configuration.GetValue("Outbox:DelayBetweenBatches", 5000),
-        PreservePartitionOrdering = builder.Configuration.GetValue("Outbox:PreservePartitionOrdering", true)
-    };
+    // Register background processor with configuration
+    builder.Services.AddOptions<OutboxProcessorOptions>()
+        .Bind(builder.Configuration.GetSection(DotnetOutboxPatternOptions.SectionName))
+        .ValidateDataAnnotations();
 
-    builder.Services.AddSingleton(processorOptions);
+    builder.Services.AddSingleton<IOutboxProcessorOptions>(sp =>
+        sp.GetRequiredService<IOptions<OutboxProcessorOptions>>().Value);
     builder.Services.AddHostedService<OutboxProcessor>();
 
     // Add controllers
@@ -136,7 +129,12 @@ finally
 /// </summary>
 public sealed class ReviewRequest
 {
-    public string Notes { get; set; } = null!;
+    /// <summary>
+    /// Gets or sets the review notes
+    /// </summary>
+    [Required]
+    [StringLength(1000, ErrorMessage = "Notes cannot exceed 1000 characters")]
+    public string Notes { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -144,6 +142,10 @@ public sealed class ReviewRequest
 /// </summary>
 public sealed class RequeueRequest
 {
-    public string Reason { get; set; } = null!;
+    /// <summary>
+    /// Gets or sets the reason for requeuing
+    /// </summary>
+    [Required]
+    [StringLength(1000, ErrorMessage = "Reason cannot exceed 1000 characters")]
+    public string Reason { get; set; } = string.Empty;
 }
-// TODO: implement batch outbox message processing for better throughput

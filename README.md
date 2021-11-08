@@ -861,17 +861,21 @@ Content-Type: application/json
 
 ## Configuration
 
+The Outbox Pattern library supports configuration through the standard .NET configuration system using the `IOptions` pattern. All settings are grouped under the `Outbox` configuration section.
+
 ### appsettings.json
 
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost\\SQLEXPRESS;Database=OutboxPattern;Integrated Security=true;Encrypt=false;"
+    "DefaultConnection": "Server=(localdb)\\\
+    mssqllocaldb;Database=OutboxPattern;Trusted_Connection=true;Encrypt=false;TrustServerCertificate=true"
   },
   "Logging": {
     "LogLevel": {
       "Default": "Information",
       "Microsoft": "Warning",
+      "Microsoft.EntityFrameworkCore": "Warning",
       "DotnetOutboxPattern": "Debug"
     }
   },
@@ -883,31 +887,92 @@ Content-Type: application/json
     "RetryPolicy": "ExponentialBackoff",
     "InitialRetryDelaySeconds": 5,
     "MaxRetryDelaySeconds": 300,
+    "BackoffMultiplier": 2.0,
     "DeliveryGuarantee": "AtLeastOnce",
+    "UseJitter": true,
     "PublishTimeoutSeconds": 30,
     "MessageTtlDays": 90,
     "PreservePartitionOrdering": true,
-    "LockDurationSeconds": 300
+    "LockDurationSeconds": 300,
+    "ClockSkewToleranceSeconds": 60
   }
 }
 ```
 
 ### Configuration Reference
 
+All configuration settings are available under the `Outbox` section in your configuration file. The library uses `DataAnnotations` validation to ensure configuration values are valid.
+
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `ProcessorEnabled` | bool | true | Enable background message processor |
-| `BatchSize` | int | 100 | Messages per batch |
-| `DelayBetweenBatches` | int | 5000 | Milliseconds between processing batches |
-| `MaxRetries` | int | 5 | Max retry attempts before DLQ |
-| `RetryPolicy` | enum | ExponentialBackoff | Fixed / Linear / ExponentialBackoff |
-| `InitialRetryDelaySeconds` | int | 5 | First retry delay |
-| `MaxRetryDelaySeconds` | int | 300 | Maximum retry delay |
-| `DeliveryGuarantee` | enum | AtLeastOnce | AtMostOnce / AtLeastOnce / ExactlyOnce |
-| `PublishTimeoutSeconds` | int | 30 | Timeout for message publisher |
-| `MessageTtlDays` | int | 90 | Days before published messages archived |
-| `PreservePartitionOrdering` | bool | true | Maintain FIFO per partition key |
-| `LockDurationSeconds` | int | 300 | Lock timeout for processing |
+| `ProcessorEnabled` | bool | `true` | Enable background message processor |
+| `BatchSize` | int | `100` | Number of messages to process in each batch (1-10000) |
+| `DelayBetweenBatches` | int | `5000` | Milliseconds to wait between processing batches (100ms-1h) |
+| `MaxRetries` | int | `5` | Maximum retry attempts before moving to dead letter queue (0-100) |
+| `RetryPolicy` | enum | `ExponentialBackoff` | Retry strategy: `NoRetry`, `FixedInterval`, `LinearBackoff`, or `ExponentialBackoff` |
+| `InitialRetryDelaySeconds` | int | `5` | Initial delay before first retry in seconds (1-3600) |
+| `MaxRetryDelaySeconds` | int | `300` | Maximum delay between retries in seconds (1-86400) |
+| `BackoffMultiplier` | double | `2.0` | Multiplier for exponential backoff (1.0-10.0) |
+| `DeliveryGuarantee` | enum | `AtLeastOnce` | Delivery semantics: `AtMostOnce`, `AtLeastOnce`, or `ExactlyOnce` |
+| `UseJitter` | bool | `true` | Add random jitter to retry delays to avoid thundering herd |
+| `PublishTimeoutSeconds` | int | `30` | Timeout for publishing a single message in seconds (1-3600) |
+| `MessageTtlDays` | int | `90` | Time-to-live for messages in days before archival (1-3650) |
+| `PreservePartitionOrdering` | bool | `true` | Maintain FIFO ordering within partition keys |
+| `LockDurationSeconds` | int | `300` | Lock timeout for processing messages in seconds (30-3600) |
+| `ClockSkewToleranceSeconds` | int | `60` | Clock skew tolerance for deduplication window in seconds (1-3600) |
+
+### Programmatic Configuration
+
+You can configure the Outbox Pattern in your `Program.cs` using the standard `IOptions` pattern:
+
+```csharp
+builder.Services.Configure<DotnetOutboxPatternOptions>(
+    builder.Configuration.GetSection(DotnetOutboxPatternOptions.SectionName));
+
+builder.Services.AddOutboxPattern(connectionString);
+```
+
+### Validation
+
+The library validates configuration automatically using `DataAnnotations`. Invalid configurations will throw validation exceptions during application startup. For example:
+
+- `BatchSize` must be between 1 and 10000
+- `MaxRetries` must be between 0 and 100
+- `MaxRetryDelaySeconds` must be >= `InitialRetryDelaySeconds`
+- `MaxRetries` must be 0 when `RetryPolicy` is `NoRetry`
+
+### Retry Policy Configuration
+
+
+#### ExponentialBackoff (Recommended)
+
+```json
+"RetryPolicy": "ExponentialBackoff",
+"InitialRetryDelaySeconds": 5,
+"MaxRetryDelaySeconds": 300,
+"BackoffMultiplier": 2.0
+```
+
+Delays follow the pattern: 5s, 10s, 20s, 40s, 80s, 160s, 300s (max)
+
+#### Linear Backoff
+
+```json
+"RetryPolicy": "LinearBackoff",
+"InitialRetryDelaySeconds": 5,
+"MaxRetryDelaySeconds": 60
+```
+
+Delays follow the pattern: 5s, 10s, 15s, 20s, 25s, 30s, 30s (max)
+
+#### Fixed Delay
+
+```json
+"RetryPolicy": "FixedDelay",
+"InitialRetryDelaySeconds": 30
+```
+
+All retries use the same fixed delay: 30s, 30s, 30s, etc.
 
 ### Retry Policy Configuration
 

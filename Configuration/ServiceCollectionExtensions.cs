@@ -2,7 +2,7 @@
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
-// =============================================================================
+// =====================================================================
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,8 +22,7 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddOutboxPattern(
         this IServiceCollection services,
-        string connectionString,
-        Action<PublishingOptions>? configureOptions = null)
+        string connectionString)
     {
         if (services is null)
             throw new ArgumentNullException(nameof(services));
@@ -38,11 +37,6 @@ public static class ServiceCollectionExtensions
                 sqlOptions.EnableRetryOnFailure(3, TimeSpan.FromSeconds(5), null);
                 sqlOptions.CommandTimeout(30);
             }));
-
-        // Configure publishing options
-        var publishingOptions = new PublishingOptions();
-        configureOptions?.Invoke(publishingOptions);
-        services.AddSingleton(publishingOptions);
 
         // Register repositories
         services.AddScoped<IOutboxRepository, OutboxRepository>();
@@ -60,7 +54,7 @@ public static class ServiceCollectionExtensions
     /// Adds a custom message publisher implementation
     /// </summary>
     public static IServiceCollection AddMessagePublisher<TPublisher>(this IServiceCollection services)
-        where TPublisher : class, IMessagePublisher
+    where TPublisher : class, IMessagePublisher
     {
         services.AddScoped<IMessagePublisher, TPublisher>();
         return services;
@@ -85,18 +79,5 @@ public static class ServiceCollectionExtensions
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OutboxDbContext>();
         await context.Database.MigrateAsync();
-    }
-
-    /// <summary>
-    /// Configures publishing options
-    /// </summary>
-    public static IServiceCollection ConfigurePublishingOptions(
-        this IServiceCollection services,
-        Action<PublishingOptions> configure)
-    {
-        var options = new PublishingOptions();
-        configure(options);
-        services.AddSingleton(options);
-        return services;
     }
 }

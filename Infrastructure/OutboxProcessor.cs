@@ -62,18 +62,18 @@ public sealed class OutboxProcessorOptions
 public sealed class OutboxProcessor : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly OutboxProcessorOptions _options;
+    private readonly IOutboxProcessorOptions _options;
     private readonly ILogger<OutboxProcessor> _logger;
     private readonly HealthMetrics _health;
     private DateTime _lastExpiredLockCheck = DateTime.UtcNow;
 
     public OutboxProcessor(
         IServiceProvider serviceProvider,
-        OutboxProcessorOptions? options,
+        IOutboxProcessorOptions options,
         ILogger<OutboxProcessor> logger)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _options = options ?? new OutboxProcessorOptions();
+        _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _health = new HealthMetrics();
     }
