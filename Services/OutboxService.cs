@@ -72,6 +72,39 @@ public interface IOutboxService
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A list of outbox messages.</returns>
     Task<List<OutboxMessage>> GetAllMessagesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves all messages published to a specific topic.
+    /// </summary>
+    /// <param name="topic">The topic name.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of outbox messages.</returns>
+    Task<List<OutboxMessage>> GetMessagesByTopicAsync(string topic, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves all messages for a specific aggregate.
+    /// </summary>
+    /// <param name="aggregateId">The aggregate ID.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of outbox messages.</returns>
+    Task<List<OutboxMessage>> GetMessagesByAggregateAsync(string aggregateId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves all messages with a specific processing state.
+    /// </summary>
+    /// <param name="state">The message state.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of outbox messages.</returns>
+    Task<List<OutboxMessage>> GetMessagesByStateAsync(OutboxMessageState state, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves all messages created within the specified date range.
+    /// </summary>
+    /// <param name="startDate">The start of the date range.</param>
+    /// <param name="endDate">The end of the date range.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of outbox messages.</returns>
+    Task<List<OutboxMessage>> GetMessagesByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -104,7 +137,7 @@ public sealed class OutboxService : IOutboxService
 
         try
         {
-            var idempotencyKey = publishableEvent.Event.EventId.ToString();
+            var idempotencyKey = publishableEvent.IdempotencyKey ?? publishableEvent.Event.EventId.ToString();
 
             // Check for duplicate using idempotency key
             var existing = await _repository.GetByIdempotencyKeyAsync(idempotencyKey, cancellationToken);
@@ -128,8 +161,11 @@ public sealed class OutboxService : IOutboxService
                 EventTypeName = publishableEvent.Event.GetType().FullName ?? publishableEvent.Event.GetType().Name,
                 Topic = publishableEvent.Topic,
                 PartitionKey = publishableEvent.PartitionKey,
-                MaxPublishAttempts = publishableEvent.MaxAttempts,
+                MaxPublishAttempts = publishableEvent.DeliveryGuarantee == DeliveryGuarantee.AtMostOnce
+                    ? 1
+                    : publishableEvent.MaxAttempts,
                 CreatedAt = DateTime.UtcNow,
+                ScheduledFor = publishableEvent.ScheduledTime,
                 DeliveryGuarantee = publishableEvent.DeliveryGuarantee,
                 CorrelationId = correlationId,
                 CausationId = publishableEvent.Event.CausationId,
@@ -258,6 +294,70 @@ public sealed class OutboxService : IOutboxService
         {
             _logger.LogError(ex, "Error retrieving all messages");
             throw new OutboxException("Failed to retrieve messages", ex);
+        }
+    }
+
+    /// <summary>
+    /// Retrieves all messages published to a specific topic
+    /// </summary>
+    public async Task<List<OutboxMessage>> GetMessagesByTopicAsync(string topic, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _repository.GetByTopicAsync(topic, cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving messages by topic {Topic}", topic);
+            throw new OutboxException("Failed to retrieve messages by topic", ex);
+        }
+    }
+
+    /// <summary>
+    /// Retrieves all messages for a specific aggregate
+    /// </summary>
+    public async Task<List<OutboxMessage>> GetMessagesByAggregateAsync(string aggregateId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _repository.GetByAggregateIdAsync(aggregateId, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving messages by aggregate {AggregateId}", aggregateId);
+            throw new OutboxException("Failed to retrieve messages by aggregate", ex);
+        }
+    }
+
+    /// <summary>
+    /// Retrieves all messages with a specific processing state
+    /// </summary>
+    public async Task<List<OutboxMessage>> GetMessagesByStateAsync(OutboxMessageState state, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _repository.GetByStateAsync(state, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving messages by state {State}", state);
+            throw new OutboxException("Failed to retrieve messages by state", ex);
+        }
+    }
+
+    /// <summary>
+    /// Retrieves all messages created within the specified date range
+    /// </summary>
+    public async Task<List<OutboxMessage>> GetMessagesByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _repository.GetByDateRangeAsync(startDate, endDate, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving messages by date range");
+            throw new OutboxException("Failed to retrieve messages by date range", ex);
         }
     }
 

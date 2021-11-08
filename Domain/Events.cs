@@ -201,4 +201,14 @@ public sealed class PublishableEvent
     /// Required delivery guarantee
     /// </summary>
     public DeliveryGuarantee DeliveryGuarantee { get; init; } = DeliveryGuarantee.AtLeastOnce;
+
+    /// <summary>
+    /// Optional explicit idempotency key. When not set, the event's ID is used instead.
+    /// </summary>
+    public string? IdempotencyKey { get; init; }
+
+    /// <summary>
+    /// Optional future time at which the message should become eligible for publishing
+    /// </summary>
+    public DateTime? ScheduledTime { get; init; }
 }

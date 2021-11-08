@@ -72,7 +72,7 @@ public class BatchProcessingBenchmarks : IDisposable
                 AggregateId = Guid.NewGuid().ToString(),
                 AggregateType = "TestAggregate",
                 EventType = EventType.Created,
-                EventData = $"{\"Test\":\"Data{i}\"}",
+                EventData = $"{{\"Test\":\"Data{i}\"}}",
                 EventTypeName = "TestEvent",
                 Topic = "test.topic",
                 PartitionKey = i % 10 == 0 ? "partition-0" : "partition-1",
@@ -99,6 +99,16 @@ public class BatchProcessingBenchmarks : IDisposable
             // Database might already be deleted
         }
         _context?.Dispose();
+    }
+
+    /// <summary>
+    /// Disposes resources held by the benchmark
+    /// </summary>
+    public void Dispose()
+    {
+        _context?.Dispose();
+        _serviceProvider?.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     [Benchmark]

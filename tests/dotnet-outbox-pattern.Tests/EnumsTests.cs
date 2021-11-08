@@ -17,37 +17,37 @@ public sealed class EnumsTests
     [Fact]
     public void OutboxMessageState_Values_MatchExpected()
     {
-        OutboxMessageState.Pending.Should().Be(0);
-        OutboxMessageState.Processing.Should().Be(1);
-        OutboxMessageState.Published.Should().Be(2);
-        OutboxMessageState.Failed.Should().Be(3);
-        OutboxMessageState.Archived.Should().Be(4);
+        ((int)OutboxMessageState.Pending).Should().Be(0);
+        ((int)OutboxMessageState.Processing).Should().Be(1);
+        ((int)OutboxMessageState.Published).Should().Be(2);
+        ((int)OutboxMessageState.Failed).Should().Be(3);
+        ((int)OutboxMessageState.Archived).Should().Be(4);
     }
 
     [Fact]
     public void EventType_Values_MatchExpected()
     {
-        EventType.Created.Should().Be(1);
-        EventType.Updated.Should().Be(2);
-        EventType.Deleted.Should().Be(3);
-        EventType.Custom.Should().Be(4);
-        EventType.Notification.Should().Be(5);
+        ((int)EventType.Created).Should().Be(1);
+        ((int)EventType.Updated).Should().Be(2);
+        ((int)EventType.Deleted).Should().Be(3);
+        ((int)EventType.Custom).Should().Be(4);
+        ((int)EventType.Notification).Should().Be(5);
     }
 
     [Fact]
     public void DeliveryGuarantee_Values_MatchExpected()
     {
-        DeliveryGuarantee.AtLeastOnce.Should().Be(1);
-        DeliveryGuarantee.ExactlyOnce.Should().Be(2);
+        ((int)DeliveryGuarantee.AtLeastOnce).Should().Be(1);
+        ((int)DeliveryGuarantee.ExactlyOnce).Should().Be(2);
     }
 
     [Fact]
     public void RetryPolicyType_Values_MatchExpected()
     {
-        RetryPolicyType.NoRetry.Should().Be(0);
-        RetryPolicyType.FixedInterval.Should().Be(1);
-        RetryPolicyType.ExponentialBackoff.Should().Be(2);
-        RetryPolicyType.LinearBackoff.Should().Be(3);
+        ((int)RetryPolicyType.NoRetry).Should().Be(0);
+        ((int)RetryPolicyType.FixedInterval).Should().Be(1);
+        ((int)RetryPolicyType.ExponentialBackoff).Should().Be(2);
+        ((int)RetryPolicyType.LinearBackoff).Should().Be(3);
     }
 
     [Theory]

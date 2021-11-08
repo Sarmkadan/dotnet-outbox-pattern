@@ -4,6 +4,7 @@
 // CTO & Software Architect
 // =====================================================================
 
+using System.ComponentModel.DataAnnotations;
 using Serilog;
 using DotnetOutboxPattern.Configuration;
 using DotnetOutboxPattern.Data;

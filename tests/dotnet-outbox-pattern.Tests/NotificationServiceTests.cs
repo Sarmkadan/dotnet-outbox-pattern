@@ -95,7 +95,7 @@ public sealed class NotificationServiceTests
         };
 
         // Make the in-memory channel throw
-        var inMemoryChannel = ((NotificationServiceTests)_sut).GetType()
+        var inMemoryChannel = _sut.GetType()
             .GetField("_channels", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
             .GetValue(_sut) as System.Collections.Generic.Dictionary<string, INotificationChannel>;
 
@@ -126,12 +126,12 @@ public sealed class NotificationServiceTests
                 Title = $"Test {i}",
                 Message = $"Message {i}"
             };
-            ((NotificationServiceTests)_sut).GetType()
+            _sut.GetType()
                 .GetField("_notifications", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
                 .GetValue(_sut)!
                 .GetType()
                 .GetMethod("Add", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .Invoke(((NotificationServiceTests)_sut).GetType()
+                .Invoke(_sut.GetType()
                     .GetField("_notifications", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
                     .GetValue(_sut), new[] { notification });
         }
@@ -152,12 +152,12 @@ public sealed class NotificationServiceTests
                 Title = $"Test {i}",
                 Message = $"Message {i}"
             };
-            ((NotificationServiceTests)_sut).GetType()
+            _sut.GetType()
                 .GetField("_notifications", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
                 .GetValue(_sut)!
                 .GetType()
                 .GetMethod("Add", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .Invoke(((NotificationServiceTests)_sut).GetType()
+                .Invoke(_sut.GetType()
                     .GetField("_notifications", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
                     .GetValue(_sut), new[] { notification });
         }

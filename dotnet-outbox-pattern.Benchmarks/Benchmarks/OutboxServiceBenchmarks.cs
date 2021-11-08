@@ -56,6 +56,16 @@ public class OutboxServiceBenchmarks : IDisposable
         _context?.Dispose();
     }
 
+    /// <summary>
+    /// Disposes resources held by the benchmark
+    /// </summary>
+    public void Dispose()
+    {
+        _context?.Dispose();
+        _serviceProvider?.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
     [Benchmark]
     public async Task PublishSingleEvent()
     {
@@ -64,7 +74,7 @@ public class OutboxServiceBenchmarks : IDisposable
             EventId = Guid.NewGuid(),
             EntityId = Guid.NewGuid().ToString(),
             EntityType = "TestEntity",
-            Timestamp = DateTime.UtcNow
+            OccurredAt = DateTime.UtcNow
         };
 
         await _outboxService!.PublishEventAsync(domainEvent, "test.topic");
@@ -80,7 +90,7 @@ public class OutboxServiceBenchmarks : IDisposable
                 EventId = Guid.NewGuid(),
                 EntityId = Guid.NewGuid().ToString(),
                 EntityType = "TestEntity",
-                Timestamp = DateTime.UtcNow
+                OccurredAt = DateTime.UtcNow
             };
 
             await _outboxService!.PublishEventAsync(domainEvent, "test.topic");

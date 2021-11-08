@@ -31,4 +31,14 @@ public interface IOutboxProcessorOptions
     /// Gets whether to preserve partition ordering
     /// </summary>
     bool PreservePartitionOrdering { get; }
+
+    /// <summary>
+    /// Gets how often to check for expired locks (milliseconds)
+    /// </summary>
+    int CheckExpiredLocksInterval { get; }
+
+    /// <summary>
+    /// Gets the age threshold (in minutes) beyond which an unprocessed message triggers a warning log
+    /// </summary>
+    int OldestMessageAgeThresholdMinutes { get; }
 }

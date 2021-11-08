@@ -20,7 +20,7 @@ public class OutboxSerializerBenchmarks
             EventId = Guid.NewGuid(),
             EntityId = Guid.NewGuid().ToString(),
             EntityType = "TestEntity",
-            Timestamp = DateTime.UtcNow
+            OccurredAt = DateTime.UtcNow
         };
 
         _publishableEvent = new PublishableEvent
@@ -52,7 +52,7 @@ public class OutboxSerializerBenchmarks
             EventId = Guid.NewGuid(),
             EntityId = Guid.NewGuid().ToString(),
             EntityType = new string('A', 1000), // Large string
-            Timestamp = DateTime.UtcNow
+            OccurredAt = DateTime.UtcNow
         };
 
         var publishable = new PublishableEvent

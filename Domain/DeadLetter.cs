@@ -58,6 +58,11 @@ public sealed class DeadLetter
     public string Topic { get; set; } = null!;
 
     /// <summary>
+    /// Partition key from the original message, if any
+    /// </summary>
+    public string? PartitionKey { get; set; }
+
+    /// <summary>
     /// Total number of delivery attempts made
     /// </summary>
     public int TotalAttempts { get; set; }

@@ -50,6 +50,16 @@ public class OutboxRepositoryBenchmarks : IDisposable
         _context?.Dispose();
     }
 
+    /// <summary>
+    /// Disposes resources held by the benchmark
+    /// </summary>
+    public void Dispose()
+    {
+        _context?.Dispose();
+        _serviceProvider?.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
     [Benchmark]
     public async Task AddSingleMessage()
     {

@@ -4,6 +4,7 @@
 // CTO & Software Architect
 // =============================================================================
 
+using DotnetOutboxPattern.Configuration;
 using DotnetOutboxPattern.Data;
 using DotnetOutboxPattern.Domain;
 using DotnetOutboxPattern.Services;
@@ -16,7 +17,7 @@ namespace DotnetOutboxPattern.Infrastructure;
 /// <summary>
 /// Configuration options for the outbox processor background service
 /// </summary>
-public sealed class OutboxProcessorOptions
+public sealed class OutboxProcessorOptions : IOutboxProcessorOptions
 {
     /// <summary>
     /// Whether to enable the background processor

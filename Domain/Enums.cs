@@ -74,6 +74,11 @@ public enum EventType
 public enum DeliveryGuarantee
 {
     /// <summary>
+    /// At most once delivery - no retries, message may be lost
+    /// </summary>
+    AtMostOnce = 0,
+
+    /// <summary>
     /// At least once delivery with potential duplicates
     /// </summary>
     AtLeastOnce = 1,

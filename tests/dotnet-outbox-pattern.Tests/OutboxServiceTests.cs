@@ -211,13 +211,13 @@ public sealed class OutboxServiceTests
     {
         var messages = new List<OutboxMessage> { BuildMessage(Guid.NewGuid(), OutboxMessageState.Pending) };
         _repositoryMock
-            .Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetAllAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(messages);
 
         var result = await _sut.GetAllMessagesAsync();
 
         result.Should().BeSameAs(messages);
-        _repositoryMock.Verify(r => r.GetAllAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _repositoryMock.Verify(r => r.GetAllAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -226,13 +226,13 @@ public sealed class OutboxServiceTests
         var topic = "orders.created";
         var messages = new List<OutboxMessage> { BuildMessage(Guid.NewGuid(), OutboxMessageState.Pending) };
         _repositoryMock
-            .Setup(r => r.GetByTopicAsync(topic, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByTopicAsync(topic, It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(messages);
 
         var result = await _sut.GetMessagesByTopicAsync(topic);
 
         result.Should().BeSameAs(messages);
-        _repositoryMock.Verify(r => r.GetByTopicAsync(topic, It.IsAny<CancellationToken>()), Times.Once);
+        _repositoryMock.Verify(r => r.GetByTopicAsync(topic, It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -398,7 +398,7 @@ public sealed class OutboxServiceTests
     public async Task RetryFailedMessageAsync_WhenStateIsCompleted_ReturnsFalse()
     {
         var messageId = Guid.NewGuid();
-        var message = BuildMessage(messageId, OutboxMessageState.Completed);
+        var message = BuildMessage(messageId, OutboxMessageState.Published);
 
         _repositoryMock
             .Setup(r => r.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))

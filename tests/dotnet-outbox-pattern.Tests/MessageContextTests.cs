@@ -160,12 +160,12 @@ public sealed class MessageContextTests
     public void ActivityScope_DisposesActivity()
     {
         var activity = new ActivitySource("Test").StartActivity("TestActivity");
-        var scope = new MessageContext.ActivityScope(activity);
+        var scope = new ActivityScope(activity);
 
         scope.Dispose();
 
         // After disposal, the activity should be stopped
-        activity?.HasCompletedSuccessfully.Should().BeTrue();
+        activity?.IsStopped.Should().BeTrue();
     }
 
     [Fact]
@@ -176,7 +176,7 @@ public sealed class MessageContextTests
         using var scope = activity.UseScope();
 
         scope.Should().NotBeNull();
-        scope.Should().BeOfType<MessageContext.ActivityScope>();
+        scope.Should().BeOfType<ActivityScope>();
     }
 
     [Fact]

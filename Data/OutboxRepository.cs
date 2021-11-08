@@ -31,6 +31,8 @@ public interface IOutboxRepository
     Task<List<OutboxMessage>> GetByAggregateIdAsync(string aggregateId, CancellationToken cancellationToken = default);
     Task<List<OutboxMessage>> GetByTopicAsync(string topic, int limit = 1000, CancellationToken cancellationToken = default);
     Task<List<OutboxMessage>> GetByCorrelationIdAsync(string correlationId, CancellationToken cancellationToken = default);
+    Task<List<OutboxMessage>> GetByStateAsync(OutboxMessageState state, CancellationToken cancellationToken = default);
+    Task<List<OutboxMessage>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
     Task ArchiveOldMessagesAsync(DateTime olderThan, CancellationToken cancellationToken = default);
     Task<int> DeleteArchivedMessagesAsync(DateTime olderThan, CancellationToken cancellationToken = default);
     Task<List<OutboxMessage>> GetAllAsync(int limit = 10000, CancellationToken cancellationToken = default);
@@ -364,6 +366,42 @@ public sealed class OutboxRepository : IOutboxRepository
         catch (Exception ex)
         {
             throw new OutboxRepositoryException("Failed to retrieve messages by correlation ID", nameof(GetByCorrelationIdAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Retrieves all messages with a specific processing state
+    /// </summary>
+    public async Task<List<OutboxMessage>> GetByStateAsync(OutboxMessageState state, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _context.OutboxMessages.AsNoTracking()
+                .Where(x => x.State == state)
+                .OrderBy(x => x.CreatedAt)
+                .ToListAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            throw new OutboxRepositoryException("Failed to retrieve messages by state", nameof(GetByStateAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Retrieves all messages created within the specified date range
+    /// </summary>
+    public async Task<List<OutboxMessage>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _context.OutboxMessages.AsNoTracking()
+                .Where(x => x.CreatedAt >= startDate && x.CreatedAt <= endDate)
+                .OrderBy(x => x.CreatedAt)
+                .ToListAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            throw new OutboxRepositoryException("Failed to retrieve messages by date range", nameof(GetByDateRangeAsync), ex);
         }
     }
 

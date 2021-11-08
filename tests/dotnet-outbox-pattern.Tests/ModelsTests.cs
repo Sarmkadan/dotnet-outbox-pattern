@@ -142,7 +142,7 @@ public sealed class ModelsTests
         var options = new PublishingOptions
         {
             MaxRetries = 10,
-            RetryPolicy = RetryPolicyType.Linear,
+            RetryPolicy = RetryPolicyType.LinearBackoff,
             InitialRetryDelay = TimeSpan.FromSeconds(10),
             MaxRetryDelay = TimeSpan.FromMinutes(10),
             BackoffMultiplier = 3.0,
@@ -153,7 +153,7 @@ public sealed class ModelsTests
         };
 
         options.MaxRetries.Should().Be(10);
-        options.RetryPolicy.Should().Be(RetryPolicyType.Linear);
+        options.RetryPolicy.Should().Be(RetryPolicyType.LinearBackoff);
         options.InitialRetryDelay.Should().Be(TimeSpan.FromSeconds(10));
         options.MaxRetryDelay.Should().Be(TimeSpan.FromMinutes(10));
         options.BackoffMultiplier.Should().Be(3.0);
