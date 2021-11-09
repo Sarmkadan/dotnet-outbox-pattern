@@ -974,17 +974,6 @@ Delays follow the pattern: 5s, 10s, 15s, 20s, 25s, 30s, 30s (max)
 
 All retries use the same fixed delay: 30s, 30s, 30s, etc.
 
-### Retry Policy Configuration
-
-#### ExponentialBackoff (Recommended)
-
-```csharp
-// Delays: 5s, 10s, 20s, 40s, 80s, 160s, 300s (max)
-"RetryPolicy": "ExponentialBackoff",
-"InitialRetryDelaySeconds": 5,
-"MaxRetryDelaySeconds": 300
-```
-
 #### Linear Backoff
 
 ```csharp
