@@ -64,3 +64,7 @@ TestResults/
 # Dependencies
 packages/
 node_modules/
+bin/
+obj/
+BenchmarkDotNet.Artifacts/
+.aider*
