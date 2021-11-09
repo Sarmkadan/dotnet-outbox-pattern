@@ -134,8 +134,6 @@ public sealed class OutboxService : IOutboxService
     public async Task<OutboxMessage> PublishEventAsync(PublishableEvent publishableEvent, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(publishableEvent);
-    ArgumentNullException.ThrowIfNull(publishableEvent.Event);
-    ArgumentException.ThrowIfNullOrEmpty(publishableEvent.Topic);
 
         try
         {

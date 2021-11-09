@@ -182,3 +182,77 @@ public sealed class InvalidConfigurationException : OutboxException
         ConfigurationProperty = property;
     }
 }
+
+/// <summary>
+/// Exception thrown when validation fails
+/// </summary>
+public sealed class ValidationException : OutboxException
+{
+    /// <summary>
+    /// Validation errors
+    /// </summary>
+    public IReadOnlyDictionary<string, string[]> Errors { get; }
+
+    public ValidationException(string message, IReadOnlyDictionary<string, string[]> errors)
+        : base(message, "VALIDATION_ERROR")
+    {
+        Errors = errors;
+    }
+
+    public ValidationException(string message, string propertyName, string error)
+        : base(message, "VALIDATION_ERROR")
+    {
+        Errors = new Dictionary<string, string[]> { { propertyName, new[] { error } } };
+    }
+}
+
+/// <summary>
+/// Exception thrown when message processing is locked
+/// </summary>
+public sealed class MessageProcessingLockedException : OutboxException
+{
+    /// <summary>
+    /// ID of the message that is locked
+    /// </summary>
+    public Guid MessageId { get; }
+
+    public MessageProcessingLockedException(Guid messageId)
+        : base($"Message {messageId} is currently locked and cannot be processed", "MESSAGE_LOCKED", messageId.ToString())
+    {
+        MessageId = messageId;
+    }
+}
+
+/// <summary>
+/// Exception thrown when a required service is not available
+/// </summary>
+public sealed class ServiceUnavailableException : OutboxException
+{
+    /// <summary>
+    /// Name of the unavailable service
+    /// </summary>
+    public string ServiceName { get; }
+
+    public ServiceUnavailableException(string serviceName, string message, Exception? innerException = null)
+        : base(message, "SERVICE_UNAVAILABLE", serviceName)
+    {
+        ServiceName = serviceName;
+    }
+}
+
+/// <summary>
+/// Exception thrown when a timeout occurs during processing
+/// </summary>
+public sealed class ProcessingTimeoutException : OutboxException
+{
+    /// <summary>
+    /// Timeout duration
+    /// </summary>
+    public TimeSpan Timeout { get; }
+
+    public ProcessingTimeoutException(string message, TimeSpan timeout, Exception? innerException = null)
+        : base(message, "PROCESSING_TIMEOUT")
+    {
+        Timeout = timeout;
+    }
+}
