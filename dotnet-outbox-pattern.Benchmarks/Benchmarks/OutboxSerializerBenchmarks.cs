@@ -5,6 +5,9 @@ using DotnetOutboxPattern.Services;
 
 namespace DotnetOutboxPattern.Benchmarks;
 
+/// <summary>
+/// Benchmark class for OutboxSerializer.
+/// </summary>
 [MemoryDiagnoser]
 [Orderer(BenchmarkDotNet.Order.SummaryOrderPolicy.FastestToSlowest)]
 [RankColumn]
@@ -13,6 +16,9 @@ public class OutboxSerializerBenchmarks
     private readonly SystemTextJsonOutboxSerializer _serializer = new();
     private readonly PublishableEvent _publishableEvent;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OutboxSerializerBenchmarks"/> class.
+    /// </summary>
     public OutboxSerializerBenchmarks()
     {
         var domainEvent = new EntityCreatedEvent
@@ -31,12 +37,19 @@ public class OutboxSerializerBenchmarks
         };
     }
 
+    /// <summary>
+    /// Benchmarks the serialization of a <see cref="PublishableEvent"/>.
+    /// </summary>
     [Benchmark]
     public string SerializeEvent()
     {
         return _serializer.Serialize(_publishableEvent);
     }
 
+    /// <summary>
+    /// Benchmarks the deserialization of a <see cref="PublishableEvent"/>.
+    /// </summary>
+    /// <returns>The deserialized <see cref="PublishableEvent"/>.</returns>
     [Benchmark]
     public PublishableEvent DeserializeEvent()
     {
@@ -44,6 +57,10 @@ public class OutboxSerializerBenchmarks
         return _serializer.Deserialize<PublishableEvent>(json);
     }
 
+    /// <summary>
+    /// Benchmarks the serialization of a large <see cref="PublishableEvent"/>.
+    /// </summary>
+    /// <returns>The serialized <see cref="PublishableEvent"/>.</returns>
     [Benchmark]
     public string SerializeLargeEvent()
     {
