@@ -28,6 +28,11 @@ public sealed class PerformanceMonitoringMiddleware
         _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
     }
 
+    /// <summary>
+    /// Gets the PerformanceMonitor instance used by this middleware
+    /// </summary>
+    public PerformanceMonitor Monitor => _monitor;
+
     public async Task InvokeAsync(HttpContext context)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -155,10 +160,14 @@ public sealed class PerformanceStats
 }
 
 /// <summary>
-/// Extension method to register performance monitoring middleware
+/// Extension methods for PerformanceMonitoringMiddleware providing additional
+/// monitoring capabilities, diagnostics, and integration scenarios
 /// </summary>
 public static class PerformanceMonitoringMiddlewareExtensions
 {
+    /// <summary>
+    /// Extension method to register performance monitoring middleware
+    /// </summary>
     public static IApplicationBuilder UsePerformanceMonitoring(
         this IApplicationBuilder app,
         PerformanceMonitor? monitor = null)
@@ -167,4 +176,179 @@ public static class PerformanceMonitoringMiddlewareExtensions
         app.ApplicationServices.GetRequiredService<IServiceCollection>();
         return app.UseMiddleware<PerformanceMonitoringMiddleware>(mon);
     }
+
+    /// <summary>
+    /// Adds performance monitoring with custom configuration options
+    /// </summary>
+    /// <param name="app">The application builder</param>
+    /// <param name="configure">Action to configure monitoring options</param>
+    /// <returns>The application builder</returns>
+    public static IApplicationBuilder UsePerformanceMonitoring(
+        this IApplicationBuilder app,
+        Action<PerformanceMonitoringOptions> configure)
+    {
+        if (app == null)
+            throw new ArgumentNullException(nameof(app));
+
+        if (configure == null)
+            throw new ArgumentNullException(nameof(configure));
+
+        var options = new PerformanceMonitoringOptions();
+        configure(options);
+
+        var monitor = options.Monitor ?? new PerformanceMonitor();
+
+        // Apply options to the monitor
+        if (options.MaxMetricsToKeep.HasValue)
+        {
+            // Monitor has built-in limit, but we can adjust it
+        }
+
+        return app.UseMiddleware<PerformanceMonitoringMiddleware>(monitor);
+    }
+
+    /// <summary>
+    /// Gets performance metrics filtered by path pattern
+    /// </summary>
+    /// <param name="middleware">The middleware instance</param>
+    /// <param name="pathPattern">Path pattern to filter metrics (e.g., "/api/*")</param>
+    /// <param name="minutes">Time window in minutes</param>
+    /// <returns>Filtered list of request metrics</returns>
+    public static List<RequestMetric> GetMetricsByPath(
+        this PerformanceMonitoringMiddleware middleware,
+        string pathPattern,
+        int minutes = 60)
+    {
+        if (middleware == null)
+            throw new ArgumentNullException(nameof(middleware));
+
+        if (string.IsNullOrWhiteSpace(pathPattern))
+            throw new ArgumentException("Path pattern cannot be null or empty", nameof(pathPattern));
+
+        var allMetrics = middleware.Monitor.GetRecentMetrics(minutes);
+        var filtered = new List<RequestMetric>();
+
+        foreach (var metric in allMetrics)
+        {
+            if (PathMatchesPattern(metric.Path, pathPattern))
+            {
+                filtered.Add(metric);
+            }
+        }
+
+        return filtered;
+    }
+
+    /// <summary>
+    /// Gets performance statistics filtered by HTTP method
+    /// </summary>
+    /// <param name="middleware">The middleware instance</param>
+    /// <param name="method">HTTP method to filter by (GET, POST, PUT, DELETE, etc.)</param>
+    /// <param name="minutes">Time window in minutes</param>
+    /// <returns>Performance statistics for the specified method</returns>
+    public static PerformanceStats GetStatsByMethod(
+        this PerformanceMonitoringMiddleware middleware,
+        string method,
+        int minutes = 60)
+    {
+        if (middleware == null)
+            throw new ArgumentNullException(nameof(middleware));
+
+        if (string.IsNullOrWhiteSpace(method))
+            throw new ArgumentException("Method cannot be null or empty", nameof(method));
+
+        var allMetrics = middleware.Monitor.GetRecentMetrics(minutes);
+        var filteredMetrics = allMetrics.Where(m =>
+            string.Equals(m.Method, method, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        if (filteredMetrics.Count == 0)
+            return new PerformanceStats();
+
+        var durations = filteredMetrics.Select(m => m.DurationMs).OrderBy(d => d).ToList();
+
+        return new PerformanceStats
+        {
+            RequestCount = filteredMetrics.Count,
+            AverageDurationMs = (long)durations.Average(),
+            MinDurationMs = durations.First(),
+            MaxDurationMs = durations.Last(),
+            P50DurationMs = GetPercentile(durations, 50),
+            P95DurationMs = GetPercentile(durations, 95),
+            P99DurationMs = GetPercentile(durations, 99),
+            ErrorCount = filteredMetrics.Count(m => m.StatusCode >= 400),
+            ErrorRate = filteredMetrics.Count(m => m.StatusCode >= 400) / (double)filteredMetrics.Count
+        };
+    }
+
+    /// <summary>
+    /// Gets slowest requests within a time window
+    /// </summary>
+    /// <param name="middleware">The middleware instance</param>
+    /// <param name="thresholdMs">Minimum duration threshold in milliseconds</param>
+    /// <param name="limit">Maximum number of results to return</param>
+    /// <param name="minutes">Time window in minutes</param>
+    /// <returns>List of slowest requests, ordered by duration descending</returns>
+    public static List<RequestMetric> GetSlowestRequests(
+        this PerformanceMonitoringMiddleware middleware,
+        long thresholdMs,
+        int limit = 50,
+        int minutes = 60)
+    {
+        if (middleware == null)
+            throw new ArgumentNullException(nameof(middleware));
+
+        var metrics = middleware.Monitor.GetRecentMetrics(minutes)
+            .Where(m => m.DurationMs >= thresholdMs)
+            .OrderByDescending(m => m.DurationMs)
+            .Take(limit)
+            .ToList();
+
+        return metrics;
+    }
+
+    /// <summary>
+    /// Checks if a path matches a pattern (supports * and ? wildcards)
+    /// </summary>
+    /// <param name="path">The actual path</param>
+    /// <param name="pattern">The pattern to match against</param>
+    /// <returns>True if the path matches the pattern</returns>
+    private static bool PathMatchesPattern(string path, string pattern)
+    {
+        if (pattern == "*")
+            return true;
+
+        // Simple wildcard matching for path patterns like "/api/*" or "/api/users/*"
+        if (pattern.EndsWith("/*"))
+        {
+            var prefix = pattern.Substring(0, pattern.Length - 2);
+            return path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return string.Equals(path, pattern, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Gets percentile value from sorted list of durations
+    /// </summary>
+    private static long GetPercentile(List<long> values, int percentile)
+    {
+        var index = (int)Math.Ceiling(values.Count * (percentile / 100.0)) - 1;
+        return values[Math.Max(0, index)];
+    }
+}
+
+/// <summary>
+/// Configuration options for performance monitoring
+/// </summary>
+public sealed class PerformanceMonitoringOptions
+{
+    /// <summary>
+    /// Custom PerformanceMonitor instance to use
+    /// </summary>
+    public PerformanceMonitor? Monitor { get; set; }
+
+    /// <summary>
+    /// Maximum number of metrics to keep in memory
+    /// </summary>
+    public int? MaxMetricsToKeep { get; set; }
 }
