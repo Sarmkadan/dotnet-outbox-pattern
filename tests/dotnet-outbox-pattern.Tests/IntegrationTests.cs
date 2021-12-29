@@ -13,12 +13,27 @@ using System.Net.Http.Json;
 
 namespace DotnetOutboxPattern.Tests;
 
+/// <summary>
+/// Provides a test fixture that sets up an in-memory integration test environment for the Outbox Pattern application.
+/// This fixture creates a WebApplicationFactory with an in-memory SQLite database and provides HTTP client access
+/// to test the application's API endpoints and services.
+/// </summary>
 public class IntegrationTestFixture : IAsyncLifetime
 {
-    private readonly WebApplicationFactory<Program> _factory;
-    public HttpClient Client { get; private set; } = null!;
+    /// <summary>
+/// The WebApplicationFactory that creates and manages the test application instance with in-memory configuration.
+/// </summary>
+private readonly WebApplicationFactory<Program> _factory;
+    /// <summary>
+/// The HTTP client used to make requests to the application's API endpoints.
+/// </summary>
+public HttpClient Client { get; private set; } = null!;
 
-    public IntegrationTestFixture()
+    /// <summary>
+/// Initializes a new instance of the <see cref="IntegrationTestFixture"/> class.
+/// Sets up an in-memory test environment with a WebApplicationFactory configured to use SQLite in-memory database.
+/// </summary>
+public IntegrationTestFixture()
     {
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
@@ -44,20 +59,32 @@ public class IntegrationTestFixture : IAsyncLifetime
             });
     }
 
-    public async Task InitializeAsync()
+    /// <summary>
+/// Initializes the test fixture by creating an HTTP client for making API requests.
+/// </summary>
+/// <returns>A completed task.</returns>
+public async Task InitializeAsync()
     {
         Client = _factory.CreateClient();
         await Task.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    /// <summary>
+/// Disposes the HTTP client and WebApplicationFactory when the test fixture is no longer needed.
+/// </summary>
+/// <returns>A completed task.</returns>
+public async Task DisposeAsync()
     {
         Client?.Dispose();
         _factory?.Dispose();
         await Task.CompletedTask;
     }
 
-    public IServiceScope CreateScope()
+    /// <summary>
+/// Creates a new service scope for resolving scoped services during tests.
+/// </summary>
+/// <returns>A new <see cref="IServiceScope"/> instance.</returns>
+public IServiceScope CreateScope()
     {
         return _factory.Services.CreateScope();
     }
