@@ -2,72 +2,79 @@ using System;
 
 namespace DotnetOutboxPattern.Infrastructure
 {
-    /// <summary>
-    /// Extension methods that make configuring <see cref="OutboxProcessorOptions"/> more fluent and safe.
-    /// </summary>
-    public static class OutboxProcessorOptionsExtensions
-    {
-        /// <summary>
-        /// Enables the outbox processor.
-        /// </summary>
-        public static OutboxProcessorOptions Enable(this OutboxProcessorOptions options)
-        {
-            if (options == null) throw new ArgumentNullException(nameof(options));
+	/// <summary>
+	/// Extension methods that make configuring <see cref="OutboxProcessorOptions"/> more fluent and safe.
+	/// </summary>
+	public static class OutboxProcessorOptionsExtensions
+	{
+		/// <summary>
+		/// Enables the outbox processor.
+		/// </summary>
+		/// <param name="options">The options to configure</param>
+		/// <returns>The configured options for method chaining</returns>
+		/// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is null</exception>
+		public static OutboxProcessorOptions Enable(this OutboxProcessorOptions options)
+		{
+			ArgumentNullException.ThrowIfNull(options);
+			options.Enabled = true;
+			return options;
+		}
 
-            options.Enabled = true;
-            return options;
-        }
+		/// <summary>
+		/// Disables the outbox processor.
+		/// </summary>
+		/// <param name="options">The options to configure</param>
+		/// <returns>The configured options for method chaining</returns>
+		/// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is null</exception>
+		public static OutboxProcessorOptions Disable(this OutboxProcessorOptions options)
+		{
+			ArgumentNullException.ThrowIfNull(options);
+			options.Enabled = false;
+			return options;
+		}
 
-        /// <summary>
-        /// Disables the outbox processor.
-        /// </summary>
-        public static OutboxProcessorOptions Disable(this OutboxProcessorOptions options)
-        {
-            if (options == null) throw new ArgumentNullException(nameof(options));
+		/// <summary>
+		/// Configures batch processing parameters.
+		/// </summary>
+		/// <param name="batchSize">Number of messages to process per batch. Must be greater than zero.</param>
+		/// <param name="delayBetweenBatches">Delay in milliseconds between batches. Must be zero or positive.</param>
+		/// <returns>The configured options for method chaining</returns>
+		/// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is null</exception>
+		/// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="batchSize"/> is less than or equal to zero</exception>
+		/// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="delayBetweenBatches"/> is negative</exception>
+		public static OutboxProcessorOptions ConfigureBatch(this OutboxProcessorOptions options, int batchSize, int delayBetweenBatches)
+		{
+			ArgumentNullException.ThrowIfNull(options);
+			ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(batchSize, 0);
+			ArgumentOutOfRangeException.ThrowIfNegative(delayBetweenBatches);
 
-            options.Enabled = false;
-            return options;
-        }
+			options.BatchSize = batchSize;
+			options.DelayBetweenBatches = delayBetweenBatches;
+			return options;
+		}
 
-        /// <summary>
-        /// Configures batch processing parameters.
-        /// </summary>
-        /// <param name="batchSize">Number of messages to process per batch. Must be greater than zero.</param>
-        /// <param name="delayBetweenBatches">Delay in milliseconds between batches. Must be zero or positive.</param>
-        public static OutboxProcessorOptions ConfigureBatch(this OutboxProcessorOptions options, int batchSize, int delayBetweenBatches)
-        {
-            if (options == null) throw new ArgumentNullException(nameof(options));
-            if (batchSize <= 0) throw new ArgumentOutOfRangeException(nameof(batchSize), "BatchSize must be greater than zero.");
-            if (delayBetweenBatches < 0) throw new ArgumentOutOfRangeException(nameof(delayBetweenBatches), "DelayBetweenBatches cannot be negative.");
+		/// <summary>
+		/// Validates the current configuration and throws if any value is out of the expected range.
+		/// </summary>
+		/// <param name="options">The options to validate</param>
+		/// <returns>The validated options for method chaining</returns>
+		/// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is null</exception>
+		/// <exception cref="ArgumentException">Thrown when <paramref name="options.BatchSize"/> is less than or equal to zero</exception>
+		/// <exception cref="ArgumentException">Thrown when <paramref name="options.DelayBetweenBatches"/> is negative</exception>
+		/// <exception cref="ArgumentException">Thrown when <paramref name="options.CheckExpiredLocksInterval"/> is less than or equal to zero</exception>
+		/// <exception cref="ArgumentException">Thrown when <paramref name="options.LockDurationSeconds"/> is less than or equal to zero</exception>
+		/// <exception cref="ArgumentException">Thrown when <paramref name="options.OldestMessageAgeThresholdMinutes"/> is negative</exception>
+		public static OutboxProcessorOptions Validate(this OutboxProcessorOptions options)
+		{
+			ArgumentNullException.ThrowIfNull(options);
 
-            options.BatchSize = batchSize;
-            options.DelayBetweenBatches = delayBetweenBatches;
-            return options;
-        }
+			ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(options.BatchSize, 0);
+			ArgumentOutOfRangeException.ThrowIfNegative(options.DelayBetweenBatches);
+			ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(options.CheckExpiredLocksInterval, 0);
+			ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(options.LockDurationSeconds, 0);
+			ArgumentOutOfRangeException.ThrowIfNegative(options.OldestMessageAgeThresholdMinutes);
 
-        /// <summary>
-        /// Validates the current configuration and throws if any value is out of the expected range.
-        /// </summary>
-        public static OutboxProcessorOptions Validate(this OutboxProcessorOptions options)
-        {
-            if (options == null) throw new ArgumentNullException(nameof(options));
-
-            if (options.BatchSize <= 0)
-                throw new ArgumentException("BatchSize must be greater than zero.", nameof(options.BatchSize));
-
-            if (options.DelayBetweenBatches < 0)
-                throw new ArgumentException("DelayBetweenBatches cannot be negative.", nameof(options.DelayBetweenBatches));
-
-            if (options.CheckExpiredLocksInterval <= 0)
-                throw new ArgumentException("CheckExpiredLocksInterval must be greater than zero.", nameof(options.CheckExpiredLocksInterval));
-
-            if (options.LockDurationSeconds <= 0)
-                throw new ArgumentException("LockDurationSeconds must be greater than zero.", nameof(options.LockDurationSeconds));
-
-            if (options.OldestMessageAgeThresholdMinutes < 0)
-                throw new ArgumentException("OldestMessageAgeThresholdMinutes cannot be negative.", nameof(options.OldestMessageAgeThresholdMinutes));
-
-            return options;
-        }
-    }
+			return options;
+		}
+	}
 }
