@@ -6,8 +6,17 @@ using FluentAssertions;
 
 namespace DotnetOutboxPattern.Tests;
 
+/// <summary>
+/// Provides unit tests for the <see cref="RetryPolicyHelper"/> class.
+/// Tests various retry policy calculation scenarios including fixed interval, linear backoff,
+/// exponential backoff, jitter, and edge cases.
+/// </summary>
 public sealed class RetryPolicyHelperTests
 {
+    /// <summary>
+    /// Tests that <see cref="RetryPolicyHelper.CalculateDelay"/> throws an <see cref="ArgumentException"/>
+    /// when the attempt number is zero.
+    /// </summary>
     [Fact]
     public void CalculateDelay_WithZeroAttempt_ThrowsArgumentException()
     {
@@ -16,6 +25,10 @@ public sealed class RetryPolicyHelperTests
         act.Should().Throw<ArgumentException>().WithParameterName("attemptNumber");
     }
 
+    /// <summary>
+    /// Tests that <see cref="RetryPolicyHelper.CalculateDelay"/> throws an <see cref="ArgumentException"/>
+    /// when the attempt number is negative.
+    /// </summary>
     [Fact]
     public void CalculateDelay_WithNegativeAttempt_ThrowsArgumentException()
     {
@@ -24,6 +37,10 @@ public sealed class RetryPolicyHelperTests
         act.Should().Throw<ArgumentException>();
     }
 
+    /// <summary>
+    /// Tests that <see cref="RetryPolicyHelper.CalculateDelay"/> returns <see cref="TimeSpan.Zero"/>
+    /// when the retry policy is set to <see cref="RetryPolicyType.NoRetry"/>.
+    /// </summary>
     [Fact]
     public void CalculateDelay_WithNoRetryPolicy_ReturnsZero()
     {
@@ -32,6 +49,10 @@ public sealed class RetryPolicyHelperTests
         delay.Should().Be(TimeSpan.Zero);
     }
 
+    /// <summary>
+    /// Tests that <see cref="RetryPolicyHelper.CalculateDelay"/> returns the same delay for each attempt
+    /// when using <see cref="RetryPolicyType.FixedInterval"/> retry policy.
+    /// </summary>
     [Fact]
     public void CalculateDelay_WithFixedIntervalPolicy_ReturnsSameDelayEachAttempt()
     {
@@ -50,6 +71,10 @@ public sealed class RetryPolicyHelperTests
         delay3.TotalSeconds.Should().BeApproximately(2, 0.5);
     }
 
+    /// <summary>
+    /// Tests that <see cref="RetryPolicyHelper.CalculateDelay"/> returns progressively increasing delays
+    /// when using <see cref="RetryPolicyType.LinearBackoff"/> retry policy.
+    /// </summary>
     [Fact]
     public void CalculateDelay_WithLinearBackoffPolicy_IncreasesProperly()
     {
@@ -69,6 +94,10 @@ public sealed class RetryPolicyHelperTests
         delay3.TotalSeconds.Should().BeGreaterThan(delay2.TotalSeconds);
     }
 
+    /// <summary>
+    /// Tests that <see cref="RetryPolicyHelper.CalculateDelay"/> returns exponentially increasing delays
+    /// when using <see cref="RetryPolicyType.ExponentialBackoff"/> retry policy.
+    /// </summary>
     [Fact]
     public void CalculateDelay_WithExponentialBackoffPolicy_ExponentiallyIncreases()
     {
@@ -90,6 +119,10 @@ public sealed class RetryPolicyHelperTests
         delay3.TotalSeconds.Should().BeApproximately(4, 0.1);
     }
 
+    /// <summary>
+    /// Tests that <see cref="RetryPolicyHelper.CalculateDelay"/> respects the maximum delay limit
+    /// specified in the publishing options when using exponential backoff.
+    /// </summary>
     [Fact]
     public void CalculateDelay_RespectMaxDelayLimit()
     {
@@ -110,6 +143,10 @@ public sealed class RetryPolicyHelperTests
         }
     }
 
+    /// <summary>
+    /// Tests that <see cref="RetryPolicyHelper.CalculateDelay"/> adds randomness to the delay
+    /// when jitter is enabled in the publishing options.
+    /// </summary>
     [Fact]
     public void CalculateDelay_WithJitterEnabled_AddsRandomness()
     {
@@ -128,6 +165,10 @@ public sealed class RetryPolicyHelperTests
         hasVariation.Should().BeTrue("jitter should produce variation");
     }
 
+    /// <summary>
+    /// Tests that <see cref="RetryPolicyHelper.CalculateDelay"/> produces the same delay value
+    /// when jitter is disabled in the publishing options.
+    /// </summary>
     [Fact]
     public void CalculateDelay_WithJitterDisabled_ProducesSameDelay()
     {
@@ -144,6 +185,10 @@ public sealed class RetryPolicyHelperTests
         delay1.Should().Be(delay2);
     }
 
+    /// <summary>
+    /// Tests that <see cref="RetryPolicyHelper.CalculateDelay"/> returns a minimum delay of one second
+    /// even when the initial retry delay is set to a smaller value.
+    /// </summary>
     [Fact]
     public void CalculateDelay_ReturnsMinimumOneSecond()
     {
@@ -158,6 +203,10 @@ public sealed class RetryPolicyHelperTests
         delay.Should().BeGreaterThanOrEqualTo(TimeSpan.FromSeconds(1));
     }
 
+    /// <summary>
+    /// Tests that <see cref="RetryPolicyHelper.CalculateStatistics"/> returns correct statistics
+    /// including max attempts, total retries, retry policy type, and total delay time.
+    /// </summary>
     [Fact]
     public void CalculateStatistics_ReturnsProperValues()
     {
@@ -175,6 +224,10 @@ public sealed class RetryPolicyHelperTests
         stats.TotalDelayTime.Should().BeGreaterThan(TimeSpan.Zero);
     }
 
+    /// <summary>
+    /// Tests that <see cref="RetryPolicyHelper.CalculateStatistics"/> returns zero retries and zero total delay time
+    /// when maxAttempts is set to 1.
+    /// </summary>
     [Fact]
     public void CalculateStatistics_WithOneAttempt_HasZeroRetries()
     {
@@ -185,6 +238,10 @@ public sealed class RetryPolicyHelperTests
         stats.TotalDelayTime.Should().Be(TimeSpan.Zero);
     }
 
+    /// <summary>
+    /// Tests that <see cref="RetryPolicyHelper.CalculateStatistics"/> correctly calculates the average retry delay
+    /// by comparing it to the total delay divided by the number of retries.
+    /// </summary>
     [Fact]
     public void CalculateStatistics_CalculatesAverageCorrectly()
     {
