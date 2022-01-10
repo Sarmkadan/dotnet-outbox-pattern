@@ -1,36 +1,103 @@
 // dotnet-outbox-pattern.Benchmarks/Benchmarks/OutboxSerializerBenchmarksExtensions.cs
-public static class OutboxSerializerBenchmarksExtensions
+using System;
+using System.Diagnostics;
+
+namespace DotnetOutboxPattern.Benchmarks
 {
-    public static void MeasureSerializationTime(this OutboxSerializerBenchmarks benchmarks, int iterations)
+    /// <summary>
+    /// Extension methods that provide convenient benchmarking utilities for <see cref="OutboxSerializerBenchmarks"/>
+    /// to measure serialization and deserialization performance.
+    /// </summary>
+    public static class OutboxSerializerBenchmarksExtensions
     {
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        for (int i = 0; i < iterations; i++)
+        /// <summary>
+        /// Measures the time taken to serialize events for the specified number of iterations.
+        /// </summary>
+        /// <param name="benchmarks">The benchmark instance to measure.</param>
+        /// <param name="iterations">The number of iterations to perform. Must be positive.</param>
+        /// <returns>The total elapsed time for all serialization iterations.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="benchmarks"/> is <see langword="null"/></exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="iterations"/> is not positive.</exception>
+        public static TimeSpan MeasureSerializationTime(this OutboxSerializerBenchmarks benchmarks, int iterations = 1)
         {
-            benchmarks.SerializeEvent();
-        }
-        stopwatch.Stop();
-        Console.WriteLine($"Serialization time: {stopwatch.ElapsedMilliseconds}ms");
-    }
+            ArgumentNullException.ThrowIfNull(benchmarks);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(iterations);
 
-    public static void MeasureDeserializationTime(this OutboxSerializerBenchmarks benchmarks, int iterations)
-    {
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        for (int i = 0; i < iterations; i++)
-        {
-            benchmarks.DeserializeEvent();
-        }
-        stopwatch.Stop();
-        Console.WriteLine($"Deserialization time: {stopwatch.ElapsedMilliseconds}ms");
-    }
+            var stopwatch = Stopwatch.StartNew();
 
-    public static void MeasureLargeEventSerializationTime(this OutboxSerializerBenchmarks benchmarks, int iterations)
-    {
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        for (int i = 0; i < iterations; i++)
-        {
-            benchmarks.SerializeLargeEvent();
+            try
+            {
+                for (int i = 0; i < iterations; i++)
+                {
+                    benchmarks.SerializeEvent();
+                }
+            }
+            finally
+            {
+                stopwatch.Stop();
+            }
+
+            return stopwatch.Elapsed;
         }
-        stopwatch.Stop();
-        Console.WriteLine($"Large event serialization time: {stopwatch.ElapsedMilliseconds}ms");
+
+        /// <summary>
+        /// Measures the time taken to deserialize events for the specified number of iterations.
+        /// </summary>
+        /// <param name="benchmarks">The benchmark instance to measure.</param>
+        /// <param name="iterations">The number of iterations to perform. Must be positive.</param>
+        /// <returns>The total elapsed time for all deserialization iterations.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="benchmarks"/> is <see langword="null"/></exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="iterations"/> is not positive.</exception>
+        public static TimeSpan MeasureDeserializationTime(this OutboxSerializerBenchmarks benchmarks, int iterations = 1)
+        {
+            ArgumentNullException.ThrowIfNull(benchmarks);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(iterations);
+
+            var stopwatch = Stopwatch.StartNew();
+
+            try
+            {
+                for (int i = 0; i < iterations; i++)
+                {
+                    benchmarks.DeserializeEvent();
+                }
+            }
+            finally
+            {
+                stopwatch.Stop();
+            }
+
+            return stopwatch.Elapsed;
+        }
+
+        /// <summary>
+        /// Measures the time taken to serialize large events for the specified number of iterations.
+        /// </summary>
+        /// <param name="benchmarks">The benchmark instance to measure.</param>
+        /// <param name="iterations">The number of iterations to perform. Must be positive.</param>
+        /// <returns>The total elapsed time for all large event serialization iterations.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="benchmarks"/> is <see langword="null"/></exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="iterations"/> is not positive.</exception>
+        public static TimeSpan MeasureLargeEventSerializationTime(this OutboxSerializerBenchmarks benchmarks, int iterations = 1)
+        {
+            ArgumentNullException.ThrowIfNull(benchmarks);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(iterations);
+
+            var stopwatch = Stopwatch.StartNew();
+
+            try
+            {
+                for (int i = 0; i < iterations; i++)
+                {
+                    benchmarks.SerializeLargeEvent();
+                }
+            }
+            finally
+            {
+                stopwatch.Stop();
+            }
+
+            return stopwatch.Elapsed;
+        }
     }
 }
