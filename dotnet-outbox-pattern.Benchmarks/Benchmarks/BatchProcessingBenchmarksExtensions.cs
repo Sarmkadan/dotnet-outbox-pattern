@@ -12,10 +12,15 @@ namespace DotnetOutboxPattern.Benchmarks
         /// <summary>
         /// Configures the batch size and returns the benchmark instance for fluent chaining.
         /// </summary>
+        /// <param name="benchmark">The benchmark instance to configure.</param>
+        /// <param name="batchSize">The batch size to use for processing.</param>
+        /// <returns>The configured benchmark instance for fluent chaining.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="benchmark"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="batchSize"/> is not positive.</exception>
         public static BatchProcessingBenchmarks ConfigureBatchSize(this BatchProcessingBenchmarks benchmark, int batchSize)
         {
-            if (benchmark == null) throw new ArgumentNullException(nameof(benchmark));
-            if (batchSize <= 0) throw new ArgumentOutOfRangeException(nameof(batchSize), "Batch size must be positive.");
+            ArgumentNullException.ThrowIfNull(benchmark);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(batchSize);
 
             benchmark.BatchSize = batchSize;
             return benchmark;
@@ -25,9 +30,11 @@ namespace DotnetOutboxPattern.Benchmarks
         /// Runs a warm‑up iteration: sets up the benchmark, processes a single batch of pending messages,
         /// then cleans up. Useful to eliminate JIT warm‑up effects before measuring.
         /// </summary>
+        /// <param name="benchmark">The benchmark instance to warm up.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="benchmark"/> is <see langword="null"/>.</exception>
         public static async Task WarmUpAsync(this BatchProcessingBenchmarks benchmark)
         {
-            if (benchmark == null) throw new ArgumentNullException(nameof(benchmark));
+            ArgumentNullException.ThrowIfNull(benchmark);
 
             benchmark.Setup();
             try
@@ -45,10 +52,15 @@ namespace DotnetOutboxPattern.Benchmarks
         /// The benchmark is set up once, the processing methods are called repeatedly, and then cleanup/dispose
         /// are performed.
         /// </summary>
+        /// <param name="benchmark">The benchmark instance to run.</param>
+        /// <param name="iterations">The number of iterations to perform. Must be positive.</param>
+        /// <returns>The total elapsed time for all iterations.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="benchmark"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="iterations"/> is not positive.</exception>
         public static async Task<TimeSpan> RunAllAsync(this BatchProcessingBenchmarks benchmark, int iterations = 1)
         {
-            if (benchmark == null) throw new ArgumentNullException(nameof(benchmark));
-            if (iterations <= 0) throw new ArgumentOutOfRangeException(nameof(iterations), "Iterations must be positive.");
+            ArgumentNullException.ThrowIfNull(benchmark);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(iterations);
 
             benchmark.Setup();
             var stopwatch = Stopwatch.StartNew();
@@ -73,11 +85,13 @@ namespace DotnetOutboxPattern.Benchmarks
 
         /// <summary>
         /// Measures the time taken to process pending messages once.
-        /// Returns the elapsed <see cref="TimeSpan"/>.
         /// </summary>
+        /// <param name="benchmark">The benchmark instance to measure.</param>
+        /// <returns>The elapsed <see cref="TimeSpan"/> for processing.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="benchmark"/> is <see langword="null"/>.</exception>
         public static async Task<TimeSpan> MeasurePendingProcessingAsync(this BatchProcessingBenchmarks benchmark)
         {
-            if (benchmark == null) throw new ArgumentNullException(nameof(benchmark));
+            ArgumentNullException.ThrowIfNull(benchmark);
 
             benchmark.Setup();
             var stopwatch = Stopwatch.StartNew();
