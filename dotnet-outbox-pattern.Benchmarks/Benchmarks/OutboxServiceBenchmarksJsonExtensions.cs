@@ -21,12 +21,10 @@ public static class OutboxServiceBenchmarksJsonExtensions
     /// <param name="value">The benchmark instance to serialize</param>
     /// <param name="indented">Whether to format the JSON with indentation</param>
     /// <returns>JSON string representation</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is <see langword="null"/></exception>
     public static string ToJson(this OutboxServiceBenchmarks value, bool indented = false)
     {
-        if (value == null)
-        {
-            return "{}";
-        }
+        ArgumentNullException.ThrowIfNull(value);
 
         var options = indented
             ? new JsonSerializerOptions(_jsonSerializerOptions)
@@ -42,9 +40,12 @@ public static class OutboxServiceBenchmarksJsonExtensions
     /// Deserializes JSON string to <see cref="OutboxServiceBenchmarks"/> instance
     /// </summary>
     /// <param name="json">JSON string to deserialize</param>
-    /// <returns>Deserialized benchmark instance or null if JSON is invalid</returns>
+    /// <returns>Deserialized benchmark instance or <see langword="null"/> if JSON is invalid or whitespace</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="json"/> is <see langword="null"/></exception>
     public static OutboxServiceBenchmarks? FromJson(string json)
     {
+        ArgumentNullException.ThrowIfNull(json);
+
         if (string.IsNullOrWhiteSpace(json))
         {
             return null;
@@ -64,10 +65,12 @@ public static class OutboxServiceBenchmarksJsonExtensions
     /// Attempts to deserialize JSON string to <see cref="OutboxServiceBenchmarks"/> instance
     /// </summary>
     /// <param name="json">JSON string to deserialize</param>
-    /// <param name="value">Output parameter containing the deserialized instance or null</param>
-    /// <returns>True if deserialization succeeded, false otherwise</returns>
+    /// <param name="value">Output parameter containing the deserialized instance or <see langword="null"/></param>
+    /// <returns><see langword="true"/> if deserialization succeeded; otherwise, <see langword="false"/></returns>
+    /// <exception cref="ArgumentNullException"><paramref name="json"/> is <see langword="null"/></exception>
     public static bool TryFromJson(string json, out OutboxServiceBenchmarks? value)
     {
+        ArgumentNullException.ThrowIfNull(json);
         value = null;
 
         if (string.IsNullOrWhiteSpace(json))
