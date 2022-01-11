@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using DotnetOutboxPattern.Domain;
@@ -11,18 +10,25 @@ namespace DotnetOutboxPattern.Benchmarks;
 /// Extension methods for <see cref="OutboxRepositoryBenchmarks"/> providing additional benchmarking scenarios
 /// and utilities for testing outbox repository performance under various conditions.
 /// </summary>
+/// <remarks>
+/// All methods in this class validate that the benchmark instance and repository are properly initialized.
+/// Methods that add data will clean up any existing data before inserting new records to ensure consistent benchmarks.
+/// </remarks>
 public static class OutboxRepositoryBenchmarksExtensions
 {
     /// <summary>
-    /// Benchmark adding multiple messages in a single batch operation
+    /// Benchmark adding multiple messages (100) in a single batch operation.
     /// </summary>
+    /// <param name="benchmarks">The benchmark instance containing the initialized repository.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="benchmarks"/> or its repository is null.</exception>
     [Benchmark]
     public static async Task AddMultipleMessages_Batch100(this OutboxRepositoryBenchmarks benchmarks)
     {
-        if (benchmarks._repository == null)
-            throw new InvalidOperationException("Repository not initialized. Call Setup() first.");
+        ArgumentNullException.ThrowIfNull(benchmarks);
+        ArgumentNullException.ThrowIfNull(benchmarks._repository);
 
-        var messages = new List<OutboxMessage>();
+        var messages = new List<OutboxMessage>(100);
         for (int i = 0; i < 100; i++)
         {
             messages.Add(new OutboxMessage
@@ -46,15 +52,18 @@ public static class OutboxRepositoryBenchmarksExtensions
     }
 
     /// <summary>
-    /// Benchmark adding messages with different partition keys to test partition distribution
+    /// Benchmark adding messages with different partition keys to test partition distribution.
     /// </summary>
+    /// <param name="benchmarks">The benchmark instance containing the initialized repository.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="benchmarks"/> or its repository is null.</exception>
     [Benchmark]
     public static async Task AddMessages_DifferentPartitions(this OutboxRepositoryBenchmarks benchmarks)
     {
-        if (benchmarks._repository == null)
-            throw new InvalidOperationException("Repository not initialized. Call Setup() first.");
+        ArgumentNullException.ThrowIfNull(benchmarks);
+        ArgumentNullException.ThrowIfNull(benchmarks._repository);
 
-        var messages = new List<OutboxMessage>();
+        var messages = new List<OutboxMessage>(100);
         for (int i = 0; i < 100; i++)
         {
             messages.Add(new OutboxMessage
@@ -78,37 +87,46 @@ public static class OutboxRepositoryBenchmarksExtensions
     }
 
     /// <summary>
-    /// Benchmark retrieving pending messages with a limit on the number of messages returned
+    /// Benchmark retrieving pending messages with a limit on the number of messages returned.
     /// </summary>
+    /// <param name="benchmarks">The benchmark instance containing the initialized repository.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="benchmarks"/> or its repository is null.</exception>
     [Benchmark]
     public static async Task GetPendingMessages_Limited50(this OutboxRepositoryBenchmarks benchmarks)
     {
-        if (benchmarks._repository == null)
-            throw new InvalidOperationException("Repository not initialized. Call Setup() first.");
+        ArgumentNullException.ThrowIfNull(benchmarks);
+        ArgumentNullException.ThrowIfNull(benchmarks._repository);
 
         await benchmarks._repository.GetPendingMessagesAsync(50);
     }
 
     /// <summary>
-    /// Benchmark retrieving pending messages by specific partition with size limit
+    /// Benchmark retrieving pending messages by specific partition with size limit.
     /// </summary>
+    /// <param name="benchmarks">The benchmark instance containing the initialized repository.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="benchmarks"/> or its repository is null.</exception>
     [Benchmark]
     public static async Task GetPendingMessagesByPartition_Limited50(this OutboxRepositoryBenchmarks benchmarks)
     {
-        if (benchmarks._repository == null)
-            throw new InvalidOperationException("Repository not initialized. Call Setup() first.");
+        ArgumentNullException.ThrowIfNull(benchmarks);
+        ArgumentNullException.ThrowIfNull(benchmarks._repository);
 
         await benchmarks._repository.GetPendingByPartitionAsync("test-partition", 50);
     }
 
     /// <summary>
-    /// Benchmark retrieving pending count when database has many messages
+    /// Benchmark retrieving pending count when database has many messages.
     /// </summary>
+    /// <param name="benchmarks">The benchmark instance containing the initialized repository.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="benchmarks"/> or its repository is null.</exception>
     [Benchmark]
     public static async Task GetPendingCount_LargeDataset(this OutboxRepositoryBenchmarks benchmarks)
     {
-        if (benchmarks._repository == null)
-            throw new InvalidOperationException("Repository not initialized. Call Setup() first.");
+        ArgumentNullException.ThrowIfNull(benchmarks);
+        ArgumentNullException.ThrowIfNull(benchmarks._repository);
 
         // First add a large batch to simulate real-world scenario
         await benchmarks.AddMultipleMessages_Batch100();
@@ -117,13 +135,16 @@ public static class OutboxRepositoryBenchmarksExtensions
     }
 
     /// <summary>
-    /// Benchmark getting statistics when database has pending messages
+    /// Benchmark getting statistics when database has pending messages.
     /// </summary>
+    /// <param name="benchmarks">The benchmark instance containing the initialized repository.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="benchmarks"/> or its repository is null.</exception>
     [Benchmark]
     public static async Task GetStatistics_WithData(this OutboxRepositoryBenchmarks benchmarks)
     {
-        if (benchmarks._repository == null)
-            throw new InvalidOperationException("Repository not initialized. Call Setup() first.");
+        ArgumentNullException.ThrowIfNull(benchmarks);
+        ArgumentNullException.ThrowIfNull(benchmarks._repository);
 
         // Add some data first
         await benchmarks.AddSingleMessage();
@@ -133,13 +154,16 @@ public static class OutboxRepositoryBenchmarksExtensions
     }
 
     /// <summary>
-    /// Benchmark retrieving pending messages by multiple partitions
+    /// Benchmark retrieving pending messages by multiple partitions.
     /// </summary>
+    /// <param name="benchmarks">The benchmark instance containing the initialized repository.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="benchmarks"/> or its repository is null.</exception>
     [Benchmark]
     public static async Task GetPendingMessages_MultiplePartitions(this OutboxRepositoryBenchmarks benchmarks)
     {
-        if (benchmarks._repository == null)
-            throw new InvalidOperationException("Repository not initialized. Call Setup() first.");
+        ArgumentNullException.ThrowIfNull(benchmarks);
+        ArgumentNullException.ThrowIfNull(benchmarks._repository);
 
         // Add messages to multiple partitions
         await benchmarks.AddMessages_DifferentPartitions();
@@ -149,15 +173,18 @@ public static class OutboxRepositoryBenchmarksExtensions
     }
 
     /// <summary>
-    /// Utility method to add a large dataset for stress testing
+    /// Utility method to add a large dataset (1000 messages) for stress testing.
     /// </summary>
+    /// <param name="benchmarks">The benchmark instance containing the initialized repository.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="benchmarks"/> or its repository is null.</exception>
     [Benchmark]
     public static async Task AddLargeDataset_1000Messages(this OutboxRepositoryBenchmarks benchmarks)
     {
-        if (benchmarks._repository == null)
-            throw new InvalidOperationException("Repository not initialized. Call Setup() first.");
+        ArgumentNullException.ThrowIfNull(benchmarks);
+        ArgumentNullException.ThrowIfNull(benchmarks._repository);
 
-        var messages = new List<OutboxMessage>();
+        var messages = new List<OutboxMessage>(1000);
         for (int i = 0; i < 1000; i++)
         {
             messages.Add(new OutboxMessage
@@ -181,26 +208,32 @@ public static class OutboxRepositoryBenchmarksExtensions
     }
 
     /// <summary>
-    /// Benchmark retrieving pending messages after large dataset insertion
+    /// Benchmark retrieving pending messages after large dataset insertion.
     /// </summary>
+    /// <param name="benchmarks">The benchmark instance containing the initialized repository.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="benchmarks"/> or its repository is null.</exception>
     [Benchmark]
     public static async Task GetPendingMessages_AfterLargeInsert(this OutboxRepositoryBenchmarks benchmarks)
     {
-        if (benchmarks._repository == null)
-            throw new InvalidOperationException("Repository not initialized. Call Setup() first.");
+        ArgumentNullException.ThrowIfNull(benchmarks);
+        ArgumentNullException.ThrowIfNull(benchmarks._repository);
 
         await benchmarks.AddLargeDataset_1000Messages();
         await benchmarks._repository.GetPendingMessagesAsync(100);
     }
 
     /// <summary>
-    /// Benchmark getting statistics after large dataset insertion
+    /// Benchmark getting statistics after large dataset insertion.
     /// </summary>
+    /// <param name="benchmarks">The benchmark instance containing the initialized repository.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="benchmarks"/> or its repository is null.</exception>
     [Benchmark]
     public static async Task GetStatistics_AfterLargeInsert(this OutboxRepositoryBenchmarks benchmarks)
     {
-        if (benchmarks._repository == null)
-            throw new InvalidOperationException("Repository not initialized. Call Setup() first.");
+        ArgumentNullException.ThrowIfNull(benchmarks);
+        ArgumentNullException.ThrowIfNull(benchmarks._repository);
 
         await benchmarks.AddLargeDataset_1000Messages();
         await benchmarks._repository.GetStatisticsAsync();
