@@ -10,7 +10,7 @@ using DotnetOutboxPattern.Domain;
 namespace DotnetOutboxPattern.Tests;
 
 /// <summary>
-/// System.Text.Json serialization extensions for DeadLetter type
+/// System.Text.Json serialization extensions for DeadLetter type used in tests
 /// </summary>
 public static class DeadLetterAdditionalTestsJsonExtensions
 {
@@ -25,19 +25,14 @@ public static class DeadLetterAdditionalTestsJsonExtensions
     /// </summary>
     /// <param name="value">DeadLetter instance to serialize</param>
     /// <param name="indented">Whether to format the JSON with indentation</param>
-    /// <returns>JSON string representation</returns>
+    /// <returns>JSON string representation, or "null" for null input</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is null</exception>
     public static string ToJson(this DeadLetter value, bool indented = false)
     {
-        if (value is null)
-        {
-            return "null";
-        }
+        ArgumentNullException.ThrowIfNull(value);
 
         var options = indented
-            ? new JsonSerializerOptions(_jsonSerializerOptions)
-            {
-                WriteIndented = true
-            }
+            ? new JsonSerializerOptions(_jsonSerializerOptions) { WriteIndented = true }
             : _jsonSerializerOptions;
 
         return JsonSerializer.Serialize(value, options);
@@ -48,14 +43,14 @@ public static class DeadLetterAdditionalTestsJsonExtensions
     /// </summary>
     /// <param name="json">JSON string to deserialize</param>
     /// <returns>Deserialized DeadLetter instance or null if JSON is null or empty</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is null</exception>
     public static DeadLetter? FromJson(string json)
     {
-        if (string.IsNullOrWhiteSpace(json) || json == "null")
-        {
-            return null;
-        }
+        ArgumentNullException.ThrowIfNull(json);
 
-        return JsonSerializer.Deserialize<DeadLetter>(json, _jsonSerializerOptions);
+        return string.IsNullOrWhiteSpace(json)
+            ? null
+            : JsonSerializer.Deserialize<DeadLetter>(json, _jsonSerializerOptions);
     }
 
     /// <summary>
@@ -64,18 +59,21 @@ public static class DeadLetterAdditionalTestsJsonExtensions
     /// <param name="json">JSON string to deserialize</param>
     /// <param name="value">Output parameter for the deserialized DeadLetter</param>
     /// <returns>True if deserialization succeeded, false otherwise</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is null</exception>
     public static bool TryFromJson(string json, out DeadLetter? value)
     {
+        ArgumentNullException.ThrowIfNull(json);
+
         value = null;
 
-        if (string.IsNullOrWhiteSpace(json) || json == "null")
+        if (string.IsNullOrWhiteSpace(json))
         {
             return false;
         }
 
         try
         {
-            value = JsonSerializer.Deserialize<DeadLetter>(json, _jsonSerializerOptions) ?? null;
+            value = JsonSerializer.Deserialize<DeadLetter>(json, _jsonSerializerOptions);
             return true;
         }
         catch (JsonException)
