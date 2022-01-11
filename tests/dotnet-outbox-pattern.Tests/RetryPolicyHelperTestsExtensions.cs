@@ -15,6 +15,8 @@ public static class RetryPolicyHelperTestsExtensions
     /// <param name="policyType">The retry policy type to test</param>
     /// <param name="initialDelay">Initial retry delay</param>
     /// <param name="expectedDelayAtAttempt">Function that returns expected delay for each attempt</param>
+    /// <exception cref="ArgumentNullException"><paramref name="test"/> or <paramref name="expectedDelayAtAttempt"/> is <see langword="null"/></exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="initialDelay"/> is negative</exception>
     /// <returns>The test instance for method chaining</returns>
     public static RetryPolicyHelperTests CalculateDelay_WithPolicyType_ShouldProduceExpectedDelays(
         this RetryPolicyHelperTests test,
@@ -22,6 +24,10 @@ public static class RetryPolicyHelperTestsExtensions
         TimeSpan initialDelay,
         Func<int, TimeSpan> expectedDelayAtAttempt)
     {
+        ArgumentNullException.ThrowIfNull(test);
+        ArgumentNullException.ThrowIfNull(expectedDelayAtAttempt);
+        ArgumentOutOfRangeException.ThrowIfNegative(initialDelay.TotalMilliseconds);
+
         var options = new PublishingOptions
         {
             RetryPolicy = policyType,
@@ -50,6 +56,7 @@ public static class RetryPolicyHelperTestsExtensions
     /// <param name="maxAttempts">Maximum number of attempts</param>
     /// <param name="expectedTotalRetries">Expected total retries</param>
     /// <param name="expectedTotalDelay">Expected total delay time</param>
+    /// <exception cref="ArgumentNullException"><paramref name="test"/> or <paramref name="options"/> is <see langword="null"/></exception>
     /// <returns>The test instance for method chaining</returns>
     public static RetryPolicyHelperTests CalculateStatistics_ShouldMatchExpectedValues(
         this RetryPolicyHelperTests test,
@@ -58,6 +65,10 @@ public static class RetryPolicyHelperTestsExtensions
         int expectedTotalRetries,
         TimeSpan expectedTotalDelay)
     {
+        ArgumentNullException.ThrowIfNull(test);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxAttempts);
+
         var stats = RetryPolicyHelper.CalculateStatistics(options, maxAttempts);
 
         stats.TotalRetries.Should().Be(expectedTotalRetries);
@@ -76,6 +87,8 @@ public static class RetryPolicyHelperTestsExtensions
     /// <param name="attemptNumber">Attempt number to test</param>
     /// <param name="minExpectedSeconds">Minimum expected delay in seconds</param>
     /// <param name="maxExpectedSeconds">Maximum expected delay in seconds</param>
+    /// <exception cref="ArgumentNullException"><paramref name="test"/> is <see langword="null"/></exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="initialDelay"/> is negative or <paramref name="attemptNumber"/> is not positive</exception>
     /// <returns>The test instance for method chaining</returns>
     public static RetryPolicyHelperTests CalculateDelay_WithJitter_ShouldBeWithinRange(
         this RetryPolicyHelperTests test,
@@ -85,6 +98,15 @@ public static class RetryPolicyHelperTestsExtensions
         double minExpectedSeconds,
         double maxExpectedSeconds)
     {
+        ArgumentNullException.ThrowIfNull(test);
+        ArgumentOutOfRangeException.ThrowIfNegative(initialDelay.TotalMilliseconds);
+        if (attemptNumber <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(attemptNumber), "Attempt number must be positive");
+        }
+        ArgumentOutOfRangeException.ThrowIfNegative(minExpectedSeconds);
+        ArgumentOutOfRangeException.ThrowIfNegative(maxExpectedSeconds);
+
         var options = new PublishingOptions
         {
             RetryPolicy = policyType,
