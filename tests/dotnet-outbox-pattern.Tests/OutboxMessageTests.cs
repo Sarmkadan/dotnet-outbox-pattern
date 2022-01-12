@@ -9,226 +9,270 @@ using FluentAssertions;
 
 namespace DotnetOutboxPattern.Tests;
 
+/// <summary>
+/// Contains unit tests for the <see cref="OutboxMessage"/> class to verify its behavior and state transitions.
+/// </summary>
 public sealed class OutboxMessageTests
 {
-    private static OutboxMessage CreateValidMessage() => new()
-    {
-        Id = Guid.NewGuid(),
-        IdempotencyKey = "key-001",
-        AggregateId = "agg-1",
-        AggregateType = "Order",
-        EventType = EventType.Created,
-        EventData = "{\"orderId\":\"1\"}",
-        EventTypeName = "OrderCreatedEvent",
-        Topic = "orders.created",
-        MaxPublishAttempts = 5,
-        CreatedAt = DateTime.UtcNow
-    };
+	/// <summary>
+	/// Creates a valid <see cref="OutboxMessage"/> instance for testing purposes.
+	/// </summary>
+	/// <returns>A new <see cref="OutboxMessage"/> with valid property values.</returns>
+	private static OutboxMessage CreateValidMessage() => new()
+	{
+		Id = Guid.NewGuid(),
+		IdempotencyKey = "key-001",
+		AggregateId = "agg-1",
+		AggregateType = "Order",
+		EventType = EventType.Created,
+		EventData = "{\"orderId\":\"1\"}",
+		EventTypeName = "OrderCreatedEvent",
+		Topic = "orders.created",
+		MaxPublishAttempts = 5,
+		CreatedAt = DateTime.UtcNow
+	};
 
-    [Fact]
-    public void Validate_WithValidMessage_DoesNotThrow()
-    {
-        var message = CreateValidMessage();
+	[Fact]
+	public void Validate_WithValidMessage_DoesNotThrow()
+	{
+		var message = CreateValidMessage();
 
-        var act = () => message.Validate();
+		var act = () => message.Validate();
 
-        act.Should().NotThrow();
-    }
+		act.Should().NotThrow();
+	}
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData(null)]
-    public void Validate_WithEmptyIdempotencyKey_ThrowsArgumentException(string? key)
-    {
-        var message = CreateValidMessage();
-        message.IdempotencyKey = key!;
+	[Theory]
+	[InlineData("")]
+	[InlineData(" ")]
+	[InlineData(null)]
+	public void Validate_WithEmptyIdempotencyKey_ThrowsArgumentException(string? key)
+	{
+		var message = CreateValidMessage();
+		message.IdempotencyKey = key!;
 
-        var act = () => message.Validate();
+		var act = () => message.Validate();
 
-        act.Should().Throw<ArgumentException>().WithMessage("*IdempotencyKey*");
-    }
+		act.Should().Throw<ArgumentException>().WithMessage("*IdempotencyKey*");
+	}
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData(null)]
-    public void Validate_WithEmptyTopic_ThrowsArgumentException(string? topic)
-    {
-        var message = CreateValidMessage();
-        message.Topic = topic!;
+	[Theory]
+	[InlineData("")]
+	[InlineData(" ")]
+	[InlineData(null)]
+	public void Validate_WithEmptyTopic_ThrowsArgumentException(string? topic)
+	{
+		var message = CreateValidMessage();
+		message.Topic = topic!;
 
-        var act = () => message.Validate();
+		var act = () => message.Validate();
 
-        act.Should().Throw<ArgumentException>().WithMessage("*Topic*");
-    }
+		act.Should().Throw<ArgumentException>().WithMessage("*Topic*");
+	}
 
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    [InlineData(-100)]
-    public void Validate_WithNonPositiveMaxPublishAttempts_ThrowsArgumentException(int maxAttempts)
-    {
-        var message = CreateValidMessage();
-        message.MaxPublishAttempts = maxAttempts;
+	[Theory]
+	[InlineData(0)]
+	[InlineData(-1)]
+	[InlineData(-100)]
+	public void Validate_WithNonPositiveMaxPublishAttempts_ThrowsArgumentException(int maxAttempts)
+	{
+		var message = CreateValidMessage();
+		message.MaxPublishAttempts = maxAttempts;
 
-        var act = () => message.Validate();
+		var act = () => message.Validate();
 
-        act.Should().Throw<ArgumentException>().WithMessage("*MaxPublishAttempts*");
-    }
+		act.Should().Throw<ArgumentException>().WithMessage("*MaxPublishAttempts*");
+	}
 
-    [Fact]
-    public void MarkAsPublished_SetsStateToPublished()
-    {
-        var message = CreateValidMessage();
-        message.State = OutboxMessageState.Processing;
+	/// <summary>
+	/// Tests that <see cref="OutboxMessage.MarkAsPublished"/> sets the message state to Published.
+	/// </summary>
+	[Fact]
+	public void MarkAsPublished_SetsStateToPublished()
+	{
+		var message = CreateValidMessage();
+		message.State = OutboxMessageState.Processing;
 
-        message.MarkAsPublished();
+		message.MarkAsPublished();
 
-        message.State.Should().Be(OutboxMessageState.Published);
-    }
+		message.State.Should().Be(OutboxMessageState.Published);
+	}
 
-    [Fact]
-    public void MarkAsPublished_SetsPublishedAtAndClearsError()
-    {
-        var before = DateTime.UtcNow;
-        var message = CreateValidMessage();
-        message.ErrorMessage = "transient failure";
-        message.ErrorStackTrace = "at line 42";
-        message.IsLocked = true;
+	/// <summary>
+	/// Tests that <see cref="OutboxMessage.MarkAsPublished"/> sets PublishedAt timestamp and clears error information.
+	/// </summary>
+	[Fact]
+	public void MarkAsPublished_SetsPublishedAtAndClearsError()
+	{
+		var before = DateTime.UtcNow;
+		var message = CreateValidMessage();
+		message.ErrorMessage = "transient failure";
+		message.ErrorStackTrace = "at line 42";
+		message.IsLocked = true;
 
-        message.MarkAsPublished();
+		message.MarkAsPublished();
 
-        message.PublishedAt.Should().NotBeNull();
-        message.PublishedAt.Should().BeOnOrAfter(before);
-        message.IsLocked.Should().BeFalse();
-        message.ErrorMessage.Should().BeNull();
-        message.ErrorStackTrace.Should().BeNull();
-    }
+		message.PublishedAt.Should().NotBeNull();
+		message.PublishedAt.Should().BeOnOrAfter(before);
+		message.IsLocked.Should().BeFalse();
+		message.ErrorMessage.Should().BeNull();
+		message.ErrorStackTrace.Should().BeNull();
+	}
 
-    [Fact]
-    public void RecordFailure_IncrementsPublishAttempts()
-    {
-        var message = CreateValidMessage();
-        var initialAttempts = message.PublishAttempts;
+	/// <summary>
+	/// Tests that <see cref="OutboxMessage.RecordFailure"/> increments the publish attempts counter.
+	/// </summary>
+	[Fact]
+	public void RecordFailure_IncrementsPublishAttempts()
+	{
+		var message = CreateValidMessage();
+		var initialAttempts = message.PublishAttempts;
 
-        message.RecordFailure("timeout error");
+		message.RecordFailure("timeout error");
 
-        message.PublishAttempts.Should().Be(initialAttempts + 1);
-    }
+		message.PublishAttempts.Should().Be(initialAttempts + 1);
+	}
 
-    [Fact]
-    public void RecordFailure_StoresErrorMessageAndReleasesLock()
-    {
-        var message = CreateValidMessage();
-        message.IsLocked = true;
+	/// <summary>
+	/// Tests that <see cref="OutboxMessage.RecordFailure"/> stores error information and releases the lock.
+	/// </summary>
+	[Fact]
+	public void RecordFailure_StoresErrorMessageAndReleasesLock()
+	{
+		var message = CreateValidMessage();
+		message.IsLocked = true;
 
-        message.RecordFailure("connection refused", "at SomeMethod()");
+		message.RecordFailure("connection refused", "at SomeMethod()");
 
-        message.ErrorMessage.Should().Be("connection refused");
-        message.ErrorStackTrace.Should().Be("at SomeMethod()");
-        message.IsLocked.Should().BeFalse();
-        message.LastProcessedAt.Should().NotBeNull();
-    }
+		message.ErrorMessage.Should().Be("connection refused");
+		message.ErrorStackTrace.Should().Be("at SomeMethod()");
+		message.IsLocked.Should().BeFalse();
+		message.LastProcessedAt.Should().NotBeNull();
+	}
 
-    [Fact]
-    public void RecordFailure_WhenMaxAttemptsReached_SetsStateFailed()
-    {
-        var message = CreateValidMessage();
-        message.MaxPublishAttempts = 3;
-        message.PublishAttempts = 2;
+	/// <summary>
+	/// Tests that <see cref="OutboxMessage.RecordFailure"/> sets the message state to Failed when maximum attempts are reached.
+	/// </summary>
+	[Fact]
+	public void RecordFailure_WhenMaxAttemptsReached_SetsStateFailed()
+	{
+		var message = CreateValidMessage();
+		message.MaxPublishAttempts = 3;
+		message.PublishAttempts = 2;
 
-        message.RecordFailure("final failure");
+		message.RecordFailure("final failure");
 
-        message.State.Should().Be(OutboxMessageState.Failed);
-    }
+		message.State.Should().Be(OutboxMessageState.Failed);
+	}
 
-    [Fact]
-    public void RecordFailure_BelowMaxAttempts_DoesNotChangeState()
-    {
-        var message = CreateValidMessage();
-        message.MaxPublishAttempts = 5;
-        message.PublishAttempts = 0;
-        message.State = OutboxMessageState.Pending;
+	/// <summary>
+	/// Tests that <see cref="OutboxMessage.RecordFailure"/> does not change the state when attempts are below maximum.
+	/// </summary>
+	[Fact]
+	public void RecordFailure_BelowMaxAttempts_DoesNotChangeState()
+	{
+		var message = CreateValidMessage();
+		message.MaxPublishAttempts = 5;
+		message.PublishAttempts = 0;
+		message.State = OutboxMessageState.Pending;
 
-        message.RecordFailure("intermittent failure");
+		message.RecordFailure("intermittent failure");
 
-        message.State.Should().Be(OutboxMessageState.Pending);
-    }
+		message.State.Should().Be(OutboxMessageState.Pending);
+	}
 
-    [Fact]
-    public void Lock_SetsIsLockedTrueAndStateToProcessing()
-    {
-        var message = CreateValidMessage();
-        var before = DateTime.UtcNow;
+	/// <summary>
+	/// Tests that <see cref="OutboxMessage.Lock"/> sets IsLocked to true and changes state to Processing.
+	/// </summary>
+	[Fact]
+	public void Lock_SetsIsLockedTrueAndStateToProcessing()
+	{
+		var message = CreateValidMessage();
+		var before = DateTime.UtcNow;
 
-        message.Lock(TimeSpan.FromMinutes(5));
+		message.Lock(TimeSpan.FromMinutes(5));
 
-        message.IsLocked.Should().BeTrue();
-        message.State.Should().Be(OutboxMessageState.Processing);
-        message.LockExpiresAt.Should().BeOnOrAfter(before.AddMinutes(5));
-    }
 
-    [Fact]
-    public void UnlockIfExpired_WhenLockHasExpired_ReturnsTrueAndResetsToPending()
-    {
-        var message = CreateValidMessage();
-        message.IsLocked = true;
-        message.LockExpiresAt = DateTime.UtcNow.AddSeconds(-1);
-        message.State = OutboxMessageState.Processing;
+		message.IsLocked.Should().BeTrue();
+		message.State.Should().Be(OutboxMessageState.Processing);
+		message.LockExpiresAt.Should().BeOnOrAfter(before.AddMinutes(5));
+	}
 
-        var result = message.UnlockIfExpired();
+	/// <summary>
+	/// Tests that <see cref="OutboxMessage.UnlockIfExpired"/> returns true and resets state to Pending when lock has expired.
+	/// </summary>
+	[Fact]
+	public void UnlockIfExpired_WhenLockHasExpired_ReturnsTrueAndResetsToPending()
+	{
+		var message = CreateValidMessage();
+		message.IsLocked = true;
+		message.LockExpiresAt = DateTime.UtcNow.AddSeconds(-1);
+		message.State = OutboxMessageState.Processing;
 
-        result.Should().BeTrue();
-        message.IsLocked.Should().BeFalse();
-        message.State.Should().Be(OutboxMessageState.Pending);
-    }
+		var result = message.UnlockIfExpired();
 
-    [Fact]
-    public void UnlockIfExpired_WhenLockStillActive_ReturnsFalse()
-    {
-        var message = CreateValidMessage();
-        message.IsLocked = true;
-        message.LockExpiresAt = DateTime.UtcNow.AddMinutes(5);
-        message.State = OutboxMessageState.Processing;
+		result.Should().BeTrue();
+		message.IsLocked.Should().BeFalse();
+		message.State.Should().Be(OutboxMessageState.Pending);
+	}
 
-        var result = message.UnlockIfExpired();
+	/// <summary>
+	/// Tests that <see cref="OutboxMessage.UnlockIfExpired"/> returns false when lock is still active.
+	/// </summary>
+	[Fact]
+	public void UnlockIfExpired_WhenLockStillActive_ReturnsFalse()
+	{
+		var message = CreateValidMessage();
+		message.IsLocked = true;
+		message.LockExpiresAt = DateTime.UtcNow.AddMinutes(5);
+		message.State = OutboxMessageState.Processing;
 
-        result.Should().BeFalse();
-        message.IsLocked.Should().BeTrue();
-        message.State.Should().Be(OutboxMessageState.Processing);
-    }
+		var result = message.UnlockIfExpired();
 
-    [Fact]
-    public void CanRetry_WhenBelowMaxAttempts_ReturnsTrue()
-    {
-        var message = CreateValidMessage();
-        message.MaxPublishAttempts = 5;
-        message.PublishAttempts = 3;
-        message.State = OutboxMessageState.Pending;
+		result.Should().BeFalse();
+		message.IsLocked.Should().BeTrue();
+		message.State.Should().Be(OutboxMessageState.Processing);
+	}
 
-        message.CanRetry().Should().BeTrue();
-    }
+	/// <summary>
+	/// Tests that <see cref="OutboxMessage.CanRetry"/> returns true when publish attempts are below maximum.
+	/// </summary>
+	[Fact]
+	public void CanRetry_WhenBelowMaxAttempts_ReturnsTrue()
+	{
+		var message = CreateValidMessage();
+		message.MaxPublishAttempts = 5;
+		message.PublishAttempts = 3;
+		message.State = OutboxMessageState.Pending;
 
-    [Fact]
-    public void CanRetry_WhenAttemptsEqualMax_ReturnsFalse()
-    {
-        var message = CreateValidMessage();
-        message.MaxPublishAttempts = 3;
-        message.PublishAttempts = 3;
+		message.CanRetry().Should().BeTrue();
+	}
 
-        message.CanRetry().Should().BeFalse();
-    }
+	/// <summary>
+	/// Tests that <see cref="OutboxMessage.CanRetry"/> returns false when publish attempts equal maximum.
+	/// </summary>
+	[Fact]
+	public void CanRetry_WhenAttemptsEqualMax_ReturnsFalse()
+	{
+		var message = CreateValidMessage();
+		message.MaxPublishAttempts = 3;
+		message.PublishAttempts = 3;
 
-    [Fact]
-    public void CanRetry_WhenStateIsPublished_ReturnsFalse()
-    {
-        var message = CreateValidMessage();
-        message.PublishAttempts = 0;
-        message.MaxPublishAttempts = 5;
+		message.CanRetry().Should().BeFalse();
+	}
 
-        message.MarkAsPublished();
+	/// <summary>
+	/// Tests that <see cref="OutboxMessage.CanRetry"/> returns false when message state is Published.
+	/// </summary>
+	[Fact]
+	public void CanRetry_WhenStateIsPublished_ReturnsFalse()
+	{
+		var message = CreateValidMessage();
+		message.PublishAttempts = 0;
+		message.MaxPublishAttempts = 5;
 
-        message.CanRetry().Should().BeFalse();
-    }
+		message.MarkAsPublished();
+
+		message.CanRetry().Should().BeFalse();
+	}
 }
