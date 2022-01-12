@@ -8,17 +8,26 @@ using Moq;
 
 namespace DotnetOutboxPattern.Tests;
 
+/// <summary>
+/// Tests for the DefaultMessagePublisher class.
+/// </summary>
 public sealed class DefaultMessagePublisherTests
 {
     private readonly Mock<ILogger<DefaultMessagePublisher>> _loggerMock;
     private readonly DefaultMessagePublisher _sut;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DefaultMessagePublisherTests"/> class.
+    /// </summary>
     public DefaultMessagePublisherTests()
     {
         _loggerMock = new Mock<ILogger<DefaultMessagePublisher>>();
         _sut = new DefaultMessagePublisher(_loggerMock.Object);
     }
 
+    /// <summary>
+    /// Verifies that the constructor throws an ArgumentNullException when a null logger is passed.
+    /// </summary>
     [Fact]
     public void Constructor_WithNullLogger_ThrowsArgumentNullException()
     {
@@ -26,6 +35,9 @@ public sealed class DefaultMessagePublisherTests
         act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
     }
 
+    /// <summary>
+    /// Verifies that the PublishAsync method completes successfully when a valid message is passed.
+    /// </summary>
     [Fact]
     public async Task PublishAsync_WithValidMessage_CompletesSuccessfully()
     {
@@ -36,6 +48,9 @@ public sealed class DefaultMessagePublisherTests
         await act.Should().NotThrowAsync();
     }
 
+    /// <summary>
+    /// Verifies that the PublishAsync method logs message details when a valid message is passed.
+    /// </summary>
     [Fact]
     public async Task PublishAsync_WithValidMessage_LogsMessageDetails()
     {
@@ -59,6 +74,9 @@ public sealed class DefaultMessagePublisherTests
             Times.Once);
     }
 
+    /// <summary>
+    /// Verifies that the PublishAsync method does not throw when a null message is passed.
+    /// </summary>
     [Fact]
     public async Task PublishAsync_WithNullMessage_DoesNotThrow()
     {
@@ -69,6 +87,9 @@ public sealed class DefaultMessagePublisherTests
         await act.Should().NotThrowAsync();
     }
 
+    /// <summary>
+    /// Verifies that the PublishAsync method respects the CancellationToken.
+    /// </summary>
     [Fact]
     public async Task PublishAsync_RespectsCancellationToken()
     {
@@ -81,6 +102,9 @@ public sealed class DefaultMessagePublisherTests
         await act.Should().NotThrowAsync();
     }
 
+    /// <summary>
+    /// Verifies that the PublishAsync method publishes each message when multiple messages are passed.
+    /// </summary>
     [Fact]
     public async Task PublishAsync_MultipleMessages_PublishesEach()
     {
@@ -100,6 +124,9 @@ public sealed class DefaultMessagePublisherTests
             Times.Exactly(2));
     }
 
+    /// <summary>
+    /// Verifies that the PublishAsync method logs the event type.
+    /// </summary>
     [Fact]
     public async Task PublishAsync_LogsEventType()
     {
@@ -119,6 +146,10 @@ public sealed class DefaultMessagePublisherTests
             Times.Once);
     }
 
+    /// <summary>
+    /// Creates a test message.
+    /// </summary>
+    /// <returns>A test message.</returns>
     private static OutboxMessage CreateTestMessage() => new()
     {
         Id = Guid.NewGuid(),
@@ -137,6 +168,9 @@ public sealed class DefaultMessagePublisherTests
 
 public sealed class MessagePublisherFactoryTests
 {
+    /// <summary>
+    /// Verifies that the CreateLoggingPublisher method returns a valid publisher.
+    /// </summary>
     [Fact]
     public void CreateLoggingPublisher_ReturnsValidPublisher()
     {
@@ -147,6 +181,9 @@ public sealed class MessagePublisherFactoryTests
         publisher.Should().NotBeNull();
     }
 
+    /// <summary>
+    /// Verifies that the LoggingPublisher publishes a message.
+    /// </summary>
     [Fact]
     public async Task LoggingPublisher_PublishesMessage()
     {
