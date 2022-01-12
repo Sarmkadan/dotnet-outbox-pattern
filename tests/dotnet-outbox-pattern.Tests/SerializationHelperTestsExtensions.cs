@@ -12,15 +12,25 @@ using FluentAssertions;
 namespace DotnetOutboxPattern.Tests;
 
 /// <summary>
-/// Extension methods for SerializationHelperTests providing additional test scenarios
+/// Extension methods for <see cref="SerializationHelperTests"/> providing additional test scenarios
+/// for serialization and deserialization functionality.
 /// </summary>
+/// <remarks>
+/// This class contains extension methods that test various edge cases and scenarios
+/// for the <see cref="SerializationHelper"/> utility class.
+/// </remarks>
 public static class SerializationHelperTestsExtensions
 {
     /// <summary>
-    /// Extension method to test round-trip serialization of OutboxStatistics with various edge cases
+    /// Tests round-trip serialization of <see cref="OutboxStatistics"/> ensuring all properties are preserved.
     /// </summary>
+    /// <param name="_">The test instance (unused parameter)</param>
+    /// <param name="original">The original statistics object to serialize and deserialize</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="original"/> is <see langword="null"/></exception>
     public static void Serialize_Deserialize_RoundTrip_ShouldPreserveAllProperties(this SerializationHelperTests _, OutboxStatistics original)
     {
+        ArgumentNullException.ThrowIfNull(original);
+
         // Act
         var json = SerializationHelper.Serialize(original);
         var deserialized = SerializationHelper.Deserialize<OutboxStatistics>(json);
@@ -39,10 +49,15 @@ public static class SerializationHelperTestsExtensions
     }
 
     /// <summary>
-    /// Extension method to test serialization of complex nested objects
+    /// Tests serialization of complex nested objects ensuring all properties are handled correctly.
     /// </summary>
+    /// <param name="_">The test instance (unused parameter)</param>
+    /// <param name="metrics">The metrics object to serialize and deserialize</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="metrics"/> is <see langword="null"/></exception>
     public static void Serialize_WithComplexNestedObject_ShouldHandleAllProperties(this SerializationHelperTests _, HealthMetrics metrics)
     {
+        ArgumentNullException.ThrowIfNull(metrics);
+
         // Arrange
         var complexMetrics = new HealthMetrics
         {
@@ -71,8 +86,10 @@ public static class SerializationHelperTestsExtensions
     }
 
     /// <summary>
-    /// Extension method to test serialization with null values and edge cases
+    /// Tests serialization with null values and edge cases ensuring null values are omitted correctly.
     /// </summary>
+    /// <param name="_">The test instance (unused parameter)</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="_"/> is <see langword="null"/></exception>
     public static void Serialize_WithNullAndDefaultValues_ShouldOmitCorrectly(this SerializationHelperTests _)
     {
         // Arrange - create object with all null/default values
@@ -103,8 +120,9 @@ public static class SerializationHelperTestsExtensions
     }
 
     /// <summary>
-    /// Extension method to test IsValidJson with various edge cases
+    /// Tests <see cref="SerializationHelper.IsValidJson"/> with various edge cases.
     /// </summary>
+    /// <param name="_">The test instance (unused parameter)</param>
     public static void IsValidJson_WithVariousInputs_ShouldReturnCorrectValidation(this SerializationHelperTests _)
     {
         // Test various valid JSON inputs
@@ -120,12 +138,13 @@ public static class SerializationHelperTestsExtensions
         SerializationHelper.IsValidJson("[1,2,3").Should().BeFalse();
         SerializationHelper.IsValidJson("not json").Should().BeFalse();
         SerializationHelper.IsValidJson("").Should().BeFalse();
-        SerializationHelper.IsValidJson("  ").Should().BeFalse();
+        SerializationHelper.IsValidJson(" ").Should().BeFalse();
     }
 
     /// <summary>
-    /// Extension method to test SerializePretty with different object types
+    /// Tests <see cref="SerializationHelper.SerializePretty"/> with different object types ensuring indented output is produced.
     /// </summary>
+    /// <param name="_">The test instance (unused parameter)</param>
     public static void SerializePretty_WithDifferentTypes_ShouldProduceIndentedOutput(this SerializationHelperTests _)
     {
         // Test with simple object
@@ -155,8 +174,9 @@ public static class SerializationHelperTestsExtensions
     }
 
     /// <summary>
-    /// Extension method to test deserialization error messages include type information
+    /// Tests deserialization with invalid JSON ensuring error messages include type information.
     /// </summary>
+    /// <param name="_">The test instance (unused parameter)</param>
     public static void Deserialize_WithInvalidJson_ShouldIncludeTypeNameInError(this SerializationHelperTests _)
     {
         // Arrange
@@ -171,8 +191,9 @@ public static class SerializationHelperTestsExtensions
     }
 
     /// <summary>
-    /// Extension method to test serialization preserves enum values correctly
+    /// Tests serialization preserves enum values correctly.
     /// </summary>
+    /// <param name="_">The test instance (unused parameter)</param>
     public static void Serialize_WithEnumValues_ShouldPreserveEnumNames(this SerializationHelperTests _)
     {
         // Arrange - create a test DTO with enum
@@ -194,12 +215,12 @@ public static class SerializationHelperTestsExtensions
     }
 
     /// <summary>
-    /// Extension method to test serialization with Guid values
+    /// Tests serialization with Guid values ensuring Guid format is preserved.
     /// </summary>
+    /// <param name="_">The test instance (unused parameter)</param>
     public static void Serialize_WithGuidValues_ShouldPreserveGuidFormat(this SerializationHelperTests _)
     {
         // Arrange
-        var messageId = Guid.NewGuid();
         var stats = new OutboxStatistics
         {
             TotalMessages = 1
@@ -215,8 +236,9 @@ public static class SerializationHelperTestsExtensions
     }
 
     /// <summary>
-    /// Extension method to test serialization round-trip with DateTime values
+    /// Tests serialization round-trip with DateTime values ensuring DateTime format is preserved.
     /// </summary>
+    /// <param name="_">The test instance (unused parameter)</param>
     public static void Serialize_WithDateTimeValues_ShouldPreserveDateTimeFormat(this SerializationHelperTests _)
     {
         // Arrange
