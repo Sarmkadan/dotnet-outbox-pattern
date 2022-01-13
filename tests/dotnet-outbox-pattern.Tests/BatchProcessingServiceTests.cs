@@ -9,6 +9,9 @@ using Moq;
 
 namespace DotnetOutboxPattern.Tests;
 
+/// <summary>
+/// Tests for the <see cref="BatchProcessingService"/>.
+/// </summary>
 public sealed class BatchProcessingServiceTests
 {
     private readonly Mock<IMessagePublishingService> _publishingServiceMock;
@@ -16,6 +19,9 @@ public sealed class BatchProcessingServiceTests
     private readonly BatchProcessingOptions _options;
     private readonly BatchProcessingService _sut;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BatchProcessingServiceTests"/> class.
+    /// </summary>
     public BatchProcessingServiceTests()
     {
         _publishingServiceMock = new Mock<IMessagePublishingService>();
@@ -33,6 +39,9 @@ public sealed class BatchProcessingServiceTests
             _loggerMock.Object);
     }
 
+    /// <summary>
+    /// Verifies that the constructor throws an <see cref="ArgumentNullException"/> when the <paramref name="publishingService"/> is null.
+    /// </summary>
     [Fact]
     public void Constructor_WithNullPublishingService_ThrowsArgumentNullException()
     {
@@ -40,6 +49,9 @@ public sealed class BatchProcessingServiceTests
         act.Should().Throw<ArgumentNullException>().WithParameterName("publishingService");
     }
 
+    /// <summary>
+    /// Verifies that the constructor throws an <see cref="ArgumentNullException"/> when the <paramref name="options"/> is null.
+    /// </summary>
     [Fact]
     public void Constructor_WithNullOptions_ThrowsArgumentNullException()
     {
@@ -47,6 +59,9 @@ public sealed class BatchProcessingServiceTests
         act.Should().Throw<ArgumentNullException>().WithParameterName("options");
     }
 
+    /// <summary>
+    /// Verifies that the <see cref="ProcessInChunksAsync"/> method divides the messages into chunks when the default size is used.
+    /// </summary>
     [Fact]
     public async Task ProcessInChunksAsync_WithDefaultSize_DividesIntoChunks()
     {
@@ -66,6 +81,9 @@ public sealed class BatchProcessingServiceTests
         result.CompletedAt.Should().NotBe(default(DateTime));
     }
 
+    /// <summary>
+    /// Verifies that the <see cref="ProcessInChunksAsync"/> method respects the custom total size when specified.
+    /// </summary>
     [Fact]
     public async Task ProcessInChunksAsync_WithCustomTotal_RespectsCustomSize()
     {
@@ -83,6 +101,9 @@ public sealed class BatchProcessingServiceTests
         result.Success.Should().BeTrue();
     }
 
+    /// <summary>
+    /// Verifies that the <see cref="ProcessInChunksAsync"/> method catches and returns a failure when the publishing service throws an exception.
+    /// </summary>
     [Fact]
     public async Task ProcessInChunksAsync_WhenServiceThrows_CatchesAndReturnsFailure()
     {
@@ -96,6 +117,9 @@ public sealed class BatchProcessingServiceTests
         result.ErrorMessage.Should().Contain("processing error");
     }
 
+    /// <summary>
+    /// Verifies that the <see cref="ProcessInChunksAsync"/> method tracks the cumulative metrics.
+    /// </summary>
     [Fact]
     public async Task ProcessInChunksAsync_TracksCumulativeMetrics()
     {
@@ -115,6 +139,9 @@ public sealed class BatchProcessingServiceTests
         result.TotalFailed.Should().BeGreaterThan(0);
     }
 
+    /// <summary>
+    /// Verifies that the <see cref="ProcessScheduledInChunksAsync"/> method delegates to the publishing service.
+    /// </summary>
     [Fact]
     public async Task ProcessScheduledInChunksAsync_DelegatesToPublishingService()
     {
@@ -130,6 +157,9 @@ public sealed class BatchProcessingServiceTests
             Times.AtLeastOnce);
     }
 
+    /// <summary>
+    /// Verifies that the <see cref="ProcessInChunksAsync"/> method creates one chunk when a single message is processed.
+    /// </summary>
     [Fact]
     public async Task ProcessInChunksAsync_WithSingleMessage_CreatesOneChunk()
     {
@@ -142,6 +172,9 @@ public sealed class BatchProcessingServiceTests
         result.TotalChunks.Should().Be(1);
     }
 
+    /// <summary>
+    /// Verifies that the <see cref="ProcessInChunksAsync"/> method sets the duration correctly.
+    /// </summary>
     [Fact]
     public async Task ProcessInChunksAsync_SetsDurationCorrectly()
     {
