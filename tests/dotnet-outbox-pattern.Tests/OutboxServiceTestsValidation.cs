@@ -14,21 +14,17 @@ namespace DotnetOutboxPattern.Tests
         /// </summary>
         /// <param name="value">The test class instance to validate.</param>
         /// <returns>A read‑only list of validation error messages. Empty if the instance is valid.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
         public static IReadOnlyList<string> Validate(this OutboxServiceTests value)
         {
-            var problems = new List<string>();
+            ArgumentNullException.ThrowIfNull(value);
 
-            if (value is null)
-            {
-                problems.Add("OutboxServiceTests instance is null.");
-                // No further checks are possible because the class only contains methods.
-                return problems;
-            }
+            var problems = new List<string>();
 
             // The class only contains test methods; there are no mutable state members to validate.
             // If future members (e.g., strings, numbers, dates) are added, additional checks can be placed here.
 
-            return problems;
+            return problems.AsReadOnly();
         }
 
         /// <summary>
@@ -36,17 +32,20 @@ namespace DotnetOutboxPattern.Tests
         /// </summary>
         /// <param name="value">The test class instance to check.</param>
         /// <returns><c>true</c> if no validation problems are found; otherwise, <c>false</c>.</returns>
-        public static bool IsValid(this OutboxServiceTests value) => !value.Validate().Any();
+        public static bool IsValid(this OutboxServiceTests value) => value.Validate().Count == 0;
 
         /// <summary>
         /// Ensures that the <see cref="OutboxServiceTests"/> instance is valid.
         /// </summary>
         /// <param name="value">The test class instance to validate.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
         /// <exception cref="ArgumentException">Thrown when validation problems are found.</exception>
         public static void EnsureValid(this OutboxServiceTests value)
         {
+            ArgumentNullException.ThrowIfNull(value);
+
             var problems = value.Validate();
-            if (problems.Any())
+            if (problems.Count > 0)
             {
                 var message = $"OutboxServiceTests validation failed: {string.Join("; ", problems)}";
                 throw new ArgumentException(message, nameof(value));
