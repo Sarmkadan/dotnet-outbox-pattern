@@ -11,7 +11,7 @@ using System.Text.Json.Serialization;
 namespace DotnetOutboxPattern.Tests;
 
 /// <summary>
-/// System.Text.Json serialization extensions for EventsTests type
+/// Provides JSON serialization and deserialization extensions for <see cref="EventsTests"/> type.
 /// </summary>
 public static class EventsTestsJsonExtensions
 {
@@ -23,17 +23,15 @@ public static class EventsTestsJsonExtensions
     };
 
     /// <summary>
-    /// Serializes the EventsTests instance to a JSON string
+    /// Serializes the <see cref="EventsTests"/> instance to a JSON string.
     /// </summary>
-    /// <param name="value">The EventsTests instance to serialize</param>
-    /// <param name="indented">Whether to format the JSON with indentation</param>
-    /// <returns>JSON string representation</returns>
+    /// <param name="value">The <see cref="EventsTests"/> instance to serialize.</param>
+    /// <param name="indented">Whether to format the JSON with indentation.</param>
+    /// <returns>JSON string representation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
     public static string ToJson(this EventsTests value, bool indented = false)
     {
-        if (value is null)
-        {
-            return "{}";
-        }
+        ArgumentNullException.ThrowIfNull(value);
 
         var options = indented
             ? new JsonSerializerOptions(_jsonSerializerOptions)
@@ -46,12 +44,15 @@ public static class EventsTestsJsonExtensions
     }
 
     /// <summary>
-    /// Deserializes an EventsTests instance from a JSON string
+    /// Deserializes an <see cref="EventsTests"/> instance from a JSON string.
     /// </summary>
-    /// <param name="json">JSON string to deserialize</param>
-    /// <returns>Deserialized EventsTests instance, or null if JSON is invalid</returns>
+    /// <param name="json">JSON string to deserialize.</param>
+    /// <returns>Deserialized <see cref="EventsTests"/> instance, or <see langword="null"/> if JSON is invalid.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is <see langword="null"/>.</exception>
     public static EventsTests? FromJson(string json)
     {
+        ArgumentNullException.ThrowIfNull(json);
+
         if (string.IsNullOrWhiteSpace(json))
         {
             return null;
@@ -68,13 +69,16 @@ public static class EventsTestsJsonExtensions
     }
 
     /// <summary>
-    /// Attempts to deserialize an EventsTests instance from a JSON string
+    /// Attempts to deserialize an <see cref="EventsTests"/> instance from a JSON string.
     /// </summary>
-    /// <param name="json">JSON string to deserialize</param>
-    /// <param name="value">Output parameter containing the deserialized instance, or null if deserialization fails</param>
-    /// <returns>True if deserialization succeeds, false otherwise</returns>
+    /// <param name="json">JSON string to deserialize.</param>
+    /// <param name="value">Output parameter containing the deserialized instance, or <see langword="null"/> if deserialization fails.</param>
+    /// <returns><see langword="true"/> if deserialization succeeds; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is <see langword="null"/>.</exception>
     public static bool TryFromJson(string json, out EventsTests? value)
     {
+        ArgumentNullException.ThrowIfNull(json);
+
         value = null;
 
         if (string.IsNullOrWhiteSpace(json))
