@@ -1,31 +1,37 @@
 #nullable enable
 
+using System;
 using DotnetOutboxPattern.Domain;
 using FluentAssertions;
 
 namespace DotnetOutboxPattern.Tests;
 
 /// <summary>
-/// Extension methods for BatchProcessingModelsTests to provide additional utility functionality
+/// Extension methods for <see cref="BatchProcessingModelsTests"/> to provide additional utility functionality
 /// </summary>
 public static class BatchProcessingModelsTestsExtensions
 {
     /// <summary>
-    /// Creates a BatchProcessingOptions instance with default values for testing
+    /// Creates a <see cref="BatchProcessingOptions"/> instance with default values for testing.
     /// </summary>
-    /// <returns>Configured BatchProcessingOptions instance</returns>
-    public static BatchProcessingOptions CreateDefaultOptions(this BatchProcessingModelsTests _) => new();
+    /// <param name="_">The test instance (unused).</param>
+    /// <returns>Configured <see cref="BatchProcessingOptions"/> instance.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="_"/> is <see langword="null"/></exception>
+    public static BatchProcessingOptions CreateDefaultOptions(this BatchProcessingModelsTests _) =>
+        new();
 
     /// <summary>
-    /// Creates a BatchProcessingOptions instance with custom values for testing
+    /// Creates a <see cref="BatchProcessingOptions"/> instance with custom values for testing.
     /// </summary>
-    /// <param name="totalBatchSize">Total batch size</param>
-    /// <param name="chunkSize">Chunk size</param>
-    /// <param name="maxParallelChunks">Maximum parallel chunks</param>
-    /// <param name="enableParallelChunks">Enable parallel chunks</param>
-    /// <param name="delayBetweenChunksMs">Delay between chunks in milliseconds</param>
-    /// <param name="stopOnChunkFailure">Stop on chunk failure</param>
-    /// <returns>Configured BatchProcessingOptions instance</returns>
+    /// <param name="_">The test instance (unused).</param>
+    /// <param name="totalBatchSize">Total batch size.</param>
+    /// <param name="chunkSize">Chunk size.</param>
+    /// <param name="maxParallelChunks">Maximum parallel chunks.</param>
+    /// <param name="enableParallelChunks">Enable parallel chunks.</param>
+    /// <param name="delayBetweenChunksMs">Delay between chunks in milliseconds.</param>
+    /// <param name="stopOnChunkFailure">Stop on chunk failure.</param>
+    /// <returns>Configured <see cref="BatchProcessingOptions"/> instance.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="_"/> is <see langword="null"/></exception>
     public static BatchProcessingOptions CreateCustomOptions(
         this BatchProcessingModelsTests _,
         int totalBatchSize = 1000,
@@ -45,20 +51,25 @@ public static class BatchProcessingModelsTestsExtensions
         };
 
     /// <summary>
-    /// Creates a BatchChunkResult instance with default values for testing
+    /// Creates a <see cref="BatchChunkResult"/> instance with default values for testing.
     /// </summary>
-    /// <returns>Configured BatchChunkResult instance</returns>
-    public static BatchChunkResult CreateDefaultChunkResult(this BatchProcessingModelsTests _) => new();
+    /// <param name="_">The test instance (unused).</param>
+    /// <returns>Configured <see cref="BatchChunkResult"/> instance.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="_"/> is <see langword="null"/></exception>
+    public static BatchChunkResult CreateDefaultChunkResult(this BatchProcessingModelsTests _) =>
+        new();
 
     /// <summary>
-    /// Creates a BatchChunkResult instance with specified values for testing
+    /// Creates a <see cref="BatchChunkResult"/> instance with specified values for testing.
     /// </summary>
-    /// <param name="chunkIndex">Chunk index</param>
-    /// <param name="success">Success status</param>
-    /// <param name="processedCount">Number of processed items</param>
-    /// <param name="failedCount">Number of failed items</param>
-    /// <param name="errorMessage">Error message if any</param>
-    /// <returns>Configured BatchChunkResult instance</returns>
+    /// <param name="_">The test instance (unused).</param>
+    /// <param name="chunkIndex">Chunk index.</param>
+    /// <param name="success">Success status.</param>
+    /// <param name="processedCount">Number of processed items.</param>
+    /// <param name="failedCount">Number of failed items.</param>
+    /// <param name="errorMessage">Error message if any.</param>
+    /// <returns>Configured <see cref="BatchChunkResult"/> instance.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="_"/> is <see langword="null"/></exception>
     public static BatchChunkResult CreateChunkResult(
         this BatchProcessingModelsTests _,
         int chunkIndex = 0,
@@ -76,23 +87,28 @@ public static class BatchProcessingModelsTestsExtensions
         };
 
     /// <summary>
-    /// Creates a BatchProcessingSummary instance with default values for testing
+    /// Creates a <see cref="BatchProcessingSummary"/> instance with default values for testing.
     /// </summary>
-    /// <returns>Configured BatchProcessingSummary instance</returns>
-    public static BatchProcessingSummary CreateDefaultSummary(this BatchProcessingModelsTests _) => new();
+    /// <param name="_">The test instance (unused).</param>
+    /// <returns>Configured <see cref="BatchProcessingSummary"/> instance.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="_"/> is <see langword="null"/></exception>
+    public static BatchProcessingSummary CreateDefaultSummary(this BatchProcessingModelsTests _) =>
+        new();
 
     /// <summary>
-    /// Creates a BatchProcessingSummary instance with specified values for testing
+    /// Creates a <see cref="BatchProcessingSummary"/> instance with specified values for testing.
     /// </summary>
-    /// <param name="success">Overall success status</param>
-    /// <param name="totalProcessed">Total processed count</param>
-    /// <param name="totalFailed">Total failed count</param>
-    /// <param name="totalChunks">Total chunks count</param>
-    /// <param name="successfulChunks">Successful chunks count</param>
-    /// <param name="failedChunks">Failed chunks count</param>
-    /// <param name="chunkResults">List of chunk results</param>
-    /// <param name="errorMessage">Error message if any</param>
-    /// <returns>Configured BatchProcessingSummary instance</returns>
+    /// <param name="_">The test instance (unused).</param>
+    /// <param name="success">Overall success status.</param>
+    /// <param name="totalProcessed">Total processed count.</param>
+    /// <param name="totalFailed">Total failed count.</param>
+    /// <param name="totalChunks">Total chunks count.</param>
+    /// <param name="successfulChunks">Successful chunks count.</param>
+    /// <param name="failedChunks">Failed chunks count.</param>
+    /// <param name="chunkResults">List of chunk results.</param>
+    /// <param name="errorMessage">Error message if any.</param>
+    /// <returns>Configured <see cref="BatchProcessingSummary"/> instance.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="_"/> is <see langword="null"/></exception>
     public static BatchProcessingSummary CreateSummary(
         this BatchProcessingModelsTests _,
         bool success = false,
@@ -116,16 +132,20 @@ public static class BatchProcessingModelsTestsExtensions
         };
 
     /// <summary>
-    /// Asserts that two BatchProcessingOptions instances are equal
+    /// Asserts that two <see cref="BatchProcessingOptions"/> instances are equal.
     /// </summary>
-    /// <param name="test">Test instance</param>
-    /// <param name="expected">Expected options</param>
-    /// <param name="actual">Actual options to assert</param>
+    /// <param name="_">The test instance (unused).</param>
+    /// <param name="expected">Expected options.</param>
+    /// <param name="actual">Actual options to assert.</param>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="expected"/> or <paramref name="actual"/> is <see langword="null"/></exception>
     public static void ShouldBeEquivalentTo(
         this BatchProcessingModelsTests _,
         BatchProcessingOptions expected,
         BatchProcessingOptions actual)
     {
+        ArgumentNullException.ThrowIfNull(expected);
+        ArgumentNullException.ThrowIfNull(actual);
+
         actual.TotalBatchSize.Should().Be(expected.TotalBatchSize);
         actual.ChunkSize.Should().Be(expected.ChunkSize);
         actual.MaxParallelChunks.Should().Be(expected.MaxParallelChunks);
@@ -135,16 +155,20 @@ public static class BatchProcessingModelsTestsExtensions
     }
 
     /// <summary>
-    /// Asserts that two BatchChunkResult instances are equal
+    /// Asserts that two <see cref="BatchChunkResult"/> instances are equal.
     /// </summary>
-    /// <param name="test">Test instance</param>
-    /// <param name="expected">Expected result</param>
-    /// <param name="actual">Actual result to assert</param>
+    /// <param name="_">The test instance (unused).</param>
+    /// <param name="expected">Expected result.</param>
+    /// <param name="actual">Actual result to assert.</param>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="expected"/> or <paramref name="actual"/> is <see langword="null"/></exception>
     public static void ShouldBeEquivalentTo(
         this BatchProcessingModelsTests _,
         BatchChunkResult expected,
         BatchChunkResult actual)
     {
+        ArgumentNullException.ThrowIfNull(expected);
+        ArgumentNullException.ThrowIfNull(actual);
+
         actual.ChunkIndex.Should().Be(expected.ChunkIndex);
         actual.Success.Should().Be(expected.Success);
         actual.ProcessedCount.Should().Be(expected.ProcessedCount);
@@ -155,16 +179,20 @@ public static class BatchProcessingModelsTestsExtensions
     }
 
     /// <summary>
-    /// Asserts that two BatchProcessingSummary instances are equal
+    /// Asserts that two <see cref="BatchProcessingSummary"/> instances are equal.
     /// </summary>
-    /// <param name="test">Test instance</param>
-    /// <param name="expected">Expected summary</param>
-    /// <param name="actual">Actual summary to assert</param>
+    /// <param name="_">The test instance (unused).</param>
+    /// <param name="expected">Expected summary.</param>
+    /// <param name="actual">Actual summary to assert.</param>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="expected"/> or <paramref name="actual"/> is <see langword="null"/></exception>
     public static void ShouldBeEquivalentTo(
         this BatchProcessingModelsTests _,
         BatchProcessingSummary expected,
         BatchProcessingSummary actual)
     {
+        ArgumentNullException.ThrowIfNull(expected);
+        ArgumentNullException.ThrowIfNull(actual);
+
         actual.Success.Should().Be(expected.Success);
         actual.TotalProcessed.Should().Be(expected.TotalProcessed);
         actual.TotalFailed.Should().Be(expected.TotalFailed);
