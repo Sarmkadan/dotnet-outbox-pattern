@@ -1,7 +1,8 @@
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
+#nullable enable
 
-namespace OutboxPattern.Examples;
+using System.Text.Json;
+
+namespace Examples;
 
 /// <summary>
 /// Provides JSON serialization and deserialization extensions for <see cref="DeadLetterHandlingExample"/>.
@@ -11,7 +12,6 @@ public static class DeadLetterHandlingExampleJsonExtensions
     private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
         WriteIndented = false
     };
 
@@ -26,7 +26,11 @@ public static class DeadLetterHandlingExampleJsonExtensions
     {
         ArgumentNullException.ThrowIfNull(value);
 
-        return JsonSerializer.Serialize(value, indented ? _jsonOptions with { WriteIndented = true } : _jsonOptions);
+        var options = indented
+            ? _jsonOptions with { WriteIndented = true }
+            : _jsonOptions;
+
+        return JsonSerializer.Serialize(value, options);
     }
 
     /// <summary>
