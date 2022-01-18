@@ -110,10 +110,7 @@ public static class BatchProcessingOptionsExtensions
     /// <param name="options">The batch processing options</param>
     /// <returns>The total number of chunks that will be created</returns>
     public static int CalculateTotalChunks(this BatchProcessingOptions options)
-    {
-        ArgumentNullException.ThrowIfNull(options);
-        return CalculateChunks(options.TotalBatchSize, options.ChunkSize);
-    }
+        => CalculateChunks(options.TotalBatchSize, options.ChunkSize);
 
     /// <summary>
     /// Calculates the total number of chunks that will be created for a given total size and chunk size
@@ -121,6 +118,7 @@ public static class BatchProcessingOptionsExtensions
     /// <param name="totalBatchSize">Total number of messages to process</param>
     /// <param name="chunkSize">Number of messages per chunk</param>
     /// <returns>The total number of chunks that will be created</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when totalBatchSize is negative or chunkSize is not positive</exception>
     public static int CalculateChunks(int totalBatchSize, int chunkSize)
     {
         if (totalBatchSize < 0)
@@ -142,10 +140,7 @@ public static class BatchProcessingOptionsExtensions
     /// <param name="options">The batch processing options</param>
     /// <returns>Estimated memory usage in bytes for one chunk</returns>
     public static long GetChunkMemoryUsage(this BatchProcessingOptions options)
-    {
-        ArgumentNullException.ThrowIfNull(options);
-        return GetChunkMemoryUsage(options.ChunkSize);
-    }
+        => GetChunkMemoryUsage(options.ChunkSize);
 
     /// <summary>
     /// Gets the estimated memory usage in bytes for processing a single chunk with the specified size
@@ -153,6 +148,7 @@ public static class BatchProcessingOptionsExtensions
     /// </summary>
     /// <param name="chunkSize">Number of messages per chunk</param>
     /// <returns>Estimated memory usage in bytes for one chunk</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when chunkSize is not positive</exception>
     public static long GetChunkMemoryUsage(int chunkSize)
     {
         if (chunkSize <= 0)
@@ -171,10 +167,7 @@ public static class BatchProcessingOptionsExtensions
     /// <param name="options">The batch processing options</param>
     /// <returns>Estimated total memory usage in bytes for the entire batch</returns>
     public static long GetTotalBatchMemoryUsage(this BatchProcessingOptions options)
-    {
-        ArgumentNullException.ThrowIfNull(options);
-        return GetTotalBatchMemoryUsage(options.TotalBatchSize);
-    }
+        => GetTotalBatchMemoryUsage(options.TotalBatchSize);
 
     /// <summary>
     /// Gets the estimated total memory usage in bytes for a batch of the specified size
@@ -182,6 +175,7 @@ public static class BatchProcessingOptionsExtensions
     /// </summary>
     /// <param name="totalBatchSize">Total number of messages to process</param>
     /// <returns>Estimated total memory usage in bytes for the entire batch</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when totalBatchSize is negative</exception>
     public static long GetTotalBatchMemoryUsage(int totalBatchSize)
     {
         if (totalBatchSize < 0)
