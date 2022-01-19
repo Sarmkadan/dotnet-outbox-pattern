@@ -4,223 +4,346 @@ using System.Linq;
 
 namespace DotnetOutboxPattern.Utilities
 {
-    public static class QueryBuilderExtensions
-    {
-        /// <summary>
-        /// Adds an equality filter condition
-        /// </summary>
-        public static QueryBuilder Where(this QueryBuilder builder, string field, object value)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
+	/// <summary>
+	/// Provides extension methods for <see cref="QueryBuilder"/> to fluently build query conditions.
+	/// </summary>
+	public static class QueryBuilderExtensions
+	{
+		/// <summary>
+		/// Adds an equality filter condition
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <param name="field">The field name to filter on</param>
+		/// <param name="value">The value to compare against</param>
+		/// <returns>The query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		/// <exception cref="ArgumentException"><paramref name="field"/> is null or whitespace</exception>
+		public static QueryBuilder Where(this QueryBuilder builder, string field, object value)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentException.ThrowIfNullOrWhiteSpace(field);
 
-            if (string.IsNullOrWhiteSpace(field))
-                throw new ArgumentException("Field name cannot be null or empty", nameof(field));
+			return builder.Where(field, value);
+		}
 
-            builder.Where(field, value);
-            return builder;
-        }
+		/// <summary>
+		/// Adds a "greater than" condition
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <param name="field">The field name to filter on</param>
+		/// <param name="value">The value to compare against</param>
+		/// <returns>The query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		/// <exception cref="ArgumentException"><paramref name="field"/> is null or whitespace</exception>
+		public static QueryBuilder WhereGreaterThan(this QueryBuilder builder, string field, object value)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentException.ThrowIfNullOrWhiteSpace(field);
 
-        /// <summary>
-        /// Adds a "greater than" condition
-        /// </summary>
-        public static QueryBuilder WhereGreaterThan(this QueryBuilder builder, string field, object value)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
+			return builder.WhereGreaterThan(field, value);
+		}
 
-            if (string.IsNullOrWhiteSpace(field))
-                throw new ArgumentException("Field name cannot be null or empty", nameof(field));
+		/// <summary>
+		/// Adds a "greater than or equal" condition
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <param name="field">The field name to filter on</param>
+		/// <param name="value">The value to compare against</param>
+		/// <returns>The query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		/// <exception cref="ArgumentException"><paramref name="field"/> is null or whitespace</exception>
+		public static QueryBuilder WhereGreaterThanOrEqual(this QueryBuilder builder, string field, object value)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentException.ThrowIfNullOrWhiteSpace(field);
 
-            builder.WhereGreaterThan(field, value);
-            return builder;
-        }
+			_ = builder.Where(field, value);
+			_ = builder.GetConditions().Last().Operator = FilterOperator.GreaterThanOrEqual;
+			return builder;
+		}
 
-        /// <summary>
-        /// Adds a "less than" condition
-        /// </summary>
-        public static QueryBuilder WhereLessThan(this QueryBuilder builder, string field, object value)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
+		/// <summary>
+		/// Adds a "less than" condition
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <param name="field">The field name to filter on</param>
+		/// <param name="value">The value to compare against</param>
+		/// <returns>The query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		/// <exception cref="ArgumentException"><paramref name="field"/> is null or whitespace</exception>
+		public static QueryBuilder WhereLessThan(this QueryBuilder builder, string field, object value)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentException.ThrowIfNullOrWhiteSpace(field);
 
-            if (string.IsNullOrWhiteSpace(field))
-                throw new ArgumentException("Field name cannot be null or empty", nameof(field));
+			return builder.WhereLessThan(field, value);
+		}
 
-            builder.WhereLessThan(field, value);
-            return builder;
-        }
+		/// <summary>
+		/// Adds a "less than or equal" condition
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <param name="field">The field name to filter on</param>
+		/// <param name="value">The value to compare against</param>
+		/// <returns>The query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		/// <exception cref="ArgumentException"><paramref name="field"/> is null or whitespace</exception>
+		public static QueryBuilder WhereLessThanOrEqual(this QueryBuilder builder, string field, object value)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentException.ThrowIfNullOrWhiteSpace(field);
 
-        /// <summary>
-        /// Adds a "contains" (LIKE) condition
-        /// </summary>
-        public static QueryBuilder WhereContains(this QueryBuilder builder, string field, string value)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
+			_ = builder.Where(field, value);
+			_ = builder.GetConditions().Last().Operator = FilterOperator.LessThanOrEqual;
+			return builder;
+		}
 
-            if (string.IsNullOrWhiteSpace(field))
-                throw new ArgumentException("Field name cannot be null or empty", nameof(field));
+		/// <summary>
+		/// Adds a "contains" (LIKE) condition
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <param name="field">The field name to filter on</param>
+		/// <param name="value">The value to search for within the field</param>
+		/// <returns>The query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		/// <exception cref="ArgumentException"><paramref name="field"/> is null or whitespace</exception>
+		public static QueryBuilder WhereContains(this QueryBuilder builder, string field, string value)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentException.ThrowIfNullOrWhiteSpace(field);
 
-            if (string.IsNullOrWhiteSpace(value))
-                return builder;
+			if (string.IsNullOrWhiteSpace(value))
+			{
+				return builder;
+			}
 
-            builder.WhereContains(field, value);
-            return builder;
-        }
+			return builder.WhereContains(field, value);
+		}
 
-        /// <summary>
-        /// Adds an "in" condition (matches any value in list)
-        /// </summary>
-        public static QueryBuilder WhereIn(this QueryBuilder builder, string field, params object[] values)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
+		/// <summary>
+		/// Adds a "starts with" condition
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <param name="field">The field name to filter on</param>
+		/// <param name="value">The value that the field should start with</param>
+		/// <returns>The query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		/// <exception cref="ArgumentException"><paramref name="field"/> is null or whitespace</exception>
+		public static QueryBuilder WhereStartsWith(this QueryBuilder builder, string field, string value)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentException.ThrowIfNullOrWhiteSpace(field);
 
-            if (string.IsNullOrWhiteSpace(field))
-                throw new ArgumentException("Field name cannot be null or empty", nameof(field));
+			_ = builder.Where(field, value);
+			_ = builder.GetConditions().Last().Operator = FilterOperator.StartsWith;
+			return builder;
+		}
 
-            if (values == null || values.Length == 0)
-                return builder;
+		/// <summary>
+		/// Adds an "ends with" condition
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <param name="field">The field name to filter on</param>
+		/// <param name="value">The value that the field should end with</param>
+		/// <returns>The query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		/// <exception cref="ArgumentException"><paramref name="field"/> is null or whitespace</exception>
+		public static QueryBuilder WhereEndsWith(this QueryBuilder builder, string field, string value)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentException.ThrowIfNullOrWhiteSpace(field);
 
-            builder.WhereIn(field, values);
-            return builder;
-        }
+			_ = builder.Where(field, value);
+			_ = builder.GetConditions().Last().Operator = FilterOperator.EndsWith;
+			return builder;
+		}
 
-        /// <summary>
-        /// Adds a "between" condition (inclusive)
-        /// </summary>
-        public static QueryBuilder WhereBetween(this QueryBuilder builder, string field, object minValue, object maxValue)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
+		/// <summary>
+		/// Adds an "in" condition (matches any value in list)
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <param name="field">The field name to filter on</param>
+		/// <param name="values">The values to match against</param>
+		/// <returns>The query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		/// <exception cref="ArgumentException"><paramref name="field"/> is null or whitespace</exception>
+		public static QueryBuilder WhereIn(this QueryBuilder builder, string field, params object[] values)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentException.ThrowIfNullOrWhiteSpace(field);
 
-            if (string.IsNullOrWhiteSpace(field))
-                throw new ArgumentException("Field name cannot be null or empty", nameof(field));
+			if (values == null || values.Length == 0)
+			{
+				return builder;
+			}
 
-            builder.WhereBetween(field, minValue, maxValue);
-            return builder;
-        }
+			return builder.WhereIn(field, values);
+		}
 
-        /// <summary>
-        /// Adds a "is null" condition
-        /// </summary>
-        public static QueryBuilder WhereIsNull(this QueryBuilder builder, string field)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
+		/// <summary>
+		/// Adds a "between" condition (inclusive)
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <param name="field">The field name to filter on</param>
+		/// <param name="minValue">The minimum value (inclusive)</param>
+		/// <param name="maxValue">The maximum value (inclusive)</param>
+		/// <returns>The query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		/// <exception cref="ArgumentException"><paramref name="field"/> is null or whitespace</exception>
+		public static QueryBuilder WhereBetween(this QueryBuilder builder, string field, object minValue, object maxValue)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentException.ThrowIfNullOrWhiteSpace(field);
 
-            if (string.IsNullOrWhiteSpace(field))
-                throw new ArgumentException("Field name cannot be null or empty", nameof(field));
+			return builder.WhereBetween(field, minValue, maxValue);
+		}
 
-            builder.WhereIsNull(field);
-            return builder;
-        }
+		/// <summary>
+		/// Adds a "is null" condition
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <param name="field">The field name to filter on</param>
+		/// <returns>The query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		/// <exception cref="ArgumentException"><paramref name="field"/> is null or whitespace</exception>
+		public static QueryBuilder WhereIsNull(this QueryBuilder builder, string field)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentException.ThrowIfNullOrWhiteSpace(field);
 
-        /// <summary>
-        /// Adds an "is not null" condition
-        /// </summary>
-        public static QueryBuilder WhereIsNotNull(this QueryBuilder builder, string field)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
+			return builder.WhereIsNull(field);
+		}
 
-            if (string.IsNullOrWhiteSpace(field))
-                throw new ArgumentException("Field name cannot be null or empty", nameof(field));
+		/// <summary>
+		/// Adds an "is not null" condition
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <param name="field">The field name to filter on</param>
+		/// <returns>The query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		/// <exception cref="ArgumentException"><paramref name="field"/> is null or whitespace</exception>
+		public static QueryBuilder WhereIsNotNull(this QueryBuilder builder, string field)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentException.ThrowIfNullOrWhiteSpace(field);
 
-            builder.WhereIsNotNull(field);
-            return builder;
-        }
+			return builder.WhereIsNotNull(field);
+		}
 
-        /// <summary>
-        /// Sets the sort order with ascending sorting
-        /// </summary>
-        public static QueryBuilder OrderBy(this QueryBuilder builder, string field)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
+		/// <summary>
+		/// Adds a "not equal" condition
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <param name="field">The field name to filter on</param>
+		/// <param name="value">The value to compare against</param>
+		/// <returns>The query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		/// <exception cref="ArgumentException"><paramref name="field"/> is null or whitespace</exception>
+		public static QueryBuilder WhereNotEqual(this QueryBuilder builder, string field, object value)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentException.ThrowIfNullOrWhiteSpace(field);
 
-            if (string.IsNullOrWhiteSpace(field))
-                throw new ArgumentException("Field name cannot be null or empty", nameof(field));
+			_ = builder.Where(field, value);
+			_ = builder.GetConditions().Last().Operator = FilterOperator.NotEqual;
+			return builder;
+		}
 
-            builder.OrderBy(field, descending: false);
-            return builder;
-        }
+		/// <summary>
+		/// Sets the sort order with ascending sorting
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <param name="field">The field name to filter on</param>
+		/// <returns>The query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		/// <exception cref="ArgumentException"><paramref name="field"/> is null or whitespace</exception>
+		public static QueryBuilder OrderBy(this QueryBuilder builder, string field)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentException.ThrowIfNullOrWhiteSpace(field);
 
-        /// <summary>
-        /// Sets the sort order with descending sorting
-        /// </summary>
-        public static QueryBuilder OrderByDescending(this QueryBuilder builder, string field)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
+			return builder.OrderBy(field, descending: false);
+		}
 
-            if (string.IsNullOrWhiteSpace(field))
-                throw new ArgumentException("Field name cannot be null or empty", nameof(field));
+		/// <summary>
+		/// Sets the sort order with descending sorting
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <param name="field">The field name to filter on</param>
+		/// <returns>The query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		/// <exception cref="ArgumentException"><paramref name="field"/> is null or whitespace</exception>
+		public static QueryBuilder OrderByDescending(this QueryBuilder builder, string field)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentException.ThrowIfNullOrWhiteSpace(field);
 
-            builder.OrderBy(field, descending: true);
-            return builder;
-        }
+			return builder.OrderBy(field, descending: true);
+		}
 
-        /// <summary>
-        /// Combines multiple QueryBuilder instances using AND logic
-        /// </summary>
-        public static QueryBuilder And(this QueryBuilder builder, QueryBuilder other)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-            if (other == null)
-                throw new ArgumentNullException(nameof(other));
+		/// <summary>
+		/// Combines multiple QueryBuilder instances using AND logic
+		/// </summary>
+		/// <param name="builder">The primary query builder instance</param>
+		/// <param name="other">The secondary query builder to combine with</param>
+		/// <returns>The primary query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> or <paramref name="other"/> is <see langword="null"/></exception>
+		public static QueryBuilder And(this QueryBuilder builder, QueryBuilder other)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentNullException.ThrowIfNull(other);
 
-            var thisConditions = builder.GetConditions();
-            var otherConditions = other.GetConditions();
+			var thisConditions = builder.GetConditions();
+			var otherConditions = other.GetConditions();
 
-            if (thisConditions != null && otherConditions != null)
-            {
-                thisConditions.AddRange(otherConditions);
-            }
+			if (thisConditions != null && otherConditions != null)
+			{
+				thisConditions.AddRange(otherConditions);
+			}
 
-            return builder;
-        }
+			return builder;
+		}
 
-        /// <summary>
-        /// Resets the query builder to its initial state
-        /// </summary>
-        public static QueryBuilder Reset(this QueryBuilder builder)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
+		/// <summary>
+		/// Resets the query builder to its initial state by clearing all conditions
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <returns>The query builder for method chaining</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		public static QueryBuilder Reset(this QueryBuilder builder)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
 
-            // The QueryBuilder doesn't have a public Reset method, so we clear conditions
-            var conditions = builder.GetConditions();
-            if (conditions != null)
-            {
-                conditions.Clear();
-            }
+			var conditions = builder.GetConditions();
+			conditions?.Clear();
 
-            return builder;
-        }
+			return builder;
+		}
 
-        /// <summary>
-        /// Gets a summary of applied filters
-        /// </summary>
-        public static Dictionary<string, object?> GetFilterSummary(this QueryBuilder builder)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
+		/// <summary>
+		/// Gets a summary of applied filters as a dictionary mapping condition keys to their values
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <returns>A dictionary containing filter summaries</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		public static Dictionary<string, object?> GetFilterSummary(this QueryBuilder builder)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
 
-            return builder.GetFilterSummary();
-        }
+			return builder.GetFilterSummary();
+		}
 
-        /// <summary>
-        /// Gets all conditions as a list
-        /// </summary>
-        public static List<FilterCondition> GetConditions(this QueryBuilder builder)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
+		/// <summary>
+		/// Gets all conditions as a list of <see cref="FilterCondition"/> objects
+		/// </summary>
+		/// <param name="builder">The query builder instance</param>
+		/// <returns>A list of filter conditions</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/></exception>
+		public static List<FilterCondition> GetConditions(this QueryBuilder builder)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
 
-            return builder.GetConditions();
-        }
-    }
+			return builder.GetConditions();
+		}
+	}
 }
