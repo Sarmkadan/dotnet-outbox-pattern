@@ -131,12 +131,11 @@ public static class BatchProcessingExtensions
     }
 
     private static BatchProcessingOptions GetOrAddOptions(IServiceCollection services)
+    => services.FirstOrDefault(d => d.ServiceType == typeof(BatchProcessingOptions))?.ImplementationInstance as BatchProcessingOptions
+       ?? AddAndReturnNewOptions(services);
+
+private static BatchProcessingOptions AddAndReturnNewOptions(IServiceCollection services)
     {
-        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(BatchProcessingOptions));
-
-        if (descriptor?.ImplementationInstance is BatchProcessingOptions existing)
-            return existing;
-
         var options = new BatchProcessingOptions();
         services.AddSingleton(options);
         return options;
