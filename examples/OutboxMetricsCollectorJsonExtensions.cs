@@ -27,6 +27,7 @@ namespace Examples
         /// <param name="value">The metrics collector instance.</param>
         /// <param name="indented">Whether to format the JSON with indentation.</param>
         /// <returns>A JSON string representation of the metrics.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is null.</exception>
         public static string ToJson(this OutboxMetricsCollector value, bool indented = false)
         {
             ArgumentNullException.ThrowIfNull(value);
@@ -56,21 +57,20 @@ namespace Examples
         /// </summary>
         /// <param name="json">The JSON string to deserialize.</param>
         /// <returns>An OutboxMetricsCollector instance, or null if the JSON is invalid.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is null.</exception>
         public static OutboxMetricsCollector? FromJson(string json)
         {
+            ArgumentNullException.ThrowIfNull(json);
+
             try
             {
                 var statistics = JsonSerializer.Deserialize<OutboxStatisticsDto>(json, _jsonSerializerOptions);
-                if (statistics == null)
-                {
-                    return null;
-                }
-
-                return new OutboxMetricsCollector(
-                    new FakeOutboxService(statistics),
-                    new FakeDeadLetterService(statistics),
-                    new FakeLogger<OutboxMetricsCollector>()
-                );
+                return statistics == null
+                    ? null
+                    : new OutboxMetricsCollector(
+                        new FakeOutboxService(statistics),
+                        new FakeDeadLetterService(statistics),
+                        new FakeLogger<OutboxMetricsCollector>());
             }
             catch (JsonException)
             {
@@ -84,8 +84,11 @@ namespace Examples
         /// <param name="json">The JSON string to deserialize.</param>
         /// <param name="value">The deserialized OutboxMetricsCollector instance, or null if deserialization failed.</param>
         /// <returns>True if deserialization succeeded, false otherwise.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is null.</exception>
         public static bool TryFromJson(string json, out OutboxMetricsCollector? value)
         {
+            ArgumentNullException.ThrowIfNull(json);
+
             try
             {
                 value = FromJson(json);
@@ -176,14 +179,17 @@ namespace Examples
 
             public Task<List<DeadLetter>> GetUnreviewedAsync(CancellationToken cancellationToken = default)
             {
-                var count = statistics.DeadLetterCount;
-                return Task.FromResult(new List<DeadLetter>());
+                var count = (int)Math.Min(statistics.DeadLetterCount, int.MaxValue);
+                var result = new List<DeadLetter>(count);
+                for (int i = 0; i < count; i++)
+                {
+                    result.Add(new DeadLetter(Guid.NewGuid(), "fake-topic", "fake-error", DateTime.UtcNow));
+                }
+                return Task.FromResult(result);
             }
 
             public Task<int> GetUnreviewedCountAsync(CancellationToken cancellationToken = default)
-            {
-                return Task.FromResult((int)statistics.DeadLetterCount);
-            }
+                => Task.FromResult((int)Math.Min(statistics.DeadLetterCount, int.MaxValue));
 
             public Task<DeadLetter> AddAsync(DeadLetter deadLetter, CancellationToken cancellationToken = default)
                 => throw new NotSupportedException("This is a fake service for deserialization only.");
