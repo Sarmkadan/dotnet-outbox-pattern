@@ -21,12 +21,12 @@ public static class ErrorResponseExtensions
     /// <param name="errorResponse">The source error response</param>
     /// <param name="context">Additional context to include</param>
     /// <returns>A new ErrorResponse with merged context</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="errorResponse"/> is null</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="context"/> is null</exception>
     public static ErrorResponse WithContext(this ErrorResponse errorResponse, string context)
     {
-        if (errorResponse == null)
-        {
-            throw new ArgumentNullException(nameof(errorResponse));
-        }
+        ArgumentNullException.ThrowIfNull(errorResponse);
+        ArgumentNullException.ThrowIfNull(context);
 
         return new ErrorResponse
         {
@@ -43,12 +43,10 @@ public static class ErrorResponseExtensions
     /// <param name="errorResponse">The source error response</param>
     /// <param name="newTimestamp">The new timestamp to set</param>
     /// <returns>A new ErrorResponse with the updated timestamp</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="errorResponse"/> is null</exception>
     public static ErrorResponse WithTimestamp(this ErrorResponse errorResponse, DateTime newTimestamp)
     {
-        if (errorResponse == null)
-        {
-            throw new ArgumentNullException(nameof(errorResponse));
-        }
+        ArgumentNullException.ThrowIfNull(errorResponse);
 
         return new ErrorResponse
         {
@@ -65,12 +63,12 @@ public static class ErrorResponseExtensions
     /// <param name="errorResponse">The source error response</param>
     /// <param name="newTraceId">The new trace ID to set</param>
     /// <returns>A new ErrorResponse with the updated trace ID</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="errorResponse"/> is null</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="newTraceId"/> is null or empty</exception>
     public static ErrorResponse WithTraceId(this ErrorResponse errorResponse, string newTraceId)
     {
-        if (errorResponse == null)
-        {
-            throw new ArgumentNullException(nameof(errorResponse));
-        }
+        ArgumentNullException.ThrowIfNull(errorResponse);
+        ArgumentException.ThrowIfNullOrEmpty(newTraceId);
 
         return new ErrorResponse
         {
@@ -87,12 +85,10 @@ public static class ErrorResponseExtensions
     /// <param name="errorResponse">The error response to serialize</param>
     /// <param name="indentJson">Whether to indent the JSON output</param>
     /// <returns>JSON string representation of the error response</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="errorResponse"/> is null</exception>
     public static string ToJson(this ErrorResponse errorResponse, bool indentJson = false)
     {
-        if (errorResponse == null)
-        {
-            throw new ArgumentNullException(nameof(errorResponse));
-        }
+        ArgumentNullException.ThrowIfNull(errorResponse);
 
         var options = new JsonSerializerOptions
         {
@@ -108,12 +104,10 @@ public static class ErrorResponseExtensions
     /// </summary>
     /// <param name="errorResponse">The error response to check</param>
     /// <returns>True if the error code starts with '4', false otherwise</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="errorResponse"/> is null</exception>
     public static bool IsClientError(this ErrorResponse errorResponse)
     {
-        if (errorResponse == null)
-        {
-            throw new ArgumentNullException(nameof(errorResponse));
-        }
+        ArgumentNullException.ThrowIfNull(errorResponse);
 
         return errorResponse.Code.StartsWith("4", StringComparison.Ordinal);
     }
@@ -123,12 +117,10 @@ public static class ErrorResponseExtensions
     /// </summary>
     /// <param name="errorResponse">The error response to check</param>
     /// <returns>True if the error code starts with '5', false otherwise</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="errorResponse"/> is null</exception>
     public static bool IsServerError(this ErrorResponse errorResponse)
     {
-        if (errorResponse == null)
-        {
-            throw new ArgumentNullException(nameof(errorResponse));
-        }
+        ArgumentNullException.ThrowIfNull(errorResponse);
 
         return errorResponse.Code.StartsWith("5", StringComparison.Ordinal);
     }
@@ -138,12 +130,10 @@ public static class ErrorResponseExtensions
     /// </summary>
     /// <param name="errorResponse">The source error response</param>
     /// <returns>A simplified error response with key information</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="errorResponse"/> is null</exception>
     public static ErrorResponse ToLogFormat(this ErrorResponse errorResponse)
     {
-        if (errorResponse == null)
-        {
-            throw new ArgumentNullException(nameof(errorResponse));
-        }
+        ArgumentNullException.ThrowIfNull(errorResponse);
 
         return new ErrorResponse
         {
