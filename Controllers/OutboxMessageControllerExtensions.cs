@@ -17,13 +17,19 @@ public static class OutboxMessageControllerExtensions
     /// <summary>
     /// Retrieves only failed messages from the outbox
     /// </summary>
+    /// <param name="controller">The controller instance</param>
+    /// <param name="page">The page number (1-based)</param>
+    /// <param name="pageSize">The number of items per page (1-500)</param>
+    /// <returns>Paginated response containing failed messages</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when page or pageSize are invalid</exception>
     public static async Task<IActionResult> GetFailedMessagesAsync(
         this OutboxMessageController controller,
         int page = 1,
         int pageSize = 50)
     {
-        if (page < 1 || pageSize < 1 || pageSize > 500)
-            return controller.BadRequest(new ErrorResponse { Message = "Invalid pagination parameters" });
+        ArgumentOutOfRangeException.ThrowIfLessThan(page, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(pageSize, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(pageSize, 500);
 
         try
         {
@@ -54,13 +60,19 @@ public static class OutboxMessageControllerExtensions
     /// <summary>
     /// Retrieves only pending messages from the outbox
     /// </summary>
+    /// <param name="controller">The controller instance</param>
+    /// <param name="page">The page number (1-based)</param>
+    /// <param name="pageSize">The number of items per page (1-500)</param>
+    /// <returns>Paginated response containing pending messages</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when page or pageSize are invalid</exception>
     public static async Task<IActionResult> GetPendingMessagesAsync(
         this OutboxMessageController controller,
         int page = 1,
         int pageSize = 50)
     {
-        if (page < 1 || pageSize < 1 || pageSize > 500)
-            return controller.BadRequest(new ErrorResponse { Message = "Invalid pagination parameters" });
+        ArgumentOutOfRangeException.ThrowIfLessThan(page, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(pageSize, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(pageSize, 500);
 
         try
         {
@@ -91,13 +103,19 @@ public static class OutboxMessageControllerExtensions
     /// <summary>
     /// Retrieves only published messages from the outbox
     /// </summary>
+    /// <param name="controller">The controller instance</param>
+    /// <param name="page">The page number (1-based)</param>
+    /// <param name="pageSize">The number of items per page (1-500)</param>
+    /// <returns>Paginated response containing published messages</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when page or pageSize are invalid</exception>
     public static async Task<IActionResult> GetPublishedMessagesAsync(
         this OutboxMessageController controller,
         int page = 1,
         int pageSize = 50)
     {
-        if (page < 1 || pageSize < 1 || pageSize > 500)
-            return controller.BadRequest(new ErrorResponse { Message = "Invalid pagination parameters" });
+        ArgumentOutOfRangeException.ThrowIfLessThan(page, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(pageSize, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(pageSize, 500);
 
         try
         {
@@ -128,13 +146,19 @@ public static class OutboxMessageControllerExtensions
     /// <summary>
     /// Retrieves only archived messages from the outbox
     /// </summary>
+    /// <param name="controller">The controller instance</param>
+    /// <param name="page">The page number (1-based)</param>
+    /// <param name="pageSize">The number of items per page (1-500)</param>
+    /// <returns>Paginated response containing archived messages</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when page or pageSize are invalid</exception>
     public static async Task<IActionResult> GetArchivedMessagesAsync(
         this OutboxMessageController controller,
         int page = 1,
         int pageSize = 50)
     {
-        if (page < 1 || pageSize < 1 || pageSize > 500)
-            return controller.BadRequest(new ErrorResponse { Message = "Invalid pagination parameters" });
+        ArgumentOutOfRangeException.ThrowIfLessThan(page, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(pageSize, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(pageSize, 500);
 
         try
         {
@@ -165,6 +189,9 @@ public static class OutboxMessageControllerExtensions
     /// <summary>
     /// Retries all failed messages in a single batch operation
     /// </summary>
+    /// <param name="controller">The controller instance</param>
+    /// <returns>Batch result indicating success/failure count</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the outbox service is not available</exception>
     public static async Task<IActionResult> RetryAllFailedMessagesAsync(
         this OutboxMessageController controller)
     {
@@ -179,7 +206,8 @@ public static class OutboxMessageControllerExtensions
                 {
                     Status = "No failed messages to retry",
                     Count = 0,
-                    SuccessCount = 0
+                    SuccessCount = 0,
+                    FailedCount = 0
                 });
             }
 
@@ -225,6 +253,9 @@ public static class OutboxMessageControllerExtensions
     /// <summary>
     /// Gets a summary view of message states without full message details
     /// </summary>
+    /// <param name="controller">The controller instance</param>
+    /// <returns>Message state summary</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the outbox service is not available</exception>
     public static async Task<IActionResult> GetMessageStateSummaryAsync(this OutboxMessageController controller)
     {
         try
@@ -253,6 +284,14 @@ public static class OutboxMessageControllerExtensions
     /// <summary>
     /// Retrieves messages by topic name with optional state filter
     /// </summary>
+    /// <param name="controller">The controller instance</param>
+    /// <param name="topic">The topic name to filter by</param>
+    /// <param name="state">Optional state filter</param>
+    /// <param name="page">The page number (1-based)</param>
+    /// <param name="pageSize">The number of items per page (1-500)</param>
+    /// <returns>Paginated response containing filtered messages</returns>
+    /// <exception cref="ArgumentNullException">Thrown when topic is null or whitespace</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when page or pageSize are invalid</exception>
     public static async Task<IActionResult> GetMessagesByTopicAsync(
         this OutboxMessageController controller,
         string topic,
@@ -260,11 +299,11 @@ public static class OutboxMessageControllerExtensions
         int page = 1,
         int pageSize = 50)
     {
-        if (string.IsNullOrWhiteSpace(topic))
-            return controller.BadRequest(new ErrorResponse { Message = "Topic is required" });
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
-        if (page < 1 || pageSize < 1 || pageSize > 500)
-            return controller.BadRequest(new ErrorResponse { Message = "Invalid pagination parameters" });
+        ArgumentOutOfRangeException.ThrowIfLessThan(page, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(pageSize, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(pageSize, 500);
 
         try
         {
@@ -298,12 +337,17 @@ public static class OutboxMessageControllerExtensions
     /// <summary>
     /// Bulk publishes multiple events in a single operation
     /// </summary>
+    /// <param name="controller">The controller instance</param>
+    /// <param name="events">Collection of events to publish</param>
+    /// <returns>Batch publish result</returns>
+    /// <exception cref="ArgumentNullException">Thrown when events collection is null or empty</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the outbox service is not available</exception>
     public static async Task<IActionResult> PublishEventsBatchAsync(
         this OutboxMessageController controller,
         IEnumerable<PublishableEvent> events)
     {
-        if (events == null || !events.Any())
-            return controller.BadRequest(new ErrorResponse { Message = "Events collection cannot be empty" });
+        ArgumentNullException.ThrowIfNull(events);
+        ArgumentOutOfRangeException.ThrowIfLessThan(events.Count(), 1);
 
         try
         {
@@ -403,7 +447,7 @@ public class BatchResult
 /// <summary>
 /// Response DTO for batch publish operations
 /// </summary>
-public class BatchPublishResult : BatchResult
+public sealed class BatchPublishResult : BatchResult
 {
     public int TotalEvents { get; set; }
     public IEnumerable<OutboxMessageDto>? PublishedMessages { get; set; }
@@ -412,7 +456,7 @@ public class BatchPublishResult : BatchResult
 /// <summary>
 /// Summary of message states across the outbox
 /// </summary>
-public class MessageStateSummary
+public sealed class MessageStateSummary
 {
     public int TotalMessages { get; set; }
     public int PendingCount { get; set; }
