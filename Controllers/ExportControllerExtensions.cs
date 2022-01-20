@@ -7,16 +7,18 @@ using System.Text.Json;
 namespace DotnetOutboxPattern.Controllers;
 
 /// <summary>
-/// Extension methods for ExportController providing additional functionality
+/// Extension methods for <see cref="ExportController"/> providing convenience methods for exporting outbox messages.
 /// </summary>
 public static class ExportControllerExtensions
 {
     /// <summary>
-    /// Creates a simplified export request with default values for the specified format
+    /// Creates an export request with default values for the specified format.
     /// </summary>
-    /// <param name="controller">The ExportController instance</param>
-    /// <param name="format">The export format (json, csv, xml)</param>
-    /// <returns>ExportRequest configured with default values</returns>
+    /// <param name="controller">The <see cref="ExportController"/> instance.</param>
+    /// <param name="format">The export format (json, csv, xml).</param>
+    /// <returns>ExportRequest configured with default values.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="controller"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="format"/> is <see langword="null"/>, empty, or whitespace.</exception>
     public static ExportRequest CreateExportRequest(this ExportController controller, string format)
     {
         ArgumentNullException.ThrowIfNull(controller);
@@ -28,7 +30,7 @@ public static class ExportControllerExtensions
 
         return new ExportRequest
         {
-            Format = format.ToLower(),
+            Format = format.ToLowerInvariant(),
             StartDate = DateTime.UtcNow.AddDays(-7),
             EndDate = DateTime.UtcNow,
             Status = null,
@@ -37,13 +39,15 @@ public static class ExportControllerExtensions
     }
 
     /// <summary>
-    /// Exports messages with simplified parameters and returns the file directly
+    /// Exports messages with parameters and returns the file directly.
     /// </summary>
-    /// <param name="controller">The ExportController instance</param>
-    /// <param name="format">The export format (json, csv, xml)</param>
-    /// <param name="startDate">Optional start date filter</param>
-    /// <param name="endDate">Optional end date filter</param>
-    /// <returns>IActionResult with the exported file</returns>
+    /// <param name="controller">The <see cref="ExportController"/> instance.</param>
+    /// <param name="format">The export format (json, csv, xml).</param>
+    /// <param name="startDate">Optional start date filter.</param>
+    /// <param name="endDate">Optional end date filter.</param>
+    /// <returns>IActionResult with the exported file.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="controller"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="format"/> is <see langword="null"/>, empty, or whitespace.</exception>
     public static async Task<IActionResult> ExportMessagesAsync(
         this ExportController controller,
         string format,
@@ -73,11 +77,13 @@ public static class ExportControllerExtensions
     }
 
     /// <summary>
-    /// Gets export format details with simplified parameter
+    /// Gets export format details.
     /// </summary>
-    /// <param name="controller">The ExportController instance</param>
-    /// <param name="format">The export format to get details for</param>
-    /// <returns>IActionResult with format details or 404 if not found</returns>
+    /// <param name="controller">The <see cref="ExportController"/> instance.</param>
+    /// <param name="format">The export format to get details for.</param>
+    /// <returns>IActionResult with format details or 404 if not found.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="controller"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="format"/> is <see langword="null"/>, empty, or whitespace.</exception>
     public static IActionResult GetFormatDetails(this ExportController controller, string format)
     {
         ArgumentNullException.ThrowIfNull(controller);
@@ -91,10 +97,11 @@ public static class ExportControllerExtensions
     }
 
     /// <summary>
-    /// Gets export information including supported formats and limitations
+    /// Gets export information including supported formats and limitations.
     /// </summary>
-    /// <param name="controller">The ExportController instance</param>
-    /// <returns>ExportInfo object with configuration details</returns>
+    /// <param name="controller">The <see cref="ExportController"/> instance.</param>
+    /// <returns>ExportInfo object with configuration details.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="controller"/> is <see langword="null"/>.</exception>
     public static IActionResult GetExportInfo(this ExportController controller)
     {
         ArgumentNullException.ThrowIfNull(controller);
@@ -103,11 +110,12 @@ public static class ExportControllerExtensions
     }
 
     /// <summary>
-    /// Checks if a format is supported by calling GetSupportedFormatsAsync
+    /// Checks if a format is supported.
     /// </summary>
-    /// <param name="controller">The ExportController instance</param>
-    /// <param name="format">The format to check</param>
-    /// <returns>True if the format is supported, false otherwise</returns>
+    /// <param name="controller">The <see cref="ExportController"/> instance.</param>
+    /// <param name="format">The format to check.</param>
+    /// <returns>True if the format is supported, false otherwise.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="controller"/> is <see langword="null"/>.</exception>
     public static bool IsFormatSupported(this ExportController controller, string format)
     {
         ArgumentNullException.ThrowIfNull(controller);
@@ -122,7 +130,7 @@ public static class ExportControllerExtensions
         {
             if (okResult.Value is List<string> formats)
             {
-                return formats.Contains(format.ToLower());
+                return formats.Contains(format.ToLowerInvariant());
             }
         }
 
@@ -130,10 +138,11 @@ public static class ExportControllerExtensions
     }
 
     /// <summary>
-    /// Gets a JSON-serialized string containing all supported formats
+    /// Gets a JSON-serialized string containing all supported formats.
     /// </summary>
-    /// <param name="controller">The ExportController instance</param>
-    /// <returns>JSON string of supported formats</returns>
+    /// <param name="controller">The <see cref="ExportController"/> instance.</param>
+    /// <returns>JSON string of supported formats.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="controller"/> is <see langword="null"/>.</exception>
     public static string GetSupportedFormatsJson(this ExportController controller)
     {
         ArgumentNullException.ThrowIfNull(controller);
@@ -151,13 +160,14 @@ public static class ExportControllerExtensions
     }
 
     /// <summary>
-    /// Exports messages in JSON format with default parameters
+    /// Exports messages in JSON format with default parameters.
     /// </summary>
-    /// <param name="controller">The ExportController instance</param>
-    /// <param name="startDate">Optional start date filter</param>
-    /// <param name="endDate">Optional end date filter</param>
-    /// <param name="includeEventData">Whether to include event data in export</param>
-    /// <returns>IActionResult with the exported JSON file</returns>
+    /// <param name="controller">The <see cref="ExportController"/> instance.</param>
+    /// <param name="startDate">Optional start date filter.</param>
+    /// <param name="endDate">Optional end date filter.</param>
+    /// <param name="includeEventData">Whether to include event data in export.</param>
+    /// <returns>IActionResult with the exported JSON file.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="controller"/> is <see langword="null"/>.</exception>
     public static async Task<IActionResult> ExportJsonAsync(
         this ExportController controller,
         DateTime? startDate = null,
@@ -179,12 +189,13 @@ public static class ExportControllerExtensions
     }
 
     /// <summary>
-    /// Exports messages in CSV format with default parameters
+    /// Exports messages in CSV format with default parameters.
     /// </summary>
-    /// <param name="controller">The ExportController instance</param>
-    /// <param name="startDate">Optional start date filter</param>
-    /// <param name="endDate">Optional end date filter</param>
-    /// <returns>IActionResult with the exported CSV file</returns>
+    /// <param name="controller">The <see cref="ExportController"/> instance.</param>
+    /// <param name="startDate">Optional start date filter.</param>
+    /// <param name="endDate">Optional end date filter.</param>
+    /// <returns>IActionResult with the exported CSV file.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="controller"/> is <see langword="null"/>.</exception>
     public static async Task<IActionResult> ExportCsvAsync(
         this ExportController controller,
         DateTime? startDate = null,
