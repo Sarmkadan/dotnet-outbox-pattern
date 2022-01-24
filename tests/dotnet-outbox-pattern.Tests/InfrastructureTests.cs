@@ -14,11 +14,17 @@ using Moq;
 
 namespace DotnetOutboxPattern.Tests;
 
+/// <summary>
+/// Tests for the SerializationHelper class.
+/// </summary>
 public sealed class SerializationHelperTests
 {
     [Fact]
     public void Serialize_ProducesCamelCasePropertyNames()
     {
+        /// <summary>
+        /// Verifies that the Serialize method produces camel case property names.
+        /// </summary>
         var stats = new OutboxStatistics
         {
             TotalMessages = 100,
@@ -36,6 +42,10 @@ public sealed class SerializationHelperTests
     [Fact]
     public void Deserialize_WithValidJson_ReturnsMappedObject()
     {
+        /// <summary>
+        /// Verifies that the Deserialize method returns a mapped object when given valid JSON.
+        /// </summary>
+        /// <param name="json">The JSON string to deserialize.</param>
         var json = """{"totalMessages":50,"publishedMessages":45,"failedMessages":5}""";
 
         var result = SerializationHelper.Deserialize<OutboxStatistics>(json);
@@ -48,6 +58,9 @@ public sealed class SerializationHelperTests
     [Fact]
     public void Serialize_ThenDeserialize_PreservesHealthMetricValues()
     {
+        /// <summary>
+        /// Verifies that the Serialize and Deserialize methods preserve health metric values.
+        /// </summary>
         var original = new HealthMetrics
         {
             IsHealthy = false,
@@ -68,6 +81,9 @@ public sealed class SerializationHelperTests
     [Fact]
     public void Deserialize_WithInvalidJson_ThrowsSerializationException()
     {
+        /// <summary>
+        /// Verifies that the Deserialize method throws a SerializationException when given invalid JSON.
+        /// </summary>
         var act = () => SerializationHelper.Deserialize<OutboxStatistics>("{{not valid json}}");
 
         act.Should().Throw<SerializationException>();
@@ -76,24 +92,36 @@ public sealed class SerializationHelperTests
     [Fact]
     public void IsValidJson_WithWellFormedObject_ReturnsTrue()
     {
+        /// <summary>
+        /// Verifies that the IsValidJson method returns true for well-formed JSON objects.
+        /// </summary>
         SerializationHelper.IsValidJson("""{"key":"value","num":42}""").Should().BeTrue();
     }
 
     [Fact]
     public void IsValidJson_WithJsonArray_ReturnsTrue()
     {
+        /// <summary>
+        /// Verifies that the IsValidJson method returns true for JSON arrays.
+        /// </summary>
         SerializationHelper.IsValidJson("[1,2,3]").Should().BeTrue();
     }
 
     [Fact]
     public void IsValidJson_WithMalformedJson_ReturnsFalse()
     {
+        /// <summary>
+        /// Verifies that the IsValidJson method returns false for malformed JSON.
+        /// </summary>
         SerializationHelper.IsValidJson("{broken: json").Should().BeFalse();
     }
 
     [Fact]
     public void SerializePretty_ProducesIndentedMultilineOutput()
     {
+        /// <summary>
+        /// Verifies that the SerializePretty method produces indented multiline output.
+        /// </summary>
         var stats = new OutboxStatistics { TotalMessages = 1 };
 
         var json = SerializationHelper.SerializePretty(stats);
@@ -105,6 +133,9 @@ public sealed class SerializationHelperTests
     [Fact]
     public void Serialize_OmitsNullReferenceAndNullableValueProperties()
     {
+        /// <summary>
+        /// Verifies that the Serialize method omits null reference and nullable value properties.
+        /// </summary>
         var metrics = new HealthMetrics
         {
             ErrorMessage = null,
@@ -118,6 +149,9 @@ public sealed class SerializationHelperTests
     }
 }
 
+/// <summary>
+/// Tests for the EventPublisher class.
+/// </summary>
 public sealed class EventPublisherTests
 {
     private readonly Mock<ILogger<EventPublisher>> _loggerMock;
@@ -132,6 +166,9 @@ public sealed class EventPublisherTests
     [Fact]
     public void Constructor_WithNullLogger_ThrowsArgumentNullException()
     {
+        /// <summary>
+        /// Verifies that the EventPublisher constructor throws an ArgumentNullException when given a null logger.
+        /// </summary>
         var act = () => new EventPublisher(null!);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
@@ -140,6 +177,9 @@ public sealed class EventPublisherTests
     [Fact]
     public async Task Subscribe_WithNullHandler_ThrowsArgumentNullException()
     {
+        /// <summary>
+        /// Verifies that the Subscribe method throws an ArgumentNullException when given a null handler.
+        /// </summary>
         var act = () => _sut.Subscribe<MessagePublishedEvent>(null!);
 
         act.Should().Throw<ArgumentNullException>();
@@ -148,6 +188,9 @@ public sealed class EventPublisherTests
     [Fact]
     public async Task PublishAsync_WithNullEvent_ThrowsArgumentNullException()
     {
+        /// <summary>
+        /// Verifies that the PublishAsync method throws an ArgumentNullException when given a null event.
+        /// </summary>
         var act = async () => await _sut.PublishAsync<MessagePublishedEvent>(null!);
 
         await act.Should().ThrowAsync<ArgumentNullException>();
@@ -156,6 +199,9 @@ public sealed class EventPublisherTests
     [Fact]
     public async Task PublishAsync_WithNoSubscribers_CompletesWithoutThrowing()
     {
+        /// <summary>
+        /// Verifies that the PublishAsync method completes without throwing when there are no subscribers.
+        /// </summary>
         var @event = new MessagePublishedEvent { MessageId = Guid.NewGuid(), AggregateId = "agg-1" };
 
         var act = async () => await _sut.PublishAsync(@event);
@@ -166,6 +212,9 @@ public sealed class EventPublisherTests
     [Fact]
     public async Task PublishAsync_WithSubscriber_InvokesHandlerExactlyOnce()
     {
+        /// <summary>
+        /// Verifies that the PublishAsync method invokes the handler exactly once when there is a subscriber.
+        /// </summary>
         var captured = new List<MessagePublishedEvent>();
         using var _ = _sut.Subscribe<MessagePublishedEvent>(e =>
         {
@@ -182,6 +231,9 @@ public sealed class EventPublisherTests
     [Fact]
     public async Task Dispose_Subscription_StopsDeliveryToRemovedHandler()
     {
+        /// <summary>
+        /// Verifies that the Dispose method stops delivery to the removed handler.
+        /// </summary>
         var callCount = 0;
         var subscription = _sut.Subscribe<MessagePublishFailedEvent>(_ =>
         {
@@ -199,6 +251,9 @@ public sealed class EventPublisherTests
     [Fact]
     public async Task PublishAsync_WhenHandlerThrows_DoesNotPropagateExceptionToCaller()
     {
+        /// <summary>
+        /// Verifies that the PublishAsync method does not propagate the exception to the caller when the handler throws.
+        /// </summary>
         using var _ = _sut.Subscribe<MessageMovedToDeadLetterEvent>(_ =>
             Task.FromException(new InvalidOperationException("handler exploded")));
 
