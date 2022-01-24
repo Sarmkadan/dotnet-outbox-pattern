@@ -10,6 +10,10 @@ using Moq;
 
 namespace DotnetOutboxPattern.Tests;
 
+/// <summary>
+/// Contains unit tests for the <see cref="ExportService"/> class, validating functionality related to data export operations,
+/// format support, and error handling.
+/// </summary>
 public sealed class ExportServiceTests
 {
     private readonly Mock<IOutboxService> _outboxServiceMock;
@@ -17,6 +21,10 @@ public sealed class ExportServiceTests
     private readonly List<Mock<IDataFormatter>> _formatterMocks;
     private readonly ExportService _sut;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ExportServiceTests"/> class, setting up mocks for dependencies
+    /// and initializing the system under test.
+    /// </summary>
     public ExportServiceTests()
     {
         _outboxServiceMock = new Mock<IOutboxService>();
@@ -41,6 +49,9 @@ public sealed class ExportServiceTests
             _loggerMock.Object);
     }
 
+    /// <summary>
+    /// Tests that the constructor throws an <see cref="ArgumentNullException"/> when the provided outbox service is null.
+    /// </summary>
     [Fact]
     public void Constructor_WithNullOutboxService_ThrowsArgumentNullException()
     {
@@ -48,6 +59,9 @@ public sealed class ExportServiceTests
         act.Should().Throw<ArgumentNullException>().WithParameterName("outboxService");
     }
 
+    /// <summary>
+    /// Tests that the constructor throws an <see cref="ArgumentNullException"/> when the provided formatters are null.
+    /// </summary>
     [Fact]
     public void Constructor_WithNullFormatters_ThrowsArgumentNullException()
     {
@@ -55,6 +69,9 @@ public sealed class ExportServiceTests
         act.Should().Throw<ArgumentNullException>().WithParameterName("formatters");
     }
 
+    /// <summary>
+    /// Tests that <see cref="ExportService.GetSupportedFormats"/> returns all registered format names.
+    /// </summary>
     [Fact]
     public void GetSupportedFormats_ReturnsRegisteredFormats()
     {
@@ -64,6 +81,9 @@ public sealed class ExportServiceTests
         formats.Should().Contain("csv");
     }
 
+    /// <summary>
+    /// Tests that <see cref="ExportService.ExportAsync"/> correctly uses the JSON formatter when requested.
+    /// </summary>
     [Fact]
     public async Task ExportAsync_WithJsonFormat_UsesJsonFormatter()
     {
@@ -81,6 +101,9 @@ public sealed class ExportServiceTests
         result.ContentType.Should().Be("application/json");
     }
 
+    /// <summary>
+    /// Tests that <see cref="ExportService.ExportAsync"/> correctly uses the CSV formatter when requested.
+    /// </summary>
     [Fact]
     public async Task ExportAsync_WithCsvFormat_UsesCsvFormatter()
     {
@@ -98,6 +121,9 @@ public sealed class ExportServiceTests
         result.ContentType.Should().Be("text/csv");
     }
 
+    /// <summary>
+    /// Tests that <see cref="ExportService.ExportAsync"/> throws an <see cref="InvalidOperationException"/> when an unsupported format is requested.
+    /// </summary>
     [Fact]
     public async Task ExportAsync_WithUnsupportedFormat_ThrowsInvalidOperationException()
     {
@@ -109,6 +135,9 @@ public sealed class ExportServiceTests
             .WithMessage("*Unsupported export format*");
     }
 
+    /// <summary>
+    /// Tests that <see cref="ExportService.ExportAsync"/> handles format strings case-insensitively.
+    /// </summary>
     [Fact]
     public async Task ExportAsync_WithLowercaseFormat_IsFormatCaseInsensitive()
     {
@@ -124,6 +153,9 @@ public sealed class ExportServiceTests
         result.Format.Should().Be("json");
     }
 
+    /// <summary>
+    /// Tests that <see cref="ExportService.ExportAsync"/> correctly calculates and sets the content size.
+    /// </summary>
     [Fact]
     public async Task ExportAsync_SetsContentSizeCorrectly()
     {
@@ -139,6 +171,9 @@ public sealed class ExportServiceTests
         result.ContentSizeBytes.Should().BeGreaterThan(0);
     }
 
+    /// <summary>
+    /// Tests that <see cref="ExportService.ExportAsync"/> sets the exported timestamp correctly.
+    /// </summary>
     [Fact]
     public async Task ExportAsync_SetsExportedAtTimestamp()
     {
@@ -156,6 +191,9 @@ public sealed class ExportServiceTests
         result.ExportedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
     }
 
+    /// <summary>
+    /// Tests that <see cref="ExportService.ExportAsync"/> propagates exceptions thrown by the formatter.
+    /// </summary>
     [Fact]
     public async Task ExportAsync_WhenFormatterThrows_PropagatesException()
     {
@@ -174,6 +212,9 @@ public sealed class ExportServiceTests
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
+    /// <summary>
+    /// Tests that <see cref="ExportService.ExportToFileAsync"/> correctly creates the export file path in the directory.
+    /// </summary>
     [Fact]
     public async Task ExportToFileAsync_CreatesExportDirectory()
     {
@@ -194,6 +235,9 @@ public sealed class ExportServiceTests
         result.Should().Contain(".json");
     }
 
+    /// <summary>
+    /// Tests that <see cref="ExportService.GetSupportedFormats"/> returns an empty list when no formatters are registered.
+    /// </summary>
     [Fact]
     public void GetSupportedFormats_ReturnsEmptyList_WhenNoFormatters()
     {
@@ -208,6 +252,9 @@ public sealed class ExportServiceTests
         formats.Should().BeEmpty();
     }
 
+    /// <summary>
+    /// Tests that <see cref="ExportService.ExportAsync"/> returns a valid result even when the message list is empty.
+    /// </summary>
     [Fact]
     public async Task ExportAsync_WithEmptyMessageList_ReturnsValidResult()
     {
