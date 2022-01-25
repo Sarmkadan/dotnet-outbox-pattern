@@ -101,18 +101,34 @@ Summary:
   Last Processed:     {DateTime.UtcNow:O}
 
 Quality Indicators:
-  Messages/Sec:       {CalculateMessagesPerSecond(stats)}
+  Messages/Sec:       {CalculateMessagesPerSecond(stats):F2}
   Failure Rate:       {(1 - stats.SuccessRate):P2}
-  DLQ Percentage:     {((double)stats.DeadLetterCount / stats.TotalMessages):P2}
+  DLQ Percentage:     {CalculateDeadLetterRatio(stats):P2}
 ";
             return report;
         }
 
-        private double CalculateMessagesPerSecond(dynamic stats)
+        /// <summary>
+        /// Estimated publishing throughput derived from the average time a message
+        /// spends between creation and publication.
+        /// </summary>
+        private static double CalculateMessagesPerSecond(OutboxStatistics stats)
         {
-            // Simplified calculation - in production would use proper time tracking
-            return 0.0;
+            var averageSeconds = stats.AveragePublishTime.TotalSeconds;
+
+            if (stats.PublishedMessages == 0 || averageSeconds <= 0)
+                return 0.0;
+
+            return 1.0 / averageSeconds;
         }
+
+        /// <summary>
+        /// Share of messages that ended up in the dead letter queue, guarding an empty outbox.
+        /// </summary>
+        private static double CalculateDeadLetterRatio(OutboxStatistics stats) =>
+            stats.TotalMessages == 0
+                ? 0.0
+                : (double)stats.DeadLetterCount / stats.TotalMessages;
     }
 
     /// <summary>
@@ -150,14 +166,16 @@ Quality Indicators:
                 var stats = await _outboxService.GetStatisticsAsync();
                 var unreviewed = await _dlService.GetUnreviewedAsync();
 
-                _lastProcessed = DateTime.UtcNow;
-
-                // Check 1: Processing is happening
-                var timeSinceLastProcess = DateTime.UtcNow - _lastProcessed;
-                if (timeSinceLastProcess.TotalSeconds > StaleThresholdSeconds)
+                // Check 1: Processing is happening. Staleness is measured against the
+                // oldest pending message - the age of the last health probe says nothing
+                // about whether the processor is draining the queue.
+                if (stats.OldestPendingAge is { } oldestPendingAge &&
+                    oldestPendingAge.TotalSeconds > StaleThresholdSeconds)
                 {
-                    return (503, $"Processing stale for {timeSinceLastProcess.TotalSeconds:F0} seconds");
+                    return (503, $"Oldest pending message is {oldestPendingAge.TotalSeconds:F0} seconds old");
                 }
+
+                _lastProcessed = DateTime.UtcNow;
 
                 // Check 2: DLQ not overflowing
                 if (unreviewed.Count > DlqThreshold)
@@ -203,9 +221,10 @@ Quality Indicators:
         }
 
         /// <summary>
-        /// Liveness check - ensures processor is alive.
+        /// Liveness check - reports whether a health probe succeeded recently enough.
         /// </summary>
-        public bool IsAlive() => true;  // Simple check for now
+        public bool IsAlive() =>
+            (DateTime.UtcNow - _lastProcessed).TotalSeconds <= StaleThresholdSeconds;
     }
 
     /// <summary>

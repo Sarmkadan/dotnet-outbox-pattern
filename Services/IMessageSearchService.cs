@@ -64,6 +64,8 @@ public interface IMessageSearchService
 /// </summary>
 public sealed class MessageSearchService : IMessageSearchService
 {
+    private const int MaxPageSize = 500;
+
     private readonly IOutboxRepository _repository;
     private readonly ILogger<MessageSearchService> _logger;
 
@@ -75,28 +77,38 @@ public sealed class MessageSearchService : IMessageSearchService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    /// <summary>
+    /// Searches messages with complex filters and returns paginated results
+    /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="request"/> is null.</exception>
     public async Task<PaginatedResponse<OutboxMessageDto>> SearchAsync(MessageSearchRequest request)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         try
         {
             _logger.LogInformation(
                 "Searching messages with filters - Aggregate: {AggregateId}, Topic: {Topic}, State: {State}",
                 request.AggregateId, request.Topic, request.State);
 
-            // Get all messages that match filters
-            var allMessages = await _repository.GetStatisticsAsync();
+            var page = Math.Max(1, request.Page);
+            var pageSize = Math.Clamp(request.PageSize, 1, MaxPageSize);
 
-            // Apply pagination
-            var pageSize = Math.Min(request.PageSize, 500); // Cap at 500
-            var totalPages = (int)Math.Ceiling(allMessages.PendingMessages / (double)pageSize);
+            var candidates = ApplyFilters(await _repository.GetAllAsync(), request);
+            var sorted = ApplySort(candidates, request.SortBy, request.SortOrder).ToList();
 
-            // Return mock results for now (real implementation would query database)
+            var items = sorted
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(m => new OutboxMessageDto(m))
+                .ToList();
+
             return new PaginatedResponse<OutboxMessageDto>
             {
-                Page = request.Page,
+                Page = page,
                 PageSize = pageSize,
-                Items = new List<OutboxMessageDto>(),
-                TotalItems = (int)allMessages.PendingMessages
+                Items = items,
+                TotalItems = sorted.Count
             };
         }
         catch (Exception ex)
@@ -106,12 +118,20 @@ public sealed class MessageSearchService : IMessageSearchService
         }
     }
 
+    /// <summary>
+    /// Gets the most recent messages published to the given topic
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="topic"/> is null or whitespace.</exception>
     public async Task<List<OutboxMessageDto>> GetByTopicAsync(string topic, int limit = 100)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+
         try
         {
             _logger.LogInformation("Getting messages for topic: {Topic}", topic);
-            return new List<OutboxMessageDto>();
+
+            var messages = await _repository.GetByTopicAsync(topic, NormalizeLimit(limit));
+            return ToDtos(messages);
         }
         catch (Exception ex)
         {
@@ -120,18 +140,34 @@ public sealed class MessageSearchService : IMessageSearchService
         }
     }
 
+    /// <summary>
+    /// Gets messages emitted by a single aggregate, optionally narrowed to a state
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="aggregateId"/> or <paramref name="aggregateType"/> is null or whitespace.</exception>
     public async Task<List<OutboxMessageDto>> GetByAggregateAsync(
         string aggregateId,
         string aggregateType,
         OutboxMessageState? state = null,
         int limit = 100)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(aggregateId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
+
         try
         {
             _logger.LogInformation(
                 "Getting messages for aggregate {AggregateId} of type {AggregateType}",
                 aggregateId, aggregateType);
-            return new List<OutboxMessageDto>();
+
+            var messages = await _repository.GetByAggregateIdAsync(aggregateId);
+
+            var filtered = messages
+                .Where(m => string.Equals(m.AggregateType, aggregateType, StringComparison.Ordinal))
+                .Where(m => state is null || m.State == state)
+                .OrderByDescending(m => m.CreatedAt)
+                .Take(NormalizeLimit(limit));
+
+            return ToDtos(filtered);
         }
         catch (Exception ex)
         {
@@ -140,12 +176,23 @@ public sealed class MessageSearchService : IMessageSearchService
         }
     }
 
+    /// <summary>
+    /// Returns the most recent messages that carry an error message
+    /// </summary>
     public async Task<List<OutboxMessageDto>> FindErrorsAsync(int limit = 100)
     {
         try
         {
             _logger.LogInformation("Finding messages with errors");
-            return new List<OutboxMessageDto>();
+
+            var messages = await _repository.GetAllAsync();
+
+            var withErrors = messages
+                .Where(m => !string.IsNullOrWhiteSpace(m.ErrorMessage))
+                .OrderByDescending(m => m.LastProcessedAt ?? m.CreatedAt)
+                .Take(NormalizeLimit(limit));
+
+            return ToDtos(withErrors);
         }
         catch (Exception ex)
         {
@@ -154,12 +201,27 @@ public sealed class MessageSearchService : IMessageSearchService
         }
     }
 
+    /// <summary>
+    /// Returns messages whose error message contains the given substring (case-insensitive)
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="pattern"/> is null or whitespace.</exception>
     public async Task<List<OutboxMessageDto>> FindByErrorPatternAsync(string pattern, int limit = 50)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(pattern);
+
         try
         {
             _logger.LogInformation("Finding messages with error pattern: {Pattern}", pattern);
-            return new List<OutboxMessageDto>();
+
+            var messages = await _repository.GetAllAsync();
+
+            var matches = messages
+                .Where(m => m.ErrorMessage is not null &&
+                            m.ErrorMessage.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(m => m.LastProcessedAt ?? m.CreatedAt)
+                .Take(NormalizeLimit(limit));
+
+            return ToDtos(matches);
         }
         catch (Exception ex)
         {
@@ -168,14 +230,28 @@ public sealed class MessageSearchService : IMessageSearchService
         }
     }
 
+    /// <summary>
+    /// Returns messages that have been in the Processing state (or locked) longer than the given number of minutes
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="olderThanMinutes"/> is negative.</exception>
     public async Task<List<OutboxMessageDto>> FindStuckMessagesAsync(int olderThanMinutes = 30)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(olderThanMinutes);
+
         try
         {
             _logger.LogInformation(
                 "Finding messages stuck in processing for more than {Minutes} minutes",
                 olderThanMinutes);
-            return new List<OutboxMessageDto>();
+
+            var threshold = DateTime.UtcNow.AddMinutes(-olderThanMinutes);
+            var messages = await _repository.GetByStateAsync(OutboxMessageState.Processing);
+
+            var stuck = messages
+                .Where(m => (m.LastProcessedAt ?? m.CreatedAt) <= threshold || m.IsLocked)
+                .OrderBy(m => m.LastProcessedAt ?? m.CreatedAt);
+
+            return ToDtos(stuck);
         }
         catch (Exception ex)
         {
@@ -184,17 +260,31 @@ public sealed class MessageSearchService : IMessageSearchService
         }
     }
 
+    /// <summary>
+    /// Returns messages created within the given inclusive time range
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="endTime"/> is earlier than <paramref name="startTime"/>.</exception>
     public async Task<List<OutboxMessageDto>> GetByTimeRangeAsync(
         DateTime startTime,
         DateTime endTime,
         int limit = 1000)
     {
+        if (endTime < startTime)
+            throw new ArgumentException("End time must not be earlier than start time.", nameof(endTime));
+
         try
         {
             _logger.LogInformation(
                 "Getting messages created between {StartTime} and {EndTime}",
                 startTime, endTime);
-            return new List<OutboxMessageDto>();
+
+            var messages = await _repository.GetByDateRangeAsync(startTime, endTime);
+
+            var limited = messages
+                .OrderByDescending(m => m.CreatedAt)
+                .Take(NormalizeLimit(limit));
+
+            return ToDtos(limited);
         }
         catch (Exception ex)
         {
@@ -202,4 +292,62 @@ public sealed class MessageSearchService : IMessageSearchService
             throw;
         }
     }
+
+    private static IEnumerable<OutboxMessage> ApplyFilters(
+        IEnumerable<OutboxMessage> messages,
+        MessageSearchRequest request)
+    {
+        if (!string.IsNullOrWhiteSpace(request.AggregateId))
+            messages = messages.Where(m => string.Equals(m.AggregateId, request.AggregateId, StringComparison.Ordinal));
+
+        if (!string.IsNullOrWhiteSpace(request.AggregateType))
+            messages = messages.Where(m => string.Equals(m.AggregateType, request.AggregateType, StringComparison.Ordinal));
+
+        if (!string.IsNullOrWhiteSpace(request.Topic))
+            messages = messages.Where(m => string.Equals(m.Topic, request.Topic, StringComparison.Ordinal));
+
+        if (!string.IsNullOrWhiteSpace(request.State) &&
+            Enum.TryParse<OutboxMessageState>(request.State, ignoreCase: true, out var state))
+        {
+            messages = messages.Where(m => m.State == state);
+        }
+
+        if (request.CreatedAfter.HasValue)
+            messages = messages.Where(m => m.CreatedAt >= request.CreatedAfter.Value);
+
+        if (request.CreatedBefore.HasValue)
+            messages = messages.Where(m => m.CreatedAt <= request.CreatedBefore.Value);
+
+        if (request.MinPublishAttempts.HasValue)
+            messages = messages.Where(m => m.PublishAttempts >= request.MinPublishAttempts.Value);
+
+        return messages;
+    }
+
+    private static IEnumerable<OutboxMessage> ApplySort(
+        IEnumerable<OutboxMessage> messages,
+        string? sortBy,
+        string? sortOrder)
+    {
+        var descending = !string.Equals(sortOrder, "asc", StringComparison.OrdinalIgnoreCase);
+
+        Func<OutboxMessage, IComparable> selector = sortBy?.ToLowerInvariant() switch
+        {
+            "topic" => m => m.Topic,
+            "state" => m => (int)m.State,
+            "publishattempts" => m => m.PublishAttempts,
+            "publishedat" => m => m.PublishedAt ?? DateTime.MinValue,
+            "aggregateid" => m => m.AggregateId,
+            _ => m => m.CreatedAt
+        };
+
+        return descending
+            ? messages.OrderByDescending(selector)
+            : messages.OrderBy(selector);
+    }
+
+    private static int NormalizeLimit(int limit) => Math.Clamp(limit, 1, 10000);
+
+    private static List<OutboxMessageDto> ToDtos(IEnumerable<OutboxMessage> messages) =>
+        messages.Select(m => new OutboxMessageDto(m)).ToList();
 }
