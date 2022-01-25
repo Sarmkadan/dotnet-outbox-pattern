@@ -167,10 +167,21 @@ public sealed class DeadLetterRepository : IDeadLetterRepository
     /// <summary>
     /// Updates an existing dead letter record
     /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="deadLetter"/> is null.</exception>
     public async Task UpdateAsync(DeadLetter deadLetter, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(deadLetter);
+
         try
         {
+            // Another instance with the same key may already be tracked in this scope
+            // (for example the one that was just added); attaching a second one throws.
+            var tracked = _context.DeadLetters.Local.FirstOrDefault(x => x.Id == deadLetter.Id);
+            if (tracked is not null && !ReferenceEquals(tracked, deadLetter))
+            {
+                _context.Entry(tracked).State = EntityState.Detached;
+            }
+
             _context.DeadLetters.Update(deadLetter);
             await _context.SaveChangesAsync(cancellationToken);
         }

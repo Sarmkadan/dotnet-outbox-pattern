@@ -15,7 +15,7 @@ public sealed class DeadLetter
     /// <summary>
     /// Unique identifier for the dead letter record
     /// </summary>
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
 
     /// <summary>
     /// Reference to the original outbox message
@@ -180,20 +180,26 @@ public sealed class DeadLetter
     /// <summary>
     /// Marks the dead letter as reviewed
     /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="notes"/> is null.</exception>
     public void MarkAsReviewed(string notes)
     {
+        ArgumentNullException.ThrowIfNull(notes);
+
         IsReviewed = true;
-        ReviewNotes = notes;
+        ReviewNotes = notes.Trim();
         ReviewedAt = DateTime.UtcNow;
     }
 
     /// <summary>
     /// Marks the dead letter as requeued for retry
     /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="reason"/> is null.</exception>
     public void MarkAsRequeued(string reason)
     {
+        ArgumentNullException.ThrowIfNull(reason);
+
         IsRequeued = true;
         RequeuedAt = DateTime.UtcNow;
-        RequeueReason = reason;
+        RequeueReason = reason.Trim();
     }
 }

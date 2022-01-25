@@ -6,6 +6,7 @@ using DotnetOutboxPattern.Domain;
 using DotnetOutboxPattern.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
@@ -25,6 +26,10 @@ public class IntegrationTestFixture : IAsyncLifetime
 /// </summary>
 private readonly WebApplicationFactory<Program> _factory;
     /// <summary>
+/// The shared SQLite connection that keeps the in-memory database alive for the whole fixture.
+/// </summary>
+private readonly SqliteConnection _connection;
+    /// <summary>
 /// The HTTP client used to make requests to the application's API endpoints.
 /// </summary>
 public HttpClient Client { get; private set; } = null!;
@@ -35,23 +40,41 @@ public HttpClient Client { get; private set; } = null!;
 /// </summary>
 public IntegrationTestFixture()
     {
+        // A SQLite in-memory database lives exactly as long as its connection, so the
+        // connection has to be kept open and shared by every context of the fixture -
+        // otherwise each new context sees an empty database.
+        _connection = new SqliteConnection("DataSource=:memory:");
+        _connection.Open();
+
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                // The host reads this connection string at startup and refuses to build without it.
+                builder.UseSetting("ConnectionStrings:DefaultConnection", "DataSource=:memory:");
+
                 builder.ConfigureServices(services =>
                 {
-                    var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<OutboxDbContext>));
-                    if (descriptor is not null)
+                    // Dropping DbContextOptions<T> alone leaves the provider configuration
+                    // registered, and EF then sees both SQL Server and SQLite in one container.
+                    var descriptors = services
+                        .Where(d => d.ServiceType == typeof(DbContextOptions<OutboxDbContext>) ||
+                                    d.ServiceType == typeof(DbContextOptions) ||
+                                    d.ServiceType == typeof(OutboxDbContext) ||
+                                    (d.ServiceType.IsGenericType &&
+                                     d.ServiceType.GetGenericArguments().Contains(typeof(OutboxDbContext))))
+                        .ToList();
+
+                    foreach (var descriptor in descriptors)
                     {
                         services.Remove(descriptor);
                     }
 
                     services.AddDbContext<OutboxDbContext>(options =>
                     {
-                        options.UseSqlite("Data Source=:memory:");
+                        options.UseSqlite(_connection);
                     });
 
-                    var provider = services.BuildServiceProvider();
+                    using var provider = services.BuildServiceProvider();
                     using var scope = provider.CreateScope();
                     var context = scope.ServiceProvider.GetRequiredService<OutboxDbContext>();
                     context.Database.EnsureCreated();
@@ -77,7 +100,7 @@ public async Task DisposeAsync()
     {
         Client?.Dispose();
         _factory?.Dispose();
-        await Task.CompletedTask;
+        await _connection.DisposeAsync();
     }
 
     /// <summary>

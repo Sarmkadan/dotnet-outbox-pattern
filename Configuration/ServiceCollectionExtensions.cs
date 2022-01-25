@@ -7,6 +7,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using DotnetOutboxPattern.Data;
 using DotnetOutboxPattern.Domain;
 using DotnetOutboxPattern.Services;
@@ -47,6 +48,12 @@ public static class ServiceCollectionExtensions
         // Register repositories
         services.AddScoped<IOutboxRepository, OutboxRepository>();
         services.AddScoped<IDeadLetterRepository, DeadLetterRepository>();
+
+        // Dependencies of the services below: without them nothing that touches
+        // IOutboxService or IMessagePublishingService can be resolved at all.
+        // TryAdd keeps any caller-provided implementation in place.
+        services.TryAddSingleton<IOutboxSerializer, SystemTextJsonOutboxSerializer>();
+        services.TryAddSingleton(_ => new PublishingOptions());
 
         // Register services
         services.AddScoped<IOutboxService, OutboxService>();

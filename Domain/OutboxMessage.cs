@@ -15,7 +15,7 @@ public sealed class OutboxMessage
     /// <summary>
     /// Unique identifier for the outbox message
     /// </summary>
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
 
     /// <summary>
     /// Idempotency key for deduplication across retries
@@ -70,7 +70,7 @@ public sealed class OutboxMessage
     /// <summary>
     /// When the message was created
     /// </summary>
-    public DateTime CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
     /// When the message was last processed
@@ -220,5 +220,7 @@ public sealed class OutboxMessage
     /// <summary>
     /// Determines if the message should be retried
     /// </summary>
-    public bool CanRetry() => PublishAttempts < MaxPublishAttempts && State != OutboxMessageState.Published;
+    public bool CanRetry() =>
+        PublishAttempts < MaxPublishAttempts &&
+        State is OutboxMessageState.Pending or OutboxMessageState.Processing;
 }

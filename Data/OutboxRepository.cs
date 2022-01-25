@@ -190,10 +190,23 @@ public sealed class OutboxRepository : IOutboxRepository
     /// <summary>
     /// Updates an existing outbox message
     /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="message"/> is null.</exception>
+    /// <exception cref="OutboxRepositoryException">The update could not be persisted.</exception>
     public async Task UpdateAsync(OutboxMessage message, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(message);
+
         try
         {
+            // Reads go through AsNoTracking, but the same scope may still track another
+            // instance with this key (for example the one that was just added). Attaching
+            // a second instance of the same key throws, so detach the stale one first.
+            var tracked = _context.OutboxMessages.Local.FirstOrDefault(x => x.Id == message.Id);
+            if (tracked is not null && !ReferenceEquals(tracked, message))
+            {
+                _context.Entry(tracked).State = EntityState.Detached;
+            }
+
             _context.OutboxMessages.Update(message);
             await _context.SaveChangesAsync(cancellationToken);
         }
