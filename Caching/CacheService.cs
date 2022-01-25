@@ -32,11 +32,23 @@ public sealed class MemoryCacheService : ICacheService
     public MemoryCacheService(ILogger<MemoryCacheService> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _ = CleanupExpiredEntriesAsync();
+
+        // Failures inside the loop are already logged; this only reports a hard exit of the loop.
+        _ = CleanupExpiredEntriesAsync().ContinueWith(
+            t => _logger.LogError(t.Exception, "Cache cleanup loop terminated unexpectedly"),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
     }
 
-    public async Task<T?> GetAsync<T>(string key)
+    /// <summary>
+    /// Returns the cached value for the key, or the default value when it is absent or expired.
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="key"/> is null or whitespace.</exception>
+    public Task<T?> GetAsync<T>(string key)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
         lock (_lock)
         {
             if (_cache.TryGetValue(key, out var entry))
@@ -45,18 +57,24 @@ public sealed class MemoryCacheService : ICacheService
                 {
                     entry.LastAccessed = DateTime.UtcNow;
                     entry.AccessCount++;
-                    return (T?)entry.Value;
+                    return Task.FromResult(entry.Value is T typed ? typed : default);
                 }
 
                 _cache.Remove(key);
             }
         }
 
-        return default;
+        return Task.FromResult<T?>(default);
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null)
+    /// <summary>
+    /// Stores a value under the key with the given expiration (10 minutes by default).
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="key"/> is null or whitespace.</exception>
+    public Task SetAsync<T>(string key, T value, TimeSpan? expiration = null)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
         lock (_lock)
         {
             var expiresAt = expiration.HasValue
@@ -77,22 +95,38 @@ public sealed class MemoryCacheService : ICacheService
                 _logger.LogInformation("Cache size: {Size}", _cache.Count);
             }
         }
+
+        return Task.CompletedTask;
     }
 
-    public async Task RemoveAsync(string key)
+    /// <summary>
+    /// Removes a single cache entry.
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="key"/> is null or whitespace.</exception>
+    public Task RemoveAsync(string key)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
         lock (_lock)
         {
             _cache.Remove(key);
         }
+
+        return Task.CompletedTask;
     }
 
-    public async Task RemoveByPrefixAsync(string prefix)
+    /// <summary>
+    /// Removes every cache entry whose key starts with the given prefix.
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="prefix"/> is null or whitespace.</exception>
+    public Task RemoveByPrefixAsync(string prefix)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(prefix);
+
         lock (_lock)
         {
             var keysToRemove = _cache.Keys
-                .Where(k => k.StartsWith(prefix))
+                .Where(k => k.StartsWith(prefix, StringComparison.Ordinal))
                 .ToList();
 
             foreach (var key in keysToRemove)
@@ -103,10 +137,20 @@ public sealed class MemoryCacheService : ICacheService
             _logger.LogInformation("Removed {Count} cache entries with prefix: {Prefix}",
                 keysToRemove.Count, prefix);
         }
+
+        return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Returns the cached value for the key, invoking the factory and caching its result on a miss.
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="key"/> is null or whitespace.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="factory"/> is null.</exception>
     public async Task<T> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentNullException.ThrowIfNull(factory);
+
         var cached = await GetAsync<T>(key);
         if (cached is not null)
             return cached;
@@ -151,7 +195,7 @@ public sealed class MemoryCacheService : ICacheService
         }
     }
 
-    private class CacheEntry
+    private sealed class CacheEntry
     {
         public object? Value { get; set; }
         public DateTime CreatedAt { get; set; }
@@ -178,7 +222,9 @@ public static class CacheKeyBuilder
 
     public static string GetPrefix(string fullKey)
     {
+        ArgumentNullException.ThrowIfNull(fullKey);
+
         var colonIndex = fullKey.LastIndexOf(':');
-        return colonIndex > 0 ? fullKey.Substring(0, colonIndex + 1) : fullKey;
+        return colonIndex > 0 ? fullKey[..(colonIndex + 1)] : fullKey;
     }
 }

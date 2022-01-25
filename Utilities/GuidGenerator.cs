@@ -80,20 +80,20 @@ public static class GuidGenerator
     /// Generates a correlation ID (GUID in lowercase format)
     /// Used for tracing related messages across systems
     /// </summary>
-    public static string GenerateCorrelationId() => NewGuid().ToString("n").ToLower();
+    public static string GenerateCorrelationId() => NewGuid().ToString("n");
 
     /// <summary>
     /// Generates a request ID (GUID in short format)
     /// </summary>
-    public static string GenerateRequestId() => NewGuid().ToString("n").Substring(0, 16);
+    public static string GenerateRequestId() => NewGuid().ToString("n")[..16];
 
     /// <summary>
     /// Generates an idempotency key combining timestamp and random component
     /// </summary>
     public static string GenerateIdempotencyKey(string prefix = "")
     {
-        var timestamp = DateTime.UtcNow.Ticks;
-        var random = NewGuid().ToString("n").Substring(0, 8);
+        var timestamp = DateTime.UtcNow.Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var random = NewGuid().ToString("n")[..8];
         return string.IsNullOrEmpty(prefix) ? $"{timestamp}-{random}" : $"{prefix}-{timestamp}-{random}";
     }
 }

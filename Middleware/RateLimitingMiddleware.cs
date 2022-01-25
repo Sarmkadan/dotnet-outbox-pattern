@@ -5,6 +5,7 @@
 // =============================================================================
 
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Net;
 
 namespace DotnetOutboxPattern.Middleware;
@@ -30,77 +31,76 @@ public sealed class RateLimitingMiddleware
         _options = options ?? new RateLimitingOptions();
         _clientLimits = new ConcurrentDictionary<string, ClientRateLimit>();
 
-        // Cleanup expired entries periodically
-        _ = CleanupExpiredEntriesAsync();
+        // Cleanup expired entries periodically. Failures are logged inside the loop,
+        // so the continuation only has to catch a hard failure of the loop itself.
+        _ = CleanupExpiredEntriesAsync().ContinueWith(
+            t => _logger.LogError(t.Exception, "Rate limit cleanup loop terminated unexpectedly"),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
+        ArgumentNullException.ThrowIfNull(context);
+
         var clientId = GetClientIdentifier(context);
 
-        if (!IsRateLimited(clientId, out var remaining))
+        if (!TryAcquire(clientId, out var remaining))
         {
             _logger.LogWarning(
                 "Rate limit exceeded for client {ClientId}. Limit: {Limit} requests per {WindowSeconds}s",
                 clientId, _options.RequestsPerWindow, _options.WindowSeconds);
 
             context.Response.StatusCode = (int)HttpStatusCode.TooManyRequests;
-            context.Response.Headers["Retry-After"] = _options.WindowSeconds.ToString();
-            context.Response.Headers["X-RateLimit-Limit"] = _options.RequestsPerWindow.ToString();
+            context.Response.Headers["Retry-After"] = _options.WindowSeconds.ToString(CultureInfo.InvariantCulture);
+            context.Response.Headers["X-RateLimit-Limit"] = _options.RequestsPerWindow.ToString(CultureInfo.InvariantCulture);
             context.Response.Headers["X-RateLimit-Remaining"] = "0";
 
             await context.Response.WriteAsync("Rate limit exceeded");
             return;
         }
 
-        context.Response.Headers["X-RateLimit-Limit"] = _options.RequestsPerWindow.ToString();
-        context.Response.Headers["X-RateLimit-Remaining"] = remaining.ToString();
+        context.Response.Headers["X-RateLimit-Limit"] = _options.RequestsPerWindow.ToString(CultureInfo.InvariantCulture);
+        context.Response.Headers["X-RateLimit-Remaining"] = remaining.ToString(CultureInfo.InvariantCulture);
 
         await _next(context);
     }
 
     /// <summary>
-    /// Checks if client has exceeded rate limit using token bucket algorithm
+    /// Tries to consume one request slot for the client within the current fixed window
     /// </summary>
-    private bool IsRateLimited(string clientId, out int remaining)
+    /// <returns><c>true</c> when the request is allowed, <c>false</c> when the limit is exhausted.</returns>
+    private bool TryAcquire(string clientId, out int remaining)
     {
         var now = DateTime.UtcNow;
         var windowStart = now.AddSeconds(-_options.WindowSeconds);
 
-        var clientLimit = _clientLimits.AddOrUpdate(
-            clientId,
-            new ClientRateLimit
+        var clientLimit = _clientLimits.GetOrAdd(clientId, _ => new ClientRateLimit { WindowStart = now });
+
+        // The counter is shared between concurrent requests of the same client, so the
+        // read-modify-write has to be atomic. AddOrUpdate cannot provide that: its
+        // factory may run more than once and lose increments.
+        lock (clientLimit.SyncRoot)
+        {
+            if (clientLimit.WindowStart < windowStart)
             {
-                WindowStart = now,
-                RequestCount = 1,
-                LastRequest = now
-            },
-            (key, existing) =>
+                clientLimit.WindowStart = now;
+                clientLimit.RequestCount = 0;
+            }
+
+            clientLimit.LastRequest = now;
+
+            if (clientLimit.RequestCount >= _options.RequestsPerWindow)
             {
-                // Reset window if expired
-                if (existing.WindowStart < windowStart)
-                {
-                    return new ClientRateLimit
-                    {
-                        WindowStart = now,
-                        RequestCount = 1,
-                        LastRequest = now
-                    };
-                }
+                remaining = 0;
+                return false;
+            }
 
-                // Increment counter if within window
-                if (existing.RequestCount < _options.RequestsPerWindow)
-                {
-                    existing.RequestCount++;
-                    existing.LastRequest = now;
-                    return existing;
-                }
-
-                return existing;
-            });
-
-        remaining = Math.Max(0, _options.RequestsPerWindow - clientLimit.RequestCount);
-        return clientLimit.RequestCount <= _options.RequestsPerWindow;
+            clientLimit.RequestCount++;
+            remaining = Math.Max(0, _options.RequestsPerWindow - clientLimit.RequestCount);
+            return true;
+        }
     }
 
     /// <summary>
@@ -131,7 +131,7 @@ public sealed class RateLimitingMiddleware
 
                 var expiredWindow = DateTime.UtcNow.AddSeconds(-_options.WindowSeconds * 2);
                 var expiredClients = _clientLimits
-                    .Where(kvp => kvp.Value.LastRequest < expiredWindow)
+                    .Where(kvp => kvp.Value.GetLastRequest() < expiredWindow)
                     .Select(kvp => kvp.Key)
                     .ToList();
 
@@ -160,11 +160,27 @@ public sealed class RateLimitingOptions
 /// <summary>
 /// Tracks rate limit state for a single client
 /// </summary>
-internal class ClientRateLimit
+internal sealed class ClientRateLimit
 {
+    /// <summary>
+    /// Guards all mutable state of this entry against concurrent requests of the same client.
+    /// </summary>
+    public object SyncRoot { get; } = new();
+
     public DateTime WindowStart { get; set; }
     public int RequestCount { get; set; }
     public DateTime LastRequest { get; set; }
+
+    /// <summary>
+    /// Reads the last request timestamp under the entry lock.
+    /// </summary>
+    public DateTime GetLastRequest()
+    {
+        lock (SyncRoot)
+        {
+            return LastRequest;
+        }
+    }
 }
 
 /// <summary>

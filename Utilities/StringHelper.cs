@@ -131,7 +131,11 @@ public static class StringHelper
         if (string.IsNullOrWhiteSpace(value))
             return string.Empty;
 
-        var result = Regex.Replace(value, "(?<!^)(?=[A-Z])", "-");
+        // A separator must not be inserted where one already exists, otherwise
+        // input that is already kebab-cased comes back with doubled hyphens.
+        var result = Regex.Replace(value.Trim(), @"(?<!^)(?<![-_\s])(?=[A-Z])", "-");
+        result = Regex.Replace(result, @"[_\s]+", "-");
+        result = Regex.Replace(result, "-{2,}", "-");
         return result.ToLowerInvariant();
     }
 

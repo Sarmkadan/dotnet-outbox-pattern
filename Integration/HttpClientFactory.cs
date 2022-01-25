@@ -4,8 +4,10 @@
 // CTO & Software Architect
 // =============================================================================
 
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Sockets;
 
 namespace DotnetOutboxPattern.Integration;
 
@@ -47,9 +49,9 @@ public sealed class ProxyConfig
 /// <summary>
 /// Default HTTP client factory implementation
 /// </summary>
-public sealed class CustomHttpClientFactory : IHttpClientFactory
+public sealed class CustomHttpClientFactory : IHttpClientFactory, IDisposable
 {
-    private readonly Dictionary<string, HttpClient> _clients = new();
+    private readonly ConcurrentDictionary<string, HttpClient> _clients = new(StringComparer.Ordinal);
     private readonly ILogger<CustomHttpClientFactory> _logger;
 
     public CustomHttpClientFactory(ILogger<CustomHttpClientFactory> logger)
@@ -57,8 +59,14 @@ public sealed class CustomHttpClientFactory : IHttpClientFactory
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    /// <summary>
+    /// Creates a named client, replacing and disposing any client previously registered under that name.
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="name"/> is null or whitespace.</exception>
     public HttpClient CreateClient(string name, HttpClientConfig? config = null)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
         config ??= new HttpClientConfig();
 
         var handler = new HttpClientHandler
@@ -111,7 +119,14 @@ public sealed class CustomHttpClientFactory : IHttpClientFactory
             }
         }
 
-        _clients[name] = client;
+        // Replacing an entry must not leak the previous client and its handler.
+        HttpClient? previous = null;
+        _clients.AddOrUpdate(name, client, (_, existing) =>
+        {
+            previous = existing;
+            return client;
+        });
+        previous?.Dispose();
 
         _logger.LogInformation("HTTP client created: {ClientName} with timeout {Timeout}ms",
             name, config.Timeout.TotalMilliseconds);
@@ -119,14 +134,34 @@ public sealed class CustomHttpClientFactory : IHttpClientFactory
         return client;
     }
 
+    /// <summary>
+    /// Returns a previously created client.
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="name"/> is null or whitespace.</exception>
+    /// <exception cref="InvalidOperationException">No client was created under that name.</exception>
     public HttpClient GetNamedClient(string name)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
         if (!_clients.TryGetValue(name, out var client))
         {
             throw new InvalidOperationException($"HTTP client '{name}' not found");
         }
 
         return client;
+    }
+
+    /// <summary>
+    /// Disposes every client created by this factory.
+    /// </summary>
+    public void Dispose()
+    {
+        foreach (var client in _clients.Values)
+        {
+            client.Dispose();
+        }
+
+        _clients.Clear();
     }
 }
 
@@ -191,12 +226,13 @@ public sealed class ResilientHttpClient
         }
     }
 
-    private static bool IsTransientError(HttpRequestException ex)
-    {
-        // Transient errors that warrant retry
-        return ex.InnerException is TimeoutException ||
-               ex.InnerException is IOException ||
-               ex.Message.Contains("Connection refused") ||
-               ex.Message.Contains("Timeout");
-    }
+    private static bool IsTransientError(HttpRequestException ex) =>
+        ex.InnerException is TimeoutException or IOException or SocketException ||
+        ex.StatusCode is HttpStatusCode.RequestTimeout
+            or HttpStatusCode.TooManyRequests
+            or HttpStatusCode.BadGateway
+            or HttpStatusCode.ServiceUnavailable
+            or HttpStatusCode.GatewayTimeout ||
+        ex.Message.Contains("Connection refused", StringComparison.OrdinalIgnoreCase) ||
+        ex.Message.Contains("Timeout", StringComparison.OrdinalIgnoreCase);
 }

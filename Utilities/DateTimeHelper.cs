@@ -4,6 +4,8 @@
 // CTO & Software Architect
 // =============================================================================
 
+using System.Globalization;
+
 namespace DotnetOutboxPattern.Utilities;
 
 /// <summary>
@@ -56,7 +58,9 @@ public static class DateTimeHelper
     /// </summary>
     public static DateTime RoundDownToHour(DateTime dateTime)
     {
-        return dateTime.AddMinutes(-dateTime.Minute).AddSeconds(-dateTime.Second);
+        // Truncating minutes and seconds alone leaves the sub-second component intact,
+        // which breaks equality comparisons between bucket keys.
+        return new DateTime(dateTime.Ticks - (dateTime.Ticks % TimeSpan.TicksPerHour), dateTime.Kind);
     }
 
     /// <summary>
@@ -110,10 +114,10 @@ public static class DateTimeHelper
         if (!match.Success)
             return null;
 
-        var value = int.Parse(match.Groups[1].Value);
-        var unit = match.Groups[2].Value;
+        if (!int.TryParse(match.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var value))
+            return null;
 
-        return unit switch
+        return match.Groups[2].Value switch
         {
             "h" => TimeSpan.FromHours(value),
             "d" => TimeSpan.FromDays(value),

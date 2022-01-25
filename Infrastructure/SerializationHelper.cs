@@ -133,12 +133,15 @@ public static class SerializationHelper
     /// </summary>
     public static bool IsValidJson(string json)
     {
+        if (string.IsNullOrWhiteSpace(json))
+            return false;
+
         try
         {
-            JsonDocument.Parse(json);
+            using var document = JsonDocument.Parse(json);
             return true;
         }
-        catch
+        catch (JsonException)
         {
             return false;
         }
@@ -171,10 +174,13 @@ public static class SerializationHelper
             if (string.IsNullOrEmpty(str))
                 throw new InvalidOperationException("DateTime cannot be null");
 
-            if (DateTime.TryParseExact(str, "O", null, System.Globalization.DateTimeStyles.RoundtripKind, out var dt))
+            if (DateTime.TryParseExact(str, "O", System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.RoundtripKind, out var dt))
                 return dt;
 
-            return DateTime.Parse(str);
+            // Machine-facing payload: never let the ambient culture decide how it is read.
+            return DateTime.Parse(str, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.RoundtripKind);
         }
 
         public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)

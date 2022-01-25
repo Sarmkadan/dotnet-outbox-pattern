@@ -4,6 +4,7 @@
 // CTO & Software Architect
 // =============================================================================
 
+using System.Globalization;
 using DotnetOutboxPattern.Dtos;
 using DotnetOutboxPattern.Formatters;
 
@@ -63,12 +64,20 @@ public sealed class ExportService : IExportService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    /// <summary>
+    /// Exports the messages matching the request filters using the requested formatter
+    /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="request"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The requested format has no registered formatter.</exception>
     public async Task<ExportResult> ExportAsync(ExportRequest request)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         try
         {
-            var format = request.Format.ToLower();
-            var formatter = _formatters.FirstOrDefault(f => f.FormatName == format);
+            var format = request.Format.ToLowerInvariant();
+            var formatter = _formatters.FirstOrDefault(
+                f => string.Equals(f.FormatName, format, StringComparison.OrdinalIgnoreCase));
 
             if (formatter is null)
                 throw new InvalidOperationException($"Unsupported export format: {format}");
@@ -99,13 +108,19 @@ public sealed class ExportService : IExportService
         }
     }
 
+    /// <summary>
+    /// Exports the messages and writes them to a timestamped file under the exports directory
+    /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="request"/> is null.</exception>
     public async Task<string> ExportToFileAsync(ExportRequest request)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         try
         {
             var result = await ExportAsync(request);
 
-            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
             var filename = $"outbox_export_{timestamp}.{result.Format}";
             var filepath = Path.Combine("exports", filename);
 
@@ -135,18 +150,25 @@ public sealed class ExportService : IExportService
 
     private async Task<List<Domain.OutboxMessage>> GetMessagesToExportAsync(ExportRequest request)
     {
-        // Get all messages - in a real implementation, would apply date/status filters
-        var messages = await _outboxService.GetAllMessagesAsync();
+        IEnumerable<Domain.OutboxMessage> messages =
+            await _outboxService.GetAllMessagesAsync() ?? [];
 
         if (request.StartDate.HasValue)
-            messages = messages.Where(m => m.CreatedAt >= request.StartDate.Value).ToList();
+            messages = messages.Where(m => m.CreatedAt >= request.StartDate.Value);
 
         if (request.EndDate.HasValue)
-            messages = messages.Where(m => m.CreatedAt <= request.EndDate.Value).ToList();
+            messages = messages.Where(m => m.CreatedAt <= request.EndDate.Value);
 
-        if (!string.IsNullOrEmpty(request.Status))
-            messages = messages.Where(m => m.State.ToString() == request.Status).ToList();
+        if (!string.IsNullOrWhiteSpace(request.Status))
+        {
+            // Status arrives from the API as free text: match it case-insensitively
+            // against the enum instead of comparing raw strings.
+            if (!Enum.TryParse<Domain.OutboxMessageState>(request.Status, ignoreCase: true, out var state))
+                throw new InvalidOperationException($"Unknown message status: {request.Status}");
 
-        return messages;
+            messages = messages.Where(m => m.State == state);
+        }
+
+        return messages.ToList();
     }
 }
