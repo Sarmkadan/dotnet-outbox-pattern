@@ -40,17 +40,22 @@ public HttpClient Client { get; private set; } = null!;
 /// </summary>
 public IntegrationTestFixture()
     {
-        // A SQLite in-memory database lives exactly as long as its connection, so the
-        // connection has to be kept open and shared by every context of the fixture -
-        // otherwise each new context sees an empty database.
-        _connection = new SqliteConnection("DataSource=:memory:");
+        // A SQLite in-memory database lives exactly as long as a connection to it stays
+        // open, so this "keeper" connection is held open for the whole fixture's lifetime.
+        // Every DbContext gets its own connection to the same named, shared-cache database
+        // (via the connection string) rather than reusing a single SqliteConnection object -
+        // a bare Microsoft.Data.Sqlite connection is not safe to drive concurrently from
+        // multiple DbContext instances at once, which showed up as flaky failures under
+        // concurrent load.
+        var connectionString = $"Data Source=file:{Guid.NewGuid():N};Mode=Memory;Cache=Shared";
+        _connection = new SqliteConnection(connectionString);
         _connection.Open();
 
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
                 // The host reads this connection string at startup and refuses to build without it.
-                builder.UseSetting("ConnectionStrings:DefaultConnection", "DataSource=:memory:");
+                builder.UseSetting("ConnectionStrings:DefaultConnection", connectionString);
 
                 builder.ConfigureServices(services =>
                 {
@@ -71,7 +76,7 @@ public IntegrationTestFixture()
 
                     services.AddDbContext<OutboxDbContext>(options =>
                     {
-                        options.UseSqlite(_connection);
+                        options.UseSqlite(connectionString);
                     });
 
                     using var provider = services.BuildServiceProvider();
