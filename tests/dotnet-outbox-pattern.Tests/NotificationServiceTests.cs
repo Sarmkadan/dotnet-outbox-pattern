@@ -7,17 +7,26 @@ using Moq;
 
 namespace DotnetOutboxPattern.Tests;
 
+/// <summary>
+/// Tests for the NotificationService class.
+/// </summary>
 public sealed class NotificationServiceTests
 {
     private readonly Mock<ILogger<NotificationService>> _loggerMock;
     private readonly NotificationService _sut;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="NotificationServiceTests"/> class.
+    /// </summary>
     public NotificationServiceTests()
     {
         _loggerMock = new Mock<ILogger<NotificationService>>();
         _sut = new NotificationService(_loggerMock.Object);
     }
 
+    /// <summary>
+    /// Verifies that the constructor throws an ArgumentNullException when the logger is null.
+    /// </summary>
     [Fact]
     public void Constructor_WithNullLogger_ThrowsArgumentNullException()
     {
@@ -25,6 +34,9 @@ public sealed class NotificationServiceTests
         act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
     }
 
+    /// <summary>
+    /// Verifies that the SendAsync method throws an ArgumentNullException when the notification is null.
+    /// </summary>
     [Fact]
     public async Task SendAsync_WithNullNotification_ThrowsArgumentNullException()
     {
@@ -32,6 +44,9 @@ public sealed class NotificationServiceTests
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
 
+    /// <summary>
+    /// Verifies that the SendAsync method sends the notification to all channels.
+    /// </summary>
     [Fact]
     public async Task SendAsync_WithValidNotification_SendsToAllChannels()
     {
@@ -50,6 +65,9 @@ public sealed class NotificationServiceTests
         recent.Should().ContainSingle(n => n.Title == "Test" && n.Message == "Test message");
     }
 
+    /// <summary>
+    /// Verifies that the SendToChannelAsync method logs a warning when the channel is unknown.
+    /// </summary>
     [Fact]
     public async Task SendToChannelAsync_WithUnknownChannel_LogsWarningAndReturns()
     {
@@ -69,6 +87,9 @@ public sealed class NotificationServiceTests
             Times.Once);
     }
 
+    /// <summary>
+    /// Verifies that the SendToChannelAsync method delegates to the handler when the channel is known.
+    /// </summary>
     [Fact]
     public async Task SendToChannelAsync_WithKnownChannel_DelegatesToHandler()
     {
@@ -84,6 +105,9 @@ public sealed class NotificationServiceTests
         recent.Should().ContainSingle(n => n.Title == "Test" && n.Message == "Test message");
     }
 
+    /// <summary>
+    /// Verifies that the SendToChannelAsync method logs an error when the handler throws.
+    /// </summary>
     [Fact]
     public async Task SendToChannelAsync_WhenHandlerThrows_LogsErrorAndContinues()
     {
@@ -115,6 +139,9 @@ public sealed class NotificationServiceTests
             Times.Once);
     }
 
+    /// <summary>
+    /// Verifies that the GetRecentNotifications method returns the correct number of notifications.
+    /// </summary>
     [Fact]
     public void GetRecentNotifications_ReturnsCorrectNumber()
     {
@@ -141,6 +168,9 @@ public sealed class NotificationServiceTests
         recent.Last().Title.Should().Be("Test 149"); // Most recent
     }
 
+    /// <summary>
+    /// Verifies that the GetRecentNotifications method returns the last 100 notifications by default.
+    /// </summary>
     [Fact]
     public void GetRecentNotifications_WithDefaultCount_ReturnsLast100()
     {
