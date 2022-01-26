@@ -324,8 +324,11 @@ public sealed class OutboxEndToEndIntegrationTests : IClassFixture<IntegrationTe
 
         await dlService.ReviewAsync(deadLetter.Id, "reviewed and confirmed");
 
-        deadLetter.IsReviewed.Should().BeTrue();
-        deadLetter.ReviewNotes.Should().Be("reviewed and confirmed");
+        var dlRepo = scope.ServiceProvider.GetRequiredService<IDeadLetterRepository>();
+        var updated = await dlRepo.GetByIdAsync(deadLetter.Id);
+
+        updated!.IsReviewed.Should().BeTrue();
+        updated.ReviewNotes.Should().Be("reviewed and confirmed");
     }
 
     [Fact]
@@ -396,20 +399,23 @@ public sealed class ConcurrencyIntegrationTests : IClassFixture<IntegrationTestF
     [Fact]
     public async Task MultipleThreads_PublishSimultaneously_NoDataLoss()
     {
-        using var scope = _fixture.CreateScope();
-        var outboxService = scope.ServiceProvider.GetRequiredService<IOutboxService>();
-
         var threadCount = 5;
         var eventsPerThread = 20;
         var totalExpected = threadCount * eventsPerThread;
 
+        // Each concurrent worker needs its own DI scope (and therefore its own
+        // DbContext instance) - a DbContext is not thread-safe and cannot be shared
+        // across parallel operations.
         var tasks = Enumerable.Range(0, threadCount)
             .Select(threadId =>
                 Task.Run(async () =>
                 {
+                    using var workerScope = _fixture.CreateScope();
+                    var workerOutboxService = workerScope.ServiceProvider.GetRequiredService<IOutboxService>();
+
                     for (int i = 0; i < eventsPerThread; i++)
                     {
-                        await outboxService.PublishEventAsync(new PublishableEvent
+                        await workerOutboxService.PublishEventAsync(new PublishableEvent
                         {
                             Event = new EntityCreatedEvent
                             {
@@ -424,6 +430,9 @@ public sealed class ConcurrencyIntegrationTests : IClassFixture<IntegrationTestF
             .ToList();
 
         await Task.WhenAll(tasks);
+
+        using var scope = _fixture.CreateScope();
+        var outboxService = scope.ServiceProvider.GetRequiredService<IOutboxService>();
 
         var stats = await outboxService.GetStatisticsAsync();
         stats.TotalMessages.Should().BeGreaterThanOrEqualTo(totalExpected);

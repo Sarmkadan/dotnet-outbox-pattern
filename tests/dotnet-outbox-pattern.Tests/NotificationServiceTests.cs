@@ -80,10 +80,15 @@ public sealed class NotificationServiceTests
 
         await _sut.SendToChannelAsync(notification, "unknown-channel");
 
+        // ILogger's LogWarning/LogError are extension methods over ILogger.Log and cannot be
+        // used directly in a Moq setup/verify expression - verify the underlying Log call instead.
         _loggerMock.Verify(
-            l => l.LogWarning(
-                "Unknown notification channel: {Channel}",
-                "unknown-channel"),
+            l => l.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("unknown-channel")),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
@@ -132,10 +137,12 @@ public sealed class NotificationServiceTests
         await _sut.SendToChannelAsync(notification, "in-memory");
 
         _loggerMock.Verify(
-            l => l.LogError(
+            l => l.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("in-memory")),
                 It.IsAny<Exception>(),
-                "Error sending notification to channel {Channel}",
-                "in-memory"),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
@@ -143,9 +150,10 @@ public sealed class NotificationServiceTests
     /// Verifies that the GetRecentNotifications method returns the correct number of notifications.
     /// </summary>
     [Fact]
-    public void GetRecentNotifications_ReturnsCorrectNumber()
+    public async Task GetRecentNotifications_ReturnsCorrectNumber()
     {
-        // Add 150 notifications
+        // Add 150 notifications through the real send path (the in-memory channel is
+        // registered by default and appends to the service's notification list).
         for (int i = 0; i < 150; i++)
         {
             var notification = new Notification
@@ -153,14 +161,7 @@ public sealed class NotificationServiceTests
                 Title = $"Test {i}",
                 Message = $"Message {i}"
             };
-            _sut.GetType()
-                .GetField("_notifications", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .GetValue(_sut)!
-                .GetType()
-                .GetMethod("Add", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .Invoke(_sut.GetType()
-                    .GetField("_notifications", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                    .GetValue(_sut), new[] { notification });
+            await _sut.SendToChannelAsync(notification, "in-memory");
         }
 
         var recent = _sut.GetRecentNotifications(100);
@@ -172,9 +173,9 @@ public sealed class NotificationServiceTests
     /// Verifies that the GetRecentNotifications method returns the last 100 notifications by default.
     /// </summary>
     [Fact]
-    public void GetRecentNotifications_WithDefaultCount_ReturnsLast100()
+    public async Task GetRecentNotifications_WithDefaultCount_ReturnsLast100()
     {
-        // Add 50 notifications
+        // Add 50 notifications through the real send path.
         for (int i = 0; i < 50; i++)
         {
             var notification = new Notification
@@ -182,14 +183,7 @@ public sealed class NotificationServiceTests
                 Title = $"Test {i}",
                 Message = $"Message {i}"
             };
-            _sut.GetType()
-                .GetField("_notifications", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .GetValue(_sut)!
-                .GetType()
-                .GetMethod("Add", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .Invoke(_sut.GetType()
-                    .GetField("_notifications", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                    .GetValue(_sut), new[] { notification });
+            await _sut.SendToChannelAsync(notification, "in-memory");
         }
 
         var recent = _sut.GetRecentNotifications(); // Default count

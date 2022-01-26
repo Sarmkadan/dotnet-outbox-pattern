@@ -104,6 +104,9 @@ public sealed class MessagePublishingServiceTests
         _outboxRepoMock
             .Setup(r => r.GetPendingMessagesAsync(100, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<OutboxMessage> { message });
+        _outboxRepoMock
+            .Setup(r => r.GetByIdAsync(message.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message);
         _publisherMock
             .Setup(p => p.PublishAsync(message, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
@@ -130,6 +133,12 @@ public sealed class MessagePublishingServiceTests
         _outboxRepoMock
             .Setup(r => r.GetPendingMessagesAsync(100, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<OutboxMessage> { message1, message2 });
+        _outboxRepoMock
+            .Setup(r => r.GetByIdAsync(message1.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message1);
+        _outboxRepoMock
+            .Setup(r => r.GetByIdAsync(message2.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message2);
         _publisherMock
             .Setup(p => p.PublishAsync(message1, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("publish error"));
@@ -279,6 +288,9 @@ public sealed class MessagePublishingServiceTests
         _outboxRepoMock
             .Setup(r => r.GetPendingMessagesAsync(100, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<OutboxMessage> { message });
+        _outboxRepoMock
+            .Setup(r => r.GetByIdAsync(message.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message);
 
         var result = await _sut.ProcessPendingMessagesAsync(100);
 
@@ -300,6 +312,9 @@ public sealed class MessagePublishingServiceTests
         _outboxRepoMock
             .Setup(r => r.GetPendingMessagesAsync(100, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<OutboxMessage> { message });
+        _outboxRepoMock
+            .Setup(r => r.GetByIdAsync(message.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message);
 
         var result = await _sut.ProcessPendingMessagesAsync(100);
 
@@ -321,6 +336,15 @@ public sealed class MessagePublishingServiceTests
         _outboxRepoMock
             .Setup(r => r.GetPendingMessagesAsync(100, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<OutboxMessage> { message1, message2, message3 });
+        _outboxRepoMock
+            .Setup(r => r.GetByIdAsync(message1.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message1);
+        _outboxRepoMock
+            .Setup(r => r.GetByIdAsync(message2.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message2);
+        _outboxRepoMock
+            .Setup(r => r.GetByIdAsync(message3.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message3);
         _publisherMock
             .SetupSequence(p => p.PublishAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("error1"))
@@ -408,6 +432,9 @@ public sealed class MessagePublishingServiceTests
         _outboxRepoMock
             .Setup(r => r.GetScheduledMessagesAsync(100, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<OutboxMessage> { message });
+        _outboxRepoMock
+            .Setup(r => r.GetByIdAsync(message.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message);
         _publisherMock
             .Setup(p => p.PublishAsync(message, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);

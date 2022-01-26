@@ -190,7 +190,10 @@ public sealed class EventsTests
     {
         var publishableEvent = new PublishableEvent();
 
-        publishableEvent.Event.Should().NotBeNull();
+        // Event and Topic are required inputs with no sensible default (DomainEvent is
+        // abstract, and OutboxService.PublishEventAsync explicitly rejects a null Event) -
+        // callers must always supply them.
+        publishableEvent.Event.Should().BeNull();
         publishableEvent.Topic.Should().BeNull();
         publishableEvent.PartitionKey.Should().BeNull();
         publishableEvent.MaxAttempts.Should().Be(5);

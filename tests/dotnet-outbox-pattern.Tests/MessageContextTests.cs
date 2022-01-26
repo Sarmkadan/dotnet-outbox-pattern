@@ -15,8 +15,27 @@ namespace DotnetOutboxPattern.Tests;
 /// <summary>
 /// Tests for MessageContext tracing and activity management
 /// </summary>
-public sealed class MessageContextTests
+public sealed class MessageContextTests : IDisposable
 {
+    // ActivitySource.StartActivity returns null unless something is actually listening -
+    // there is no such listener by default in a test process, so every activity created
+    // through MessageContext would silently be null without this.
+    private readonly ActivityListener _activityListener = new()
+    {
+        ShouldListenTo = _ => true,
+        Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData
+    };
+
+    public MessageContextTests()
+    {
+        ActivitySource.AddActivityListener(_activityListener);
+    }
+
+    public void Dispose()
+    {
+        _activityListener.Dispose();
+    }
+
     [Fact]
     public void GetOrCreateCorrelationId_ReturnsValidGuidString()
     {
