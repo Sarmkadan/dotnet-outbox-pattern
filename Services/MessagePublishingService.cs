@@ -114,18 +114,20 @@ public sealed class MessagePublishingService : IMessagePublishingService
 
             foreach (var message in messages)
             {
-                var success = await ProcessSingleMessageAsync(message.Id, cancellationToken);
+                var outcome = await ProcessSingleMessageCoreAsync(message.Id, cancellationToken);
 
-                if (success)
+                if (outcome == MessageProcessingOutcome.Published)
                 {
                     result.ProcessedCount++;
                     result.ProcessedMessageIds.Add(message.Id);
                 }
-                else
+                else if (outcome == MessageProcessingOutcome.Failed)
                 {
                     result.FailedCount++;
                     result.FailedMessageIds.Add(message.Id);
                 }
+                // Skipped (locked by another instance / not yet due) counts as neither
+                // processed nor failed - it will be picked up again on a later pass.
             }
 
             result.Success = true;
@@ -160,14 +162,14 @@ public sealed class MessagePublishingService : IMessagePublishingService
 
             foreach (var message in messages)
             {
-                var success = await ProcessSingleMessageAsync(message.Id, cancellationToken);
+                var outcome = await ProcessSingleMessageCoreAsync(message.Id, cancellationToken);
 
-                if (success)
+                if (outcome == MessageProcessingOutcome.Published)
                 {
                     result.ProcessedCount++;
                     result.ProcessedMessageIds.Add(message.Id);
                 }
-                else
+                else if (outcome == MessageProcessingOutcome.Failed)
                 {
                     result.FailedCount++;
                     result.FailedMessageIds.Add(message.Id);
@@ -252,6 +254,14 @@ public sealed class MessagePublishingService : IMessagePublishingService
     /// update, ensuring only one instance actually publishes each message.
     /// </summary>
     public async Task<bool> ProcessSingleMessageAsync(Guid messageId, CancellationToken cancellationToken = default)
+        => await ProcessSingleMessageCoreAsync(messageId, cancellationToken) == MessageProcessingOutcome.Published;
+
+    /// <summary>
+    /// Core single-message processing logic, distinguishing an actual publish failure from a
+    /// message that was merely skipped (already locked by another instance, or not yet due).
+    /// Batch callers use this distinction to avoid counting skipped messages as failures.
+    /// </summary>
+    private async Task<MessageProcessingOutcome> ProcessSingleMessageCoreAsync(Guid messageId, CancellationToken cancellationToken = default)
     {
         OutboxMessage? message = null;
 
@@ -261,7 +271,7 @@ public sealed class MessagePublishingService : IMessagePublishingService
             if (message is null)
             {
                 _logger.LogWarning("Message {MessageId} not found", messageId);
-                return false;
+                return MessageProcessingOutcome.Skipped;
             }
 
             // Pre-check: skip messages already being processed by another instance.
@@ -272,7 +282,18 @@ public sealed class MessagePublishingService : IMessagePublishingService
                 _logger.LogDebug(
                     "Message {MessageId} is already locked by another instance, skipping",
                     messageId);
-                return false;
+                return MessageProcessingOutcome.Skipped;
+            }
+
+            // Honor the schedule even when this message is targeted directly (e.g. via a
+            // manual retry): GetPendingMessagesAsync/GetScheduledMessagesAsync already filter
+            // out not-yet-due messages, but a caller can still reach this message by ID.
+            if (message.ScheduledFor.HasValue && message.ScheduledFor.Value > DateTime.UtcNow)
+            {
+                _logger.LogDebug(
+                    "Message {MessageId} is scheduled for {ScheduledFor}, skipping",
+                    messageId, message.ScheduledFor);
+                return MessageProcessingOutcome.Skipped;
             }
 
             // Lock the message for this instance
@@ -293,7 +314,7 @@ public sealed class MessagePublishingService : IMessagePublishingService
                 "Message {MessageId} published successfully on attempt {Attempt}",
                 messageId, message.PublishAttempts + 1);
 
-            return true;
+            return MessageProcessingOutcome.Published;
         }
         catch (OutboxRepositoryException ex) when (ex.InnerException is DbUpdateConcurrencyException)
         {
@@ -301,20 +322,31 @@ public sealed class MessagePublishingService : IMessagePublishingService
             _logger.LogDebug(
                 "Message {MessageId} was taken by another instance (concurrency conflict), skipping",
                 messageId);
-            return false;
+            return MessageProcessingOutcome.Skipped;
         }
         catch (OperationCanceledException)
         {
             _logger.LogWarning("Publishing timed out for message {MessageId}", messageId);
             await HandlePublishingFailureAsync(message, "Publishing timed out", null, cancellationToken);
-            return false;
+            return MessageProcessingOutcome.Failed;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error publishing message {MessageId}", messageId);
             await HandlePublishingFailureAsync(message, ex.Message, ex.StackTrace, cancellationToken);
-            return false;
+            return MessageProcessingOutcome.Failed;
         }
+    }
+
+    /// <summary>
+    /// Outcome of processing a single message, distinguishing a genuine publish failure from a
+    /// message that was skipped without an attempt (locked elsewhere, or not yet due).
+    /// </summary>
+    private enum MessageProcessingOutcome
+    {
+        Published,
+        Failed,
+        Skipped
     }
 
     /// <summary>

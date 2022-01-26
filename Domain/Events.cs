@@ -4,11 +4,19 @@
 // CTO & Software Architect
 // =============================================================================
 
+using System.Text.Json.Serialization;
+
 namespace DotnetOutboxPattern.Domain;
 
 /// <summary>
 /// Base class for all domain events
 /// </summary>
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "eventKind", UnknownDerivedTypeHandling = JsonUnknownDerivedTypeHandling.FailSerialization)]
+[JsonDerivedType(typeof(EntityCreatedEvent), "entityCreated")]
+[JsonDerivedType(typeof(EntityUpdatedEvent), "entityUpdated")]
+[JsonDerivedType(typeof(EntityDeletedEvent), "entityDeleted")]
+[JsonDerivedType(typeof(CustomDomainEvent), "custom")]
+[JsonDerivedType(typeof(NotificationEvent), "notification")]
 public abstract class DomainEvent
 {
     /// <summary>

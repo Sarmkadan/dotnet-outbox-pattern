@@ -46,10 +46,11 @@ public sealed class OutboxMessageController : ControllerBase
 
             var message = await _outboxService.PublishEventAsync(request);
 
-            return CreatedAtAction(
-                nameof(GetMessageByIdAsync),
-                new { id = message.Id },
-                new OutboxMessageDto(message));
+            // Build the location explicitly rather than through CreatedAtAction: this
+            // controller's attribute-routed actions do not resolve reliably through the
+            // MVC link generator here, and the message ID is all that is needed to build
+            // the canonical URL for GetMessageByIdAsync.
+            return Created($"/api/outbox/messages/{message.Id}", new OutboxMessageDto(message));
         }
         catch (ArgumentException ex)
         {

@@ -44,7 +44,14 @@ public sealed class SystemTextJsonOutboxSerializer : IOutboxSerializer
         {
             return default;
         }
-        return JsonSerializer.Deserialize<T>(json, _options);
+        try
+        {
+            return JsonSerializer.Deserialize<T>(json, _options);
+        }
+        catch (JsonException)
+        {
+            return default;
+        }
     }
 
     /// <inheritdoc />
@@ -54,6 +61,13 @@ public sealed class SystemTextJsonOutboxSerializer : IOutboxSerializer
         {
             return null;
         }
-        return JsonSerializer.Deserialize(json, type, _options);
+        try
+        {
+            return JsonSerializer.Deserialize(json, type, _options);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 }

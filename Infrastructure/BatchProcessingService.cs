@@ -80,7 +80,7 @@ public sealed class BatchProcessingService : IBatchProcessingService
             else
                 await ProcessSequentialAsync(chunks, summary, ProcessPendingChunkAsync, cancellationToken);
 
-            summary.Success = true;
+            ApplyOverallOutcome(summary);
         }
         catch (OperationCanceledException)
         {
@@ -122,7 +122,7 @@ public sealed class BatchProcessingService : IBatchProcessingService
             else
                 await ProcessSequentialAsync(chunks, summary, ProcessScheduledChunkAsync, cancellationToken);
 
-            summary.Success = true;
+            ApplyOverallOutcome(summary);
         }
         catch (OperationCanceledException)
         {
@@ -198,7 +198,10 @@ public sealed class BatchProcessingService : IBatchProcessingService
         try
         {
             var result = await _publishingService.ProcessPendingMessagesAsync(size, cancellationToken);
-            chunk.Success = result.Success;
+            // A chunk "succeeds" when it completes without an unhandled exception - the
+            // per-message ProcessedCount/FailedCount inside result is normal operational
+            // detail, not a chunk-level failure signal.
+            chunk.Success = true;
             chunk.ProcessedCount = result.ProcessedCount;
             chunk.FailedCount = result.FailedCount;
             chunk.ErrorMessage = result.ErrorMessage;
@@ -225,7 +228,9 @@ public sealed class BatchProcessingService : IBatchProcessingService
         try
         {
             var result = await _publishingService.ProcessScheduledMessagesAsync(size, cancellationToken);
-            chunk.Success = result.Success;
+            // Same rationale as ProcessPendingChunkAsync: absence of an unhandled exception
+            // is what defines chunk-level success here.
+            chunk.Success = true;
             chunk.ProcessedCount = result.ProcessedCount;
             chunk.FailedCount = result.FailedCount;
             chunk.ErrorMessage = result.ErrorMessage;
@@ -266,6 +271,26 @@ public sealed class BatchProcessingService : IBatchProcessingService
 
         if (chunk.Success) summary.SuccessfulChunks++;
         else summary.FailedChunks++;
+    }
+
+    /// <summary>
+    /// Derives the overall success/error of a batch run from its accumulated chunk results.
+    /// A chunk that threw or reported failure must not be silently reported as an overall success.
+    /// </summary>
+    private static void ApplyOverallOutcome(BatchProcessingSummary summary)
+    {
+        if (summary.FailedChunks == 0)
+        {
+            summary.Success = true;
+            return;
+        }
+
+        summary.Success = false;
+        summary.ErrorMessage = string.Join(
+            "; ",
+            summary.ChunkResults
+                .Where(c => !c.Success && !string.IsNullOrEmpty(c.ErrorMessage))
+                .Select(c => c.ErrorMessage));
     }
 
     private void LogSummary(BatchProcessingSummary summary)

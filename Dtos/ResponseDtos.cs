@@ -77,6 +77,7 @@ public sealed class PaginatedResponse<T>
 /// </summary>
 public sealed class OutboxStatisticsDto
 {
+    public int TotalMessages { get; set; }
     public int PendingCount { get; set; }
     public int ProcessingCount { get; set; }
     public int PublishedCount { get; set; }
@@ -90,6 +91,7 @@ public sealed class OutboxStatisticsDto
 
     public OutboxStatisticsDto(OutboxStatistics stats)
     {
+        TotalMessages = (int)stats.TotalMessages;
         PendingCount = (int)stats.PendingMessages;
         ProcessingCount = (int)stats.ProcessingMessages;
         PublishedCount = (int)stats.PublishedMessages;

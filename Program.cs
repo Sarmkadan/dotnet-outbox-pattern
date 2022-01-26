@@ -33,6 +33,7 @@ try
     // Configure Outbox Pattern with IOptions pattern
     builder.Services.Configure<DotnetOutboxPatternOptions>(builder.Configuration.GetSection(DotnetOutboxPatternOptions.SectionName));
     builder.Services.AddOutboxPattern(connectionString);
+    builder.Services.AddOutboxPatternPhase2();
 
     // Register default message publisher (replace with your implementation)
     builder.Services.AddMessagePublisher<DefaultMessagePublisher>();
@@ -73,45 +74,11 @@ try
         };
     }).WithName("Health");
 
-    // Outbox statistics endpoint
-    app.MapGet("/api/outbox/statistics", async (IOutboxService outboxService) =>
-    {
-        return await outboxService.GetStatisticsAsync();
-    }).WithName("GetOutboxStatistics");
-
-    // Get message endpoint
-    app.MapGet("/api/outbox/messages/{messageId}", async (Guid messageId, IOutboxService outboxService) =>
-    {
-        var message = await outboxService.GetMessageAsync(messageId);
-        return message is not null ? Results.Ok(message) : Results.NotFound();
-    }).WithName("GetMessage");
-
-    // Publish event endpoint (for testing)
-    app.MapPost("/api/outbox/events", async (DotnetOutboxPattern.Domain.PublishableEvent request, IOutboxService outboxService) =>
-    {
-        var message = await outboxService.PublishEventAsync(request);
-        return Results.Created($"/api/outbox/messages/{message.Id}", message);
-    }).WithName("PublishEvent");
-
-    // Get unreviewed dead letters endpoint
-    app.MapGet("/api/deadletters/unreviewed", async (IDeadLetterService dlService) =>
-    {
-        return await dlService.GetUnreviewedAsync();
-    }).WithName("GetUnreviewedDeadLetters");
-
-    // Review dead letter endpoint
-    app.MapPut("/api/deadletters/{deadLetterId}/review", async (Guid deadLetterId, ReviewRequest request, IDeadLetterService dlService) =>
-    {
-        await dlService.ReviewAsync(deadLetterId, request.Notes);
-        return Results.NoContent();
-    }).WithName("ReviewDeadLetter");
-
-    // Requeue dead letter endpoint
-    app.MapPut("/api/deadletters/{deadLetterId}/requeue", async (Guid deadLetterId, RequeueRequest request, IDeadLetterService dlService) =>
-    {
-        await dlService.RequeueAsync(deadLetterId, request.Reason);
-        return Results.NoContent();
-    }).WithName("RequeueDeadLetter");
+    // Note: statistics, message retrieval, event publishing, and dead letter review/requeue
+    // are served by the MVC controllers (OutboxMessageController, DeadLetterController) mapped
+    // via app.MapControllers() above. Minimal API endpoints for the same routes used to be
+    // registered here too, which caused an AmbiguousMatchException (500) on every request to
+    // those paths since two endpoints matched the same route template.
 
     Log.Information("Application started successfully");
     await app.RunAsync();

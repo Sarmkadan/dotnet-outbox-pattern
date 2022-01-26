@@ -42,11 +42,15 @@ public sealed class MessageContext
 
         if (activity is not null)
         {
-            activity.SetTag("outbox.message_id", message.Id);
+            // SetTag with a non-string value (Guid, enum, ...) is only visible through
+            // TagObjects - Activity.Tags (the string-keyed view most consumers/tests read)
+            // silently omits any tag whose value isn't already a string. Stringify explicitly
+            // so these tags actually show up wherever the message's other string tags do.
+            activity.SetTag("outbox.message_id", message.Id.ToString());
             activity.SetTag("outbox.aggregate_id", message.AggregateId);
             activity.SetTag("outbox.topic", message.Topic);
-            activity.SetTag("outbox.event_type", message.EventType);
-            activity.SetTag("outbox.state", message.State);
+            activity.SetTag("outbox.event_type", message.EventType.ToString());
+            activity.SetTag("outbox.state", message.State.ToString());
             activity.SetTag("trace.correlation_id", message.CorrelationId);
 
             if (!string.IsNullOrEmpty(message.PartitionKey))

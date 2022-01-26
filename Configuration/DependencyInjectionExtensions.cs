@@ -63,8 +63,10 @@ public static class DependencyInjectionExtensions
         // Add HTTP client factory
         services.AddSingleton<DotnetOutboxPattern.Integration.IHttpClientFactory, CustomHttpClientFactory>();
 
-        // Add external API client with resilience
-        services.AddScoped<ResilientHttpClient>();
+        // Add external API client with resilience. ResilientHttpClient depends on a
+        // plain HttpClient, so it must be registered through AddHttpClient rather than
+        // a bare AddScoped, otherwise DI cannot construct it.
+        services.AddHttpClient<ResilientHttpClient>();
         services.AddScoped<IExternalApiClient, ExternalApiClient>();
 
         // Add formatters
