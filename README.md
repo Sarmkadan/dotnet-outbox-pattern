@@ -1265,6 +1265,51 @@ await dlService.RequeueAsync(deadLetterId, "Issue resolved");
 
 The project includes a comprehensive benchmark suite using [BenchmarkDotNet](https://benchmarkdotnet.org/) to measure critical operations. These benchmarks help identify performance characteristics and optimize the most common operations.
 
+### OutboxRepositoryBenchmarksExtensions
+
+The `OutboxRepositoryBenchmarksExtensions` class provides extension methods for the `OutboxRepositoryBenchmarks` class, offering a suite of realistic benchmark scenarios for testing outbox repository performance under various conditions. These methods validate proper initialization and provide consistent benchmarks by cleaning up existing data before inserting new records.
+
+**Usage Example:**
+
+```csharp
+// In your benchmark setup
+var benchmarks = new OutboxRepositoryBenchmarks(configuration);
+
+// Benchmark adding 100 messages in a single batch
+await benchmarks.AddMultipleMessages_Batch100();
+
+// Benchmark adding messages with different partition keys
+await benchmarks.AddMessages_DifferentPartitions();
+
+// Benchmark retrieving pending messages with a limit
+await benchmarks.GetPendingMessages_Limited50();
+
+// Benchmark retrieving pending messages by specific partition
+await benchmarks.GetPendingMessagesByPartition_Limited50();
+
+// Benchmark retrieving pending count with large dataset
+await benchmarks.GetPendingCount_LargeDataset();
+
+// Benchmark getting statistics with data
+await benchmarks.GetStatistics_WithData();
+
+// Benchmark retrieving pending messages from multiple partitions
+await benchmarks.GetPendingMessages_MultiplePartitions();
+
+// Benchmark adding a large dataset (1000 messages)
+await benchmarks.AddLargeDataset_1000Messages();
+
+// Benchmark retrieving pending messages after large dataset insertion
+await benchmarks.GetPendingMessages_AfterLargeInsert();
+
+// Benchmark getting statistics after large dataset insertion
+await benchmarks.GetStatistics_AfterLargeInsert();
+```
+
+### Latest Benchmark Results
+
+Benchmarks measured on a single core (Intel Core i7-12700, .NET 10, SQL Server 2022 Developer Edition):
+
 ### Running Benchmarks
 
 To run the benchmarks, execute:
