@@ -5,6 +5,10 @@ using System.Text.Json.Serialization;
 
 namespace DotnetOutboxPattern.Tests;
 
+/// <summary>
+/// Provides extension methods for serializing and deserializing <see cref="IntegrationTestFixture"/> instances
+/// to and from JSON using a predefined <see cref="JsonSerializerOptions"/> configuration.
+/// </summary>
 public static class IntegrationTestFixtureJsonExtensions
 {
     private static readonly JsonSerializerOptions _jsonSerializerOptions = new(JsonSerializerDefaults.Web)
@@ -40,7 +44,7 @@ public static class IntegrationTestFixtureJsonExtensions
     /// Deserializes a JSON string to an <see cref="IntegrationTestFixture"/> instance.
     /// </summary>
     /// <param name="json">The JSON string to deserialize. Cannot be null or empty.</param>
-    /// <returns>The deserialized instance, or null if deserialization fails.</returns>
+    /// <returns>The deserialized instance, or <c>null</c> if deserialization fails.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is null.</exception>
     /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is empty or whitespace.</exception>
     public static IntegrationTestFixture? FromJson(string json)
@@ -54,8 +58,8 @@ public static class IntegrationTestFixtureJsonExtensions
     /// Attempts to deserialize a JSON string to an <see cref="IntegrationTestFixture"/> instance.
     /// </summary>
     /// <param name="json">The JSON string to deserialize. Cannot be null or empty.</param>
-    /// <param name="value">Receives the deserialized instance if successful; otherwise, null.</param>
-    /// <returns>True if deserialization succeeds; otherwise, false.</returns>
+    /// <param name="value">Receives the deserialized instance if successful; otherwise, <c>null</c>.</param>
+    /// <returns><c>true</c> if deserialization succeeds; otherwise, <c>false</c>.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is null.</exception>
     /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is empty or whitespace.</exception>
     public static bool TryFromJson(string json, out IntegrationTestFixture? value)
