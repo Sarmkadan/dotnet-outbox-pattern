@@ -4,12 +4,14 @@ using System.Threading.Tasks;
 namespace DotnetOutboxPattern.Benchmarks
 {
     /// <summary>
-    /// Extension methods that add convenient helper functionality to <see cref="MessagePublishingServiceBenchmarks"/>.
+    /// Provides extension methods for <see cref="MessagePublishingServiceBenchmarks"/> to support benchmarking scenarios.
+    /// These methods implement common operations like warm-up, partition processing, and batch processing.
     /// </summary>
     public static class MessagePublishingServiceBenchmarksExtensions
     {
         /// <summary>
         /// Warms up the benchmark by running a single publish operation to eliminate JIT warm-up effects.
+        /// This ensures the benchmark measures steady-state performance rather than initial execution.
         /// </summary>
         /// <param name="benchmarks">The benchmark instance to warm up.</param>
         /// <exception cref="ArgumentNullException"><paramref name="benchmarks"/> is <see langword="null"/></exception>
@@ -22,9 +24,11 @@ namespace DotnetOutboxPattern.Benchmarks
 
         /// <summary>
         /// Processes messages from multiple partitions sequentially.
+        /// Each iteration calls <see cref="MessagePublishingServiceBenchmarks.ProcessPartition_Batch100"/>
+        /// to simulate processing of partitioned workloads.
         /// </summary>
         /// <param name="benchmarks">The benchmark instance.</param>
-        /// <param name="partitionCount">Number of partitions to process.</param>
+        /// <param name="partitionCount">Number of partitions to process sequentially.</param>
         /// <exception cref="ArgumentNullException"><paramref name="benchmarks"/> is <see langword="null"/></exception>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="partitionCount"/> is less than 1</exception>
         public static async Task ProcessMultiplePartitionsAsync(this MessagePublishingServiceBenchmarks benchmarks, int partitionCount)
@@ -40,6 +44,8 @@ namespace DotnetOutboxPattern.Benchmarks
 
         /// <summary>
         /// Processes a large batch of messages by running the pending messages processor multiple times.
+        /// Each iteration calls <see cref="MessagePublishingServiceBenchmarks.ProcessPendingMessages_Batch100"/>
+        /// to simulate processing of large message volumes.
         /// </summary>
         /// <param name="benchmarks">The benchmark instance.</param>
         /// <param name="messageCount">Number of batches to process.</param>
