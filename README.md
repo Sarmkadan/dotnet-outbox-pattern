@@ -1,26 +1,50 @@
-// ... existing content ...
+## SerializationHelperTestsExtensions
 
-## SystemTextJsonOutboxSerializerTestsExtensions
-
-The `SystemTextJsonOutboxSerializerTestsExtensions` class provides a set of extension methods for testing the `SystemTextJsonOutboxSerializer` class. These methods allow you to easily create test instances with custom JSON options, verify serialization and deserialization, and ensure round-tripping.
+The `SerializationHelperTestsExtensions` class provides extension methods for testing the `SerializationHelper` utility class, ensuring correct serialization and deserialization of complex objects, enums, null values, and DateTime types. It includes scenarios for round-trip validation, invalid JSON handling, and pretty-printed JSON output verification.
 
 ### Usage Example
 
 ```csharp
-var serializer = SystemTextJsonOutboxSerializerTestsExtensions
-    .WithCamelCaseOptions(new SystemTextJsonOutboxSerializerTests());
+using DotnetOutboxPattern.Tests;
+using FluentAssertions;
 
-var json = serializer.Serialize(new { Name = "John Doe", Age = 30 });
-json.Should().Be("{\"name\":\"John Doe\",\"age\":30}");
+public class OutboxSerializationTests : SerializationHelperTests
+{
+    [Fact]
+    public void Test_RoundTripSerialization_OfOutboxStatistics()
+    {
+        // Arrange
+        var original = new OutboxStatistics
+        {
+            TotalMessages = 100,
+            PendingMessages = 10,
+            ProcessingMessages = 5,
+            PublishedMessages = 80,
+            FailedMessages = 5,
+            ArchivedMessages = 0,
+            DeadLetterCount = 2,
+            AveragePublishTime = TimeSpan.FromSeconds(15),
+            OldestPendingAge = TimeSpan.FromHours(2)
+        };
 
-var deserialized = serializer.Deserialize<{ Name: string, Age: int }>(json);
-deserialized.Should().BeEquivalentTo(new { Name = "John Doe", Age = 30 });
+        // Act & Assert
+        this.Serialize_Deserialize_RoundTrip_ShouldPreserveAllProperties(original);
+    }
 
-serializer.ShouldContainPropertyName(new { Name = "John Doe" }, json, "name");
-serializer.ShouldRoundTrip(new { Name = "John Doe", Age = 30 });
-serializer.ShouldSerializeTo(new { Name = "John Doe" }, "{\"name\":\"John Doe\"}");
+    [Fact]
+    public void Test_EnumSerialization_PreservesNames()
+    {
+        // Arrange
+        var dto = new TestEnumDto
+        {
+            Status = TestStatus.Active,
+            Priority = PriorityLevel.High
+        };
+
+        // Act & Assert
+        this.Serialize_WithEnumValues_ShouldPreserveEnumNames(dto);
+    }
+}
 ```
 
-These extension methods simplify the process of testing serialization and deserialization scenarios, making it easier to ensure that your JSON serialization works as expected.
-
-// ... existing content ...
+This example demonstrates how to use the extension methods to verify that `SerializationHelper` correctly handles complex object graphs, including enum values and nested properties, using xUnit test methods.
