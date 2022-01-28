@@ -77,3 +77,65 @@ public class MessagePublishingServiceTests
         publisherMock.VerifyPublishCalledOnceWith(testMessage);
     }
 }
+```
+
+## BatchProcessingModelsTestsExtensions
+
+The `BatchProcessingModelsTestsExtensions` class provides extension methods for testing batch processing models, including `BatchProcessingOptions`, `BatchChunkResult`, and `BatchProcessingSummary`. These extension methods facilitate the creation of test instances and verification of their properties.
+
+### Usage Example
+
+```csharp
+using DotnetOutboxPattern.Tests;
+using FluentAssertions;
+
+public class BatchProcessingModelsTests
+{
+    [Fact]
+    public void Test_CreateDefaultOptions_ReturnsOptionsWithDefaultValues()
+    {
+        // Arrange & Act
+        var options = BatchProcessingModelsTestsExtensions.CreateDefaultOptions(this);
+
+        // Assert
+        options.Should().NotBeNull();
+        options.TotalBatchSize.Should().Be(0);
+        options.ChunkSize.Should().Be(0);
+        options.MaxParallelChunks.Should().Be(0);
+        options.EnableParallelChunks.Should().BeFalse();
+        options.DelayBetweenChunksMs.Should().Be(0);
+        options.StopOnChunkFailure.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Test_CreateChunkResult_ReturnsChunkResultWithSpecifiedValues()
+    {
+        // Arrange & Act
+        var chunkResult = BatchProcessingModelsTestsExtensions.CreateChunkResult(
+            this,
+            chunkIndex: 1,
+            success: true,
+            processedCount: 10,
+            failedCount: 0,
+            errorMessage: null);
+
+        // Assert
+        chunkResult.Should().NotBeNull();
+        chunkResult.ChunkIndex.Should().Be(1);
+        chunkResult.Success.Should().Be(true);
+        chunkResult.ProcessedCount.Should().Be(10);
+        chunkResult.FailedCount.Should().Be(0);
+        chunkResult.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public void Test_ShouldBeEquivalentTo_Options_AreEqual()
+    {
+        // Arrange
+        var expected = BatchProcessingModelsTestsExtensions.CreateDefaultOptions(this);
+        var actual = BatchProcessingModelsTestsExtensions.CreateDefaultOptions(this);
+
+        // Act & Assert
+        BatchProcessingModelsTestsExtensions.ShouldBeEquivalentTo(this, expected, actual);
+    }
+}
