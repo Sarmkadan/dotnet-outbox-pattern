@@ -1,6 +1,3 @@
-// entire file content ...
-// ... goes in between
-
 ## OutboxMessageControllerExtensions
 
 The `OutboxMessageControllerExtensions` class provides a set of extension methods for the `OutboxMessageController` class, enabling additional functionality for outbox message management, such as retrieving messages by state, retrying failed messages, and publishing events in batches.
@@ -114,5 +111,46 @@ public class ExportControllerExample
         var csvResult = await _controller.ExportCsvAsync();
     }
 }
-``` 
+
+## SerializationHelper
+
+The `SerializationHelper` class provides consistent JSON serialization and deserialization across the application, with built-in support for custom type handling (Guid, DateTime) and error resilience. It includes methods for standard serialization, pretty-printed output, and JSON validation.
+
+### Usage Example
+
+```csharp
+public class User
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class SerializationExample
+{
+    public void Run()
+    {
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Name = "John Doe",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        // Serialize to compact JSON
+        string json = SerializationHelper.Serialize(user);
+        
+        // Serialize to pretty-printed JSON
+        string prettyJson = SerializationHelper.SerializePretty(user);
+        
+        // Deserialize back to object
+        var deserializedUser = SerializationHelper.Deserialize<User>(json);
+        
+        // Validate JSON string
+        bool isValid = SerializationHelper.IsValidJson(json);
+        
+        // Deserialize to dynamic object
+        var dynamicUser = SerializationHelper.DeserializeDynamic(json, typeof(User));
+    }
+}
 ```
