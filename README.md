@@ -40,7 +40,6 @@ public class BasicEventPublishingExampleExample
             });
     }
 }
-```
 
 ## OutboxMetricsCollectorJsonExtensions
 
@@ -72,7 +71,6 @@ public class OutboxMetricsCollectorExample
         Console.WriteLine(metricsFromJson2);
     }
 }
-```
 
 ## QueryBuilderExtensions
 
@@ -107,5 +105,34 @@ The example demonstrates chaining multiple extension methods, combining builders
 resetting the builder, and retrieving both a summary dictionary and the full list of
 `FilterCondition` objects.
 
+## ErrorResponseExtensions
+
+The `ErrorResponseExtensions` class provides extension methods for `ErrorResponse` objects, allowing for additional functionality such as adding context, updating timestamps, and serializing to JSON. These methods enable you to create standardized error responses with ease.
+
+### Usage Example
+
+```csharp
+using DotnetOutboxPattern.Dtos;
+
+var errorResponse = new ErrorResponse
+{
+    Message = "An error occurred",
+    Code = "500",
+    Timestamp = DateTime.UtcNow,
+    TraceId = Guid.NewGuid().ToString()
+};
+
+var errorResponseWithContext = errorResponse.WithContext("Additional context");
+var errorResponseWithNewTimestamp = errorResponse.WithTimestamp(DateTime.UtcNow.AddHours(1));
+var errorResponseWithNewTraceId = errorResponse.WithTraceId(Guid.NewGuid().ToString());
+
+var json = errorResponse.ToJson(true);
+Console.WriteLine(json);
+
+var isClientError = errorResponse.IsClientError();
+var isServerError = errorResponse.IsServerError();
+
+var logFormat = errorResponse.ToLogFormat();
 ```
+
 // ... goes in between
