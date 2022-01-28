@@ -40,6 +40,37 @@ public class BasicEventPublishingExampleExample
             });
     }
 }
+
+## OutboxMetricsCollectorJsonExtensions
+
+The `OutboxMetricsCollectorJsonExtensions` class provides static methods for serializing and deserializing `OutboxMetricsCollector` instances to and from JSON.
+
+### Usage Example
+
+```csharp
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Examples;
+
+public class OutboxMetricsCollectorExample
+{
+    public async Task RunExampleAsync()
+    {
+        var metrics = new OutboxMetricsCollector(
+            new FakeOutboxService(),
+            new FakeDeadLetterService(),
+            new FakeLogger<OutboxMetricsCollector>());
+
+        var json = OutboxMetricsCollectorJsonExtensions.ToJson(metrics);
+        Console.WriteLine(json);
+
+        var metricsFromJson = OutboxMetricsCollectorJsonExtensions.FromJson(json);
+        Console.WriteLine(metricsFromJson);
+
+        var success = OutboxMetricsCollectorJsonExtensions.TryFromJson(json, out var metricsFromJson2);
+        Console.WriteLine(success);
+        Console.WriteLine(metricsFromJson2);
+    }
+}
 ```
 
 // ... goes in between
