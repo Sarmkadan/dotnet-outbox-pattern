@@ -139,3 +139,35 @@ public class BatchProcessingModelsTests
         BatchProcessingModelsTestsExtensions.ShouldBeEquivalentTo(this, expected, actual);
     }
 }
+```
+
+## BatchProcessingOptionsExtensions
+
+The `BatchProcessingOptionsExtensions` class provides extension methods for configuring and validating `BatchProcessingOptions`. These extension methods allow for fluent configuration of batch processing settings, calculation of chunk sizes, and estimation of memory usage.
+
+### Usage Example
+
+```csharp
+using DotnetOutboxPattern.Domain;
+
+public class BatchProcessingExample
+{
+    public void ConfigureBatchProcessingOptions()
+    {
+        var options = new BatchProcessingOptions();
+
+        options = options
+            .WithTotalBatchSize(1000)
+            .WithChunkSize(100)
+            .WithParallelChunks(4)
+            .WithDelayBetweenChunks(500)
+            .StopOnFailure();
+
+        var totalChunks = options.CalculateTotalChunks();
+
+        var chunkMemoryUsage = options.GetChunkMemoryUsage();
+        var totalBatchMemoryUsage = options.GetTotalBatchMemoryUsage();
+
+        var isValid = options.Validate();
+    }
+}
