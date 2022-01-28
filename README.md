@@ -40,6 +40,7 @@ public class BasicEventPublishingExampleExample
             });
     }
 }
+```
 
 ## OutboxMetricsCollectorJsonExtensions
 
@@ -73,4 +74,38 @@ public class OutboxMetricsCollectorExample
 }
 ```
 
+## QueryBuilderExtensions
+
+The `QueryBuilderExtensions` static class provides a fluent, chainable API for constructing query
+conditions on a `QueryBuilder` instance. It includes extension methods for common filtering
+operations (equality, range, null checks, collection membership) and sorting, enabling you to
+build expressive queries without manually managing the underlying condition list.
+
+**Usage example**
+
+```csharp
+using DotnetOutboxPattern.Utilities;
+
+var builder = new QueryBuilder()
+    .Where("Status", "Active")
+    .WhereGreaterThan("CreatedDate", DateTime.UtcNow.AddDays(-30))
+    .WhereLessThan("Priority", 5)
+    .WhereContains("Title", "urgent")
+    .WhereIn("Category", "Finance", "HR", "IT")
+    .WhereBetween("Amount", 1000, 5000)
+    .WhereIsNotNull("Description")
+    .OrderByDescending("CreatedDate")
+    .And(new QueryBuilder().WhereIsNull("DeletedAt"))
+    .Reset()
+    .Where("OwnerId", GuidGenerator.NewGuid());
+
+var summary = builder.GetFilterSummary();   // Dictionary<string, object?>
+var conditions = builder.GetConditions();   // List<FilterCondition>
+```
+
+The example demonstrates chaining multiple extension methods, combining builders with `And`,
+resetting the builder, and retrieving both a summary dictionary and the full list of
+`FilterCondition` objects.
+
+```
 // ... goes in between
