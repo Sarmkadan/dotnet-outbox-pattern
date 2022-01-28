@@ -1,3 +1,4 @@
+
 ## SerializationHelperTestsExtensions
 
 The `SerializationHelperTestsExtensions` class provides extension methods for testing the `SerializationHelper` utility class, ensuring correct serialization and deserialization of complex objects, enums, null values, and DateTime types. It includes scenarios for round-trip validation, invalid JSON handling, and pretty-printed JSON output verification.
@@ -47,4 +48,32 @@ public class OutboxSerializationTests : SerializationHelperTests
 }
 ```
 
-This example demonstrates how to use the extension methods to verify that `SerializationHelper` correctly handles complex object graphs, including enum values and nested properties, using xUnit test methods.
+## MessagePublishingServiceTestsExtensions
+
+The `MessagePublishingServiceTestsExtensions` class provides extension methods for testing the `MessagePublishingService` class. These extension methods facilitate the creation of test instances, verification of publisher calls, and setup of repository mocks.
+
+### Usage Example
+
+```csharp
+using DotnetOutboxPattern.Tests;
+using Moq;
+
+public class MessagePublishingServiceTests
+{
+    [Fact]
+    public void Test_PublishMessage_ServiceCreatesAndPublishesMessage()
+    {
+        // Arrange
+        var outboxRepoMock = new Mock<IOutboxRepository>();
+        var publisherMock = new Mock<IMessagePublisher>();
+        var service = MessagePublishingServiceTestsExtensions.CreateService(outboxRepoMock, publisherMock: publisherMock);
+
+        var testMessage = MessagePublishingServiceTestsExtensions.CreateTestMessage(service);
+
+        // Act
+        service.PublishMessageAsync(testMessage.Id).Wait();
+
+        // Assert
+        publisherMock.VerifyPublishCalledOnceWith(testMessage);
+    }
+}
