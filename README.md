@@ -69,4 +69,50 @@ public class MessageStateSummary
     public int PublishedCount { get; set; }
     public int ArchivedCount { get; set; }
 }
+
+## ExportControllerExtensions
+
+The `ExportControllerExtensions` class provides a set of extension methods for the `ExportController` class, enabling additional functionality for exporting outbox messages in various formats. It allows for creating export requests, exporting messages, getting format details, and checking if a format is supported. 
+
+### Usage Example
+
+```csharp
+using DotnetOutboxPattern.Controllers;
+using DotnetOutboxPattern.Dtos;
+using Microsoft.AspNetCore.Mvc;
+
+public class ExportControllerExample
+{
+    private readonly ExportController _controller;
+
+    public ExportControllerExample(ExportController controller)
+    {
+        _controller = controller;
+    }
+
+    public async Task RunExampleAsync()
+    {
+        // Create an export request
+        var request = _controller.CreateExportRequest("json");
+
+        // Export messages
+        var result = await _controller.ExportMessagesAsync("json");
+
+        // Get format details
+        var formatDetails = _controller.GetFormatDetails("json");
+
+        // Check if a format is supported
+        var isSupported = _controller.IsFormatSupported("json");
+
+        // Get supported formats as JSON
+        var supportedFormatsJson = _controller.GetSupportedFormatsJson();
+
+        // Export messages in JSON format
+        var jsonResult = await _controller.ExportJsonAsync();
+
+        // Export messages in CSV format
+        var csvResult = await _controller.ExportCsvAsync();
+    }
+}
+``` 
 ```
