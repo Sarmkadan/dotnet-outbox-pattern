@@ -195,4 +195,39 @@ public class RetryPolicyExample
         Console.WriteLine($"Max Retry Delay: {stats.MaxRetryDelay.TotalSeconds} seconds");
     }
 }
+
+## MessageContext
+
+The `MessageContext` class manages distributed tracing context for outbox messages, providing correlation and causation IDs for message flow tracing.
+
+### Usage Example
+
+```csharp
+using DotnetOutboxPattern.Infrastructure;
+using System.Diagnostics;
+
+public class MessageContextExample
+{
+    public void Run()
+    {
+        // Create a correlation ID
+        string correlationId = MessageContext.GetOrCreateCorrelationId();
+
+        // Create a causation ID
+        string causationId = MessageContext.GetOrCreateCausationId();
+
+        // Start an activity for a message
+        var message = new OutboxMessage { /* initialize message properties */ };
+        var activity = MessageContext.StartActivity(message, "ProcessMessage");
+
+        // Record events
+        MessageContext.RecordEvent("MessageReceived", new Dictionary<string, object> { { "message_id", message.Id } });
+
+        // Dispose of the activity
+        activity?.Dispose();
+
+        // Or use a scope
+        using var scope = MessageContext.StartActivity(message, "ProcessMessage").UseScope();
+    }
+}
 ```
