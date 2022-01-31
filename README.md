@@ -153,4 +153,46 @@ public class SerializationExample
         var dynamicUser = SerializationHelper.DeserializeDynamic(json, typeof(User));
     }
 }
+
+## RetryPolicyHelper
+
+The `RetryPolicyHelper` class provides utilities for calculating retry delays and statistics based on different retry policies. It supports fixed interval, linear backoff, and exponential backoff strategies with optional jitter to prevent thundering herd problems.
+
+
+
+### Usage Example
+
+```csharp
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Infrastructure;
+
+public class RetryPolicyExample
+{
+    public void RunExample()
+    {
+        // Configure publishing options with exponential backoff
+        var options = new PublishingOptions
+        {
+            RetryPolicy = RetryPolicyType.ExponentialBackoff,
+            InitialRetryDelay = TimeSpan.FromSeconds(1),
+            MaxRetryDelay = TimeSpan.FromSeconds(30),
+            BackoffMultiplier = 2.0,
+            UseJitter = true
+        };
+
+        // Calculate delay for specific attempt
+        var delay = RetryPolicyHelper.CalculateDelay(3, options);
+        Console.WriteLine($"Delay for attempt 3: {delay.TotalSeconds} seconds");
+
+        // Calculate statistics for diagnostic purposes
+        var stats = RetryPolicyHelper.CalculateStatistics(options, maxAttempts: 6);
+        
+        Console.WriteLine($"Retry Policy: {stats.RetryPolicy}");
+        Console.WriteLine($"Max Attempts: {stats.MaxAttempts}");
+        Console.WriteLine($"Total Retries: {stats.TotalRetries}");
+        Console.WriteLine($"Total Delay Time: {stats.TotalDelayTime.TotalSeconds} seconds");
+        Console.WriteLine($"Average Retry Delay: {stats.AverageRetryDelay.TotalSeconds} seconds");
+        Console.WriteLine($"Max Retry Delay: {stats.MaxRetryDelay.TotalSeconds} seconds");
+    }
+}
 ```
