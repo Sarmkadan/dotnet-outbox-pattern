@@ -33,3 +33,48 @@ public class DefaultMessagePublisherExample
     }
 }
 ```
+
+## OutboxProcessorOptions
+
+The `OutboxProcessorOptions` class provides configuration for the background outbox message processor. It controls batch processing behavior, locking mechanics, and health monitoring thresholds.
+
+
+### Usage Example
+
+```csharp
+using DotnetOutboxPattern.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+public class ConfigureOutboxProcessorExample
+{
+    public void ConfigureServices(IServiceCollection services)
+    {
+        services.AddHostedService<OutboxProcessor>();
+
+        services.Configure<OutboxProcessorOptions>(options =>
+        {
+            options.Enabled = true;
+            options.BatchSize = 200;
+            options.DelayBetweenBatches = 10000;
+            options.CheckExpiredLocksInterval = 300000;
+            options.LockDurationSeconds = 600;
+            options.PreservePartitionOrdering = true;
+            options.OldestMessageAgeThresholdMinutes = 10;
+        });
+
+        // Register options interface
+        services.AddSingleton<IOutboxProcessorOptions>(sp =>
+            sp.GetRequiredService<IOptions<OutboxProcessorOptions>>().Value);
+    }
+
+    public void UseProcessor(IHost host)
+    {
+        var processor = host.Services.GetRequiredService<OutboxProcessor>();
+        var health = processor.GetHealth();
+
+        Console.WriteLine($"IsHealthy: {health.IsHealthy}");
+        Console.WriteLine($"LastSuccessfulPublish: {health.LastSuccessfulPublish}");
+    }
+}
+```
