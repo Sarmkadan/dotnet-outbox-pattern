@@ -1,5 +1,33 @@
 // existing content ...
 
+## OutboxException
+
+The `OutboxException` class is a base exception for outbox pattern related errors. It provides a standardized way to handle and report errors that occur during outbox message processing.
+
+### Usage Example
+
+```csharp
+using DotnetOutboxPattern.Exceptions;
+
+public class OutboxExceptionExample
+{
+    public void RunExample()
+    {
+        try
+        {
+            // Simulate an error
+            throw new MessagePublishingException("Error publishing message", Guid.NewGuid(), 1);
+        }
+        catch (OutboxException ex)
+        {
+            Console.WriteLine($"Error code: {ex.ErrorCode}");
+            Console.WriteLine($"Resource ID: {ex.ResourceId}");
+            Console.WriteLine($"Message ID: {ex.MessageId}");
+        }
+    }
+}
+```
+
 ## DefaultMessagePublisher
 
 The `DefaultMessagePublisher` class provides a basic implementation of `IMessagePublisher` for testing and demo purposes. It logs messages instead of publishing them to an actual message broker. You can also create a logging publisher using the `CreateLoggingPublisher` method.
@@ -77,4 +105,3 @@ public class ConfigureOutboxProcessorExample
         Console.WriteLine($"LastSuccessfulPublish: {health.LastSuccessfulPublish}");
     }
 }
-```
