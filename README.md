@@ -105,3 +105,42 @@ public class ConfigureOutboxProcessorExample
         Console.WriteLine($"LastSuccessfulPublish: {health.LastSuccessfulPublish}");
     }
 }
+```
+
+## IEventPublisher
+
+The `IEventPublisher` interface defines a simple in-process event bus that allows components to publish and subscribe to domain events without tight coupling. It exposes asynchronous `PublishAsync<T>` and `Subscribe<T>` methods, returning a disposable subscription that can be disposed to unsubscribe.
+
+### Usage Example
+
+```csharp
+using DotnetOutboxPattern.Events;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
+
+var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+var logger = loggerFactory.CreateLogger<EventPublisher>();
+
+// Create the event publisher
+var publisher = new EventPublisher(logger);
+
+// Subscribe to MessagePublishedEvent
+var subscription = publisher.Subscribe<MessagePublishedEvent>(async ev =>
+{
+    Console.WriteLine($"Message {ev.MessageId} published to aggregate {ev.AggregateId} after {ev.PublishAttempts} attempts.");
+    await Task.CompletedTask;
+});
+
+// Publish an event
+var publishedEvent = new MessagePublishedEvent
+{
+    MessageId = Guid.NewGuid(),
+    AggregateId = "Order123",
+    PublishAttempts = 1
+};
+
+await publisher.PublishAsync(publishedEvent);
+
+// Dispose subscription when no longer needed
+subscription.Dispose();
+```
