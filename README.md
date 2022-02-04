@@ -1,146 +1,33 @@
 // existing content ...
 
-## OutboxException
+## MessagePublishingServiceBenchmarks
 
-The `OutboxException` class is a base exception for outbox pattern related errors. It provides a standardized way to handle and report errors that occur during outbox message processing.
+The `MessagePublishingServiceBenchmarks` class provides a set of performance benchmarks for the outbox message publishing service. It sets up an in‑memory database, pre‑loads a batch of messages, and measures the time taken to process pending messages, process a specific partition, or publish a single message. The benchmarks are intended to help developers understand the throughput and latency characteristics of the outbox implementation under realistic workloads.
 
-### Usage Example
+### Example
 
 ```csharp
-using DotnetOutboxPattern.Exceptions;
+using DotnetOutboxPattern.Benchmarks;
+using System;
+using System.Threading.Tasks;
 
-public class OutboxExceptionExample
+class Program
 {
-    public void RunExample()
+    static async Task Main()
     {
-        try
-        {
-            // Simulate an error
-            throw new MessagePublishingException("Error publishing message", Guid.NewGuid(), 1);
-        }
-        catch (OutboxException ex)
-        {
-            Console.WriteLine($"Error code: {ex.ErrorCode}");
-            Console.WriteLine($"Resource ID: {ex.ResourceId}");
-            Console.WriteLine($"Message ID: {ex.MessageId}");
-        }
+        var benchmarks = new MessagePublishingServiceBenchmarks();
+
+        // Prepare the benchmark environment
+        benchmarks.Setup();
+
+        // Run the benchmark methods
+        await benchmarks.ProcessPendingMessages_Batch100();
+        await benchmarks.ProcessPartition_Batch100();
+        await benchmarks.ProcessSingleMessage();
+
+        // Clean up resources
+        benchmarks.Cleanup();
+        benchmarks.Dispose();
     }
 }
-```
-
-## DefaultMessagePublisher
-
-The `DefaultMessagePublisher` class provides a basic implementation of `IMessagePublisher` for testing and demo purposes. It logs messages instead of publishing them to an actual message broker. You can also create a logging publisher using the `CreateLoggingPublisher` method.
-
-### Usage Example
-
-```csharp
-using DotnetOutboxPattern.Infrastructure;
-using Microsoft.Extensions.Logging;
-
-public class DefaultMessagePublisherExample
-{
-    public void RunExample()
-    {
-        // Create a logger
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-        var logger = loggerFactory.CreateLogger<DefaultMessagePublisher>();
-
-        // Create a default message publisher
-        var publisher = new DefaultMessagePublisher(logger);
-
-        // Create a logging publisher
-        var loggingPublisher = MessagePublisherFactory.CreateLoggingPublisher(logger);
-
-        // Publish a message using default publisher
-        var message = new OutboxMessage { /* initialize message properties */ };
-        _ = publisher.PublishAsync(message);
-
-        // Publish a message using logging publisher
-        _ = loggingPublisher.PublishAsync(message);
-    }
-}
-```
-
-## OutboxProcessorOptions
-
-The `OutboxProcessorOptions` class provides configuration for the background outbox message processor. It controls batch processing behavior, locking mechanics, and health monitoring thresholds.
-
-
-### Usage Example
-
-```csharp
-using DotnetOutboxPattern.Infrastructure;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-
-public class ConfigureOutboxProcessorExample
-{
-    public void ConfigureServices(IServiceCollection services)
-    {
-        services.AddHostedService<OutboxProcessor>();
-
-        services.Configure<OutboxProcessorOptions>(options =>
-        {
-            options.Enabled = true;
-            options.BatchSize = 200;
-            options.DelayBetweenBatches = 10000;
-            options.CheckExpiredLocksInterval = 300000;
-            options.LockDurationSeconds = 600;
-            options.PreservePartitionOrdering = true;
-            options.OldestMessageAgeThresholdMinutes = 10;
-        });
-
-        // Register options interface
-        services.AddSingleton<IOutboxProcessorOptions>(sp =>
-            sp.GetRequiredService<IOptions<OutboxProcessorOptions>>().Value);
-    }
-
-    public void UseProcessor(IHost host)
-    {
-        var processor = host.Services.GetRequiredService<OutboxProcessor>();
-        var health = processor.GetHealth();
-
-        Console.WriteLine($"IsHealthy: {health.IsHealthy}");
-        Console.WriteLine($"LastSuccessfulPublish: {health.LastSuccessfulPublish}");
-    }
-}
-```
-
-## IEventPublisher
-
-The `IEventPublisher` interface defines a simple in-process event bus that allows components to publish and subscribe to domain events without tight coupling. It exposes asynchronous `PublishAsync<T>` and `Subscribe<T>` methods, returning a disposable subscription that can be disposed to unsubscribe.
-
-### Usage Example
-
-```csharp
-using DotnetOutboxPattern.Events;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Console;
-
-var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-var logger = loggerFactory.CreateLogger<EventPublisher>();
-
-// Create the event publisher
-var publisher = new EventPublisher(logger);
-
-// Subscribe to MessagePublishedEvent
-var subscription = publisher.Subscribe<MessagePublishedEvent>(async ev =>
-{
-    Console.WriteLine($"Message {ev.MessageId} published to aggregate {ev.AggregateId} after {ev.PublishAttempts} attempts.");
-    await Task.CompletedTask;
-});
-
-// Publish an event
-var publishedEvent = new MessagePublishedEvent
-{
-    MessageId = Guid.NewGuid(),
-    AggregateId = "Order123",
-    PublishAttempts = 1
-};
-
-await publisher.PublishAsync(publishedEvent);
-
-// Dispose subscription when no longer needed
-subscription.Dispose();
 ```
