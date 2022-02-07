@@ -73,3 +73,43 @@ class Program
     }
 }
 ```
+
+## OutboxServiceBenchmarks
+
+The `OutboxServiceBenchmarks` class provides performance benchmarks for the outbox service operations, measuring the efficiency of message publishing and retrieval operations. It sets up a SQL Server database with the outbox schema and benchmarks common service methods such as publishing single events, publishing multiple events sequentially, retrieving message statistics, and fetching individual messages by ID.
+
+### Example
+
+```csharp
+using DotnetOutboxPattern.Benchmarks;
+using DotnetOutboxPattern.Domain;
+using System;
+using System.Threading.Tasks;
+
+class Program
+{
+  static async Task Main()
+  {
+    var benchmarks = new OutboxServiceBenchmarks();
+
+    // Prepare the benchmark environment
+    benchmarks.Setup();
+
+    // Publish a single domain event to the outbox
+    await benchmarks.PublishSingleEvent();
+
+    // Publish multiple domain events sequentially
+    await benchmarks.PublishMultipleEvents_Sequential();
+
+    // Get statistics about pending messages
+    await benchmarks.GetStatistics();
+
+    // Retrieve a specific message by its ID
+    await benchmarks.GetMessageById();
+
+    // Clean up resources
+    benchmarks.Cleanup();
+    benchmarks.Dispose();
+  }
+}
+```
