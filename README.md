@@ -212,3 +212,58 @@ class Program
 }
 ```
 ```
+## IntegrationTestFixture
+
+The `IntegrationTestFixture` class provides a reusable test fixture that sets up an in-memory integration test environment for the Outbox Pattern application. It creates a WebApplicationFactory with an in-memory SQLite database and provides HTTP client access to test the application's API endpoints and services. The fixture manages the lifecycle of the test environment, including proper disposal of resources.
+
+### Example Usage
+
+```csharp
+using DotnetOutboxPattern.Tests;
+using System;
+using System.Net;
+using System.Net.Http.Json;
+using System.Threading.Tasks;
+
+class Program
+{
+    static async Task Main()
+    {
+        // Create the integration test fixture
+        var fixture = new IntegrationTestFixture();
+
+        try
+        {
+            // Initialize the fixture to create the HTTP client
+            await fixture.InitializeAsync();
+
+            // Use the fixture in your tests
+            var response = await fixture.Client.GetAsync("/health");
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                Console.WriteLine("Application is healthy!");
+            }
+
+            // Create a service scope for resolving scoped services
+            using var scope = fixture.CreateScope();
+            var outboxService = scope.ServiceProvider.GetRequiredService<IOutboxService>();
+
+            // Publish an event through the service
+            var publishEvent = new PublishableEvent
+            {
+                Event = new EntityCreatedEvent { EntityId = "test-1", EntityType = "Order" },
+                Topic = "orders.created",
+                MaxAttempts = 3
+            };
+
+            var message = await outboxService.PublishEventAsync(publishEvent);
+            Console.WriteLine($"Published message with ID: {message.Id}");
+        }
+        finally
+        {
+            // Dispose the fixture to clean up resources
+            await fixture.DisposeAsync();
+        }
+    }
+}
+```
