@@ -212,6 +212,67 @@ class Program
 }
 ```
 ```
+
+## SystemTextJsonOutboxSerializerTests
+
+The `SystemTextJsonOutboxSerializerTests` class provides comprehensive unit tests for the `SystemTextJsonOutboxSerializer` class, which handles serialization and deserialization of outbox messages using System.Text.Json. These tests verify constructor behavior, serialization of various data types (null values, primitives, strings, simple objects, complex objects), and deserialization with different scenarios including error cases.
+
+### Example Usage
+
+```csharp
+using DotnetOutboxPattern.Services;
+using System;
+using System.Text.Json;
+
+class Program
+{
+    static void Main()
+    {
+        // Create serializer with default options
+        var serializer = new SystemTextJsonOutboxSerializer();
+
+        // Test serialization of different types
+        var nullResult = serializer.Serialize<object>(null);
+        Console.WriteLine($"Serialized null: {nullResult}");
+
+        var primitiveResult = serializer.Serialize(42);
+        Console.WriteLine($"Serialized int: {primitiveResult}");
+
+        var stringResult = serializer.Serialize("test string");
+        Console.WriteLine($"Serialized string: {stringResult}");
+
+        var simpleObject = new { Id = 123, Name = "Test" };
+        var jsonResult = serializer.Serialize(simpleObject);
+        Console.WriteLine($"Serialized object: {jsonResult}");
+
+        // Test deserialization
+        var deserializedInt = serializer.Deserialize<int>("42");
+        Console.WriteLine($"Deserialized int: {deserializedInt}");
+
+        var deserializedString = serializer.Deserialize<string>("\"test\"");
+        Console.WriteLine($"Deserialized string: {deserializedString}");
+
+        var deserializedObject = serializer.Deserialize<TestDto>(jsonResult);
+        Console.WriteLine($"Deserialized object: Id={deserializedObject?.Id}, Name={deserializedObject?.Name}");
+
+        // Create serializer with custom options
+        var customOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = true
+        };
+        var customSerializer = new SystemTextJsonOutboxSerializer(customOptions);
+    }
+}
+
+// Example DTO for testing
+public class TestDto
+{
+    public int Id { get; set; }
+    public string? Name { get; set; }
+}
+```
+
 ## IntegrationTestFixture
 
 The `IntegrationTestFixture` class provides a reusable test fixture that sets up an in-memory integration test environment for the Outbox Pattern application. It creates a WebApplicationFactory with an in-memory SQLite database and provides HTTP client access to test the application's API endpoints and services. The fixture manages the lifecycle of the test environment, including proper disposal of resources.
