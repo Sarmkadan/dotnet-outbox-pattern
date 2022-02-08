@@ -1,5 +1,49 @@
 // existing content ...
 
+## ModelsTests
+
+The `ModelsTests` class provides a comprehensive set of unit tests for the domain models and DTOs used in the outbox message processing system. These tests verify the correctness of model initialization, property validation, and business logic across key types such as `OutboxProcessingResult`, `OutboxProcessorConfig`, `OutboxStatistics`, `PublishingOptions`, and `HealthMetrics`.
+
+
+
+
+### Example Usage
+
+```csharp
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Tests;
+using System;
+
+class Program
+{
+    static void Main()
+    {
+        var tests = new ModelsTests();
+
+        // Test OutboxProcessingResult functionality
+        tests.OutboxProcessingResult_DefaultConstructor_InitializesCollections();
+        tests.OutboxProcessingResult_Duration_ReturnsCorrectTimeSpan();
+
+        // Test OutboxProcessorConfig functionality
+        tests.OutboxProcessorConfig_DefaultValues_AreCorrect();
+        tests.OutboxProcessorConfig_CustomValues_AreApplied();
+
+        // Test OutboxStatistics functionality
+        tests.OutboxStatistics_DefaultValues_AreCorrect();
+        tests.OutboxStatistics_SuccessRate_CalculatesCorrectly();
+        tests.OutboxStatistics_SuccessRate_WithZeroTotal_ReturnsZero();
+
+        // Test PublishingOptions functionality
+        tests.PublishingOptions_DefaultValues_AreCorrect();
+        tests.PublishingOptions_CustomValues_AreApplied();
+
+        // Test HealthMetrics functionality
+        tests.HealthMetrics_DefaultValues_AreCorrect();
+        tests.HealthMetrics_UpdateProperties_WorksCorrectly();
+    }
+}
+```
+
 ## MessageContextTests
 
 The `MessageContextTests` class provides a set of unit tests for the `MessageContext` class, which is responsible for managing activities and events in the outbox message processing service. These tests verify the correctness of various methods, including getting or creating correlation and causation IDs, starting activities, recording events, and disposing of scopes.
