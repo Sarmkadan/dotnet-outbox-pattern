@@ -1,5 +1,33 @@
 // existing content ...
 
+## MessageContextTests
+
+The `MessageContextTests` class provides a set of unit tests for the `MessageContext` class, which is responsible for managing activities and events in the outbox message processing service. These tests verify the correctness of various methods, including getting or creating correlation and causation IDs, starting activities, recording events, and disposing of scopes.
+
+### Example Usage
+
+```csharp
+using DotnetOutboxPattern.Tests;
+
+class Program
+{
+    static void Main()
+    {
+        var tests = new MessageContextTests();
+
+        // Run individual test methods
+        tests.GetOrCreateCorrelationId_ReturnsValidGuidString();
+        tests.GetOrCreateCausationId_WithActivity_ReturnsCurrentActivityId();
+        tests.StartActivity_WithMessage_SetsCorrectTags();
+        tests.RecordEvent_AddsEventToActivity();
+        tests.RecordException_SetsExceptionTags();
+
+        // Run all test methods
+        tests.Run();
+    }
+}
+```
+
 ## BatchProcessingBenchmarks
 
 The `BatchProcessingBenchmarks` class provides a set of performance benchmarks for the outbox message processing service. It sets up an in-memory database, pre-loads a batch of messages, and measures the time taken to process pending messages or process a specific partition. The benchmarks are intended to help developers understand the throughput and latency characteristics of the outbox implementation under realistic workloads.
