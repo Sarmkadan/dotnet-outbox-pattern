@@ -1,11 +1,37 @@
 // existing content ...
 
+## DeadLetterAdditionalTests
+
+The `DeadLetterAdditionalTests` class provides additional comprehensive tests for the `DeadLetter` domain model. It verifies the correctness of various methods, including copying properties from an `OutboxMessage`, marking a dead letter as reviewed or requeued, and initializing a dead letter with all properties.
+
+### Example Usage
+
+```csharp
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Tests;
+using System;
+
+class Program
+{
+    static void Main()
+    {
+        var tests = new DeadLetterAdditionalTests();
+
+        // Test copying properties from an OutboxMessage
+        tests.FromOutboxMessage_WithAllProperties_CopiesCorrectly();
+
+        // Test marking a dead letter as reviewed
+        tests.MarkAsReviewed_WithEmptyNotes_SetsReviewedProperties();
+
+        // Test marking a dead letter as requeued
+        tests.MarkAsRequeued_WithEmptyReason_SetsRequeueProperties();
+    }
+}
+```
+
 ## ModelsTests
 
 The `ModelsTests` class provides a comprehensive set of unit tests for the domain models and DTOs used in the outbox message processing system. These tests verify the correctness of model initialization, property validation, and business logic across key types such as `OutboxProcessingResult`, `OutboxProcessorConfig`, `OutboxStatistics`, `PublishingOptions`, and `HealthMetrics`.
-
-
-
 
 ### Example Usage
 
@@ -184,4 +210,5 @@ class Program
     benchmarks.Dispose();
   }
 }
+```
 ```
