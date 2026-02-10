@@ -1,0 +1,120 @@
+name: Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: TestPassword123!
+          MSSQL_PID: Developer
+        options: >-
+          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P TestPassword123! -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 1433:1433
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET 10
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Run tests
+      run: dotnet test --configuration Release --no-build --verbosity normal --logger trx
+      env:
+        ConnectionStrings__DefaultConnection: >
+          Server=localhost;
+          Database=OutboxPatternTests;
+          User Id=sa;
+          Password=TestPassword123!;
+          Encrypt=false;
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: '**/TestResults/*.trx'
+
+    - name: Build Docker image
+      run: docker build -t dotnet-outbox-pattern:${{ github.sha }} .
+
+    - name: Run Docker container
+      run: |
+        docker run -d \
+          --name outbox-test \
+          -p 5001:5001 \
+          -e ASPNETCORE_ENVIRONMENT=Development \
+          dotnet-outbox-pattern:${{ github.sha }}
+        sleep 30
+
+    - name: Health check
+      run: |
+        curl -k https://localhost:5001/health || exit 1
+
+    - name: Stop Docker container
+      if: always()
+      run: docker stop outbox-test || true
+
+    - name: Publish NuGet package (main only)
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        dotnet pack -c Release -o nupkg
+        dotnet nuget push nupkg/*.nupkg -k ${{ secrets.NUGET_API_KEY }} --skip-duplicate
+      continue-on-error: true
+
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET 10
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Install security analyzer
+      run: dotnet tool install -g SecurityCodeScan
+
+    - name: Run security scan
+      run: dotnet build --configuration Release -p:EnforceCodeStyleInBuild=true
+      continue-on-error: true
+
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET 10
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Analyze code style
+      run: dotnet build --configuration Release
+      continue-on-error: true

@@ -1,239 +1,1252 @@
 # .NET Outbox Pattern
 
-A production-ready implementation of the **transactional outbox pattern** for .NET 10, providing guaranteed message delivery, deduplication, ordering, and dead letter handling.
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)](https://dotnet.microsoft.com/download)
+[![Build](https://github.com/sarmkadan/dotnet-outbox-pattern/workflows/Build/badge.svg)](https://github.com/sarmkadan/dotnet-outbox-pattern/actions)
+
+A production-ready implementation of the **transactional outbox pattern** for .NET 10, providing guaranteed message delivery, deduplication, ordering, and dead letter handling. Enterprise-grade reliability for distributed systems.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Architecture](#architecture)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Usage Examples](#usage-examples)
+- [API Reference](#api-reference)
+- [Configuration](#configuration)
+- [Advanced Features](#advanced-features)
+- [Deployment](#deployment)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
 
 ## Overview
 
-The outbox pattern is a proven architecture for ensuring reliable message publishing in distributed systems. This implementation guarantees:
+The **outbox pattern** is a well-established architectural pattern for ensuring reliable message publishing in distributed systems. It addresses the fundamental challenge of maintaining consistency between local state and remote messaging: how do you guarantee that a message will be delivered even if your application crashes immediately after saving data but before publishing the message?
 
-- **Guaranteed Delivery**: Messages are persisted before publishing
-- **Deduplication**: Idempotency keys prevent duplicate processing
-- **Ordering**: Partition keys maintain message order within aggregates
-- **Dead Letter Handling**: Failed messages are moved to a review queue
-- **Distributed Processing**: Background processor handles message publishing
-- **Lock Management**: Prevents concurrent processing of the same message
+### The Problem
 
-## Features
+In traditional architectures, you might try this naive approach:
+
+```csharp
+// WRONG - NOT safe!
+dbContext.SaveChanges();  // Save order
+await messagePublisher.PublishAsync(orderEvent);  // Publish event
+```
+
+If the process crashes between these two operations, the message is lost. The order exists in the database, but subscribers never learn about it. This violates the eventual consistency contract.
+
+### The Solution
+
+The outbox pattern ensures atomicity by storing messages alongside your domain data in a single transaction:
+
+```csharp
+// CORRECT - Guaranteed atomic persistence
+using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+// Save both order AND outbox message in same transaction
+var order = new Order { ... };
+dbContext.Orders.Add(order);
+
+var outboxMessage = new OutboxMessage
+{
+    Topic = "orders.created",
+    EventData = JsonSerializer.Serialize(new OrderCreatedEvent { OrderId = order.Id }),
+    AggregateId = order.Id.ToString(),
+    State = OutboxMessageState.Pending
+};
+dbContext.OutboxMessages.Add(outboxMessage);
+
+await dbContext.SaveChangesAsync();
+await transaction.CommitAsync();
+
+// A separate background process polls the outbox and publishes messages
+// Even if you crash now, the message is safely stored
+```
+
+### What This Implementation Provides
+
+This library handles the complete outbox workflow:
+
+- **Atomic storage**: Messages persist with your domain data in one transaction
+- **Background publishing**: Async processor publishes stored messages to brokers
+- **Automatic retries**: Configurable retry policies with exponential backoff
+- **Deduplication**: Idempotency keys prevent duplicate processing by subscribers
+- **Order preservation**: Partition keys maintain causal ordering for related events
+- **Dead letter handling**: Failed messages move to a review queue for operator intervention
+- **Lock management**: Prevents concurrent processing of the same message
+- **Health monitoring**: Real-time metrics on success rates, pending messages, etc.
+- **Extensible design**: Plug in any message broker (RabbitMQ, Azure Service Bus, etc.)
+
+## Key Features
 
 ### Core Capabilities
-- Transactional outbox message storage
-- Configurable retry policies (Fixed, Linear, Exponential backoff)
-- Partition-based ordering for causally dependent messages
-- Dead letter queue (DLQ) for failed messages with operator review
-- Health metrics and statistics
-- Message archival and cleanup
+
+| Feature | Description |
+|---------|-------------|
+| **Guaranteed Delivery** | Messages are persisted before publishing; background processor ensures delivery |
+| **Deduplication** | Idempotency keys prevent duplicate message processing by consumers |
+| **Message Ordering** | Partition keys maintain FIFO ordering within logical groups (e.g., per customer) |
+| **Dead Letter Queue** | Failed messages are moved to a review queue for manual intervention |
+| **Distributed Processing** | Background service processes messages safely across multiple instances |
+| **Lock Management** | Row-level pessimistic locking prevents concurrent message processing |
+| **Metrics & Monitoring** | Real-time statistics on delivery rates, retry counts, and queue health |
+| **Archive & Cleanup** | Automated cleanup of published messages to maintain database performance |
+| **Webhook Support** | Outbound webhooks with retry logic for external integrations |
 
 ### Domain Models
-- **OutboxMessage**: Core entity for reliable message publishing
-- **DeadLetter**: Failed messages awaiting operator review
-- **Domain Events**: Strongly-typed event hierarchy
-- **PublishableEvent**: Configuration wrapper for publishing
 
-### Services
-- **IOutboxService**: Main API for publishing events
-- **IMessagePublishingService**: Message processing and delivery
-- **IDeadLetterService**: Dead letter queue management
-- **IMessagePublisher**: Extensible interface for message brokers
+- **OutboxMessage**: Core entity representing a pending message for publication
+- **DeadLetter**: Messages that failed after max retries, awaiting review
+- **PublishableEvent**: Base interface for domain events with versioning
+- **Domain Events**: Strongly-typed event hierarchy (EntityCreatedEvent, etc.)
+
+### Service Layer
+
+- **IOutboxService**: High-level API for publishing domain events
+- **IMessagePublishingService**: Message processing, delivery, and retry orchestration
+- **IDeadLetterService**: DLQ management, requeue operations, review workflow
+- **IMessagePublisher**: Abstraction for message broker implementation
+- **IMetricsService**: Health checks and performance statistics
 
 ### Infrastructure
-- Entity Framework Core with SQL Server support
-- Configurable background processor
-- JSON serialization helpers
-- Custom exception hierarchy
-- Serilog integration for structured logging
 
-## Project Structure
+- **Entity Framework Core 9.0**: SQL Server data access with optimized queries
+- **Serilog Integration**: Structured logging for operations and troubleshooting
+- **Polly Retry Policies**: Exponential backoff, linear backoff, and custom strategies
+- **Background Processor**: Hosted service for reliable async message publication
+- **Health Check Endpoint**: Monitoring integration for Kubernetes/service orchestrators
+
+## Architecture
+
+### System Diagram
 
 ```
-dotnet-outbox-pattern/
-├── Domain/                    # Domain models and events
-│   ├── Enums.cs              # OutboxMessageState, EventType, etc.
-│   ├── OutboxMessage.cs      # Core outbox entity
-│   ├── DeadLetter.cs         # Dead letter entity
-│   ├── Events.cs             # Domain event hierarchy
-│   └── Models.cs             # Supporting models and statistics
-├── Data/                      # Data access layer
-│   ├── OutboxDbContext.cs    # EF Core DbContext
-│   ├── OutboxRepository.cs   # Outbox CRUD and queries
-│   └── DeadLetterRepository.cs # Dead letter operations
-├── Services/                  # Business logic
-│   ├── OutboxService.cs      # Event publishing API
-│   ├── MessagePublishingService.cs # Message processing
-│   └── DeadLetterService.cs  # DLQ management
-├── Configuration/             # Dependency injection
-│   └── ServiceCollectionExtensions.cs
-├── Infrastructure/            # Supporting utilities
-│   ├── DefaultMessagePublisher.cs # Message broker interface
-│   ├── SerializationHelper.cs    # JSON serialization
-│   └── OutboxProcessor.cs        # Background service
-├── Exceptions/                # Custom exception types
-│   └── OutboxExceptions.cs
-├── Program.cs                 # Application entry point
-├── appsettings.json          # Configuration
-└── DotnetOutboxPattern.csproj # Project file
+┌─────────────────────────────────────────────────────────────┐
+│                     Your Application                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                               │
+│  ┌──────────────────────┐         ┌──────────────────────┐   │
+│  │  Order Service       │         │  IOutboxService      │   │
+│  │  (Business Logic)    │────────▶│  (Publishing API)    │   │
+│  └──────────────────────┘         └──────────────────────┘   │
+│                                             │                 │
+│                    ┌────────────────────────┘                │
+│                    │                                          │
+│                    ▼                                          │
+│      ┌──────────────────────────┐                            │
+│      │  SQL Server (1 TX)       │                            │
+│      ├──────────────────────────┤                            │
+│      │ Orders (domain data)     │                            │
+│      │ OutboxMessages (pending) │                            │
+│      └──────────────────────────┘                            │
+│                    ▲                                          │
+│                    │ (reads pending)                         │
+│      ┌─────────────┴──────────────┐                          │
+│      ▼                            ▼                          │
+│  ┌─────────────────┐      ┌──────────────────────┐          │
+│  │ Outbox          │      │ DeadLetterService    │          │
+│  │ Processor       │      │ (Review Queue)       │          │
+│  │ (Batch)         │      └──────────────────────┘          │
+│  └────────┬────────┘                                         │
+│           │ (publishes)                                      │
+└───────────┼──────────────────────────────────────────────────┘
+            │
+            ▼
+   ┌──────────────────────┐
+   │  Message Broker      │
+   │  RabbitMQ / Azure SB │
+   │  SNS / Kafka         │
+   └──────────────────────┘
+            │
+            ▼
+   ┌──────────────────────┐
+   │  Subscribers         │
+   │  (Event Handlers)    │
+   └──────────────────────┘
 ```
 
-## Getting Started
+### Data Flow
+
+1. **Domain Event Published** → Business logic creates and publishes a domain event via `IOutboxService`
+2. **Atomic Storage** → Event is stored in `OutboxMessages` table within the same transaction as domain data
+3. **Background Processing** → `OutboxProcessor` hosted service periodically queries pending messages
+4. **Message Publication** → For each pending message, `IMessagePublisher` implementation publishes to your broker
+5. **State Update** → On success, message state changes to `Published`; on failure, retry with backoff
+6. **Dead Letter Handling** → After max retries, message moves to `DeadLetters` for manual review
+7. **Subscriber Processing** → Subscribers consume messages from the broker and process them idempotently
+8. **Archive** → After TTL, published messages are archived or deleted for performance
+
+## Installation
 
 ### Prerequisites
-- .NET 10 SDK
-- SQL Server (LocalDB or full edition)
 
-### Installation
+- **.NET 10.0 SDK** or later
+- **SQL Server 2019+** (LocalDB, Express, Standard, or Enterprise editions)
+- **PowerShell** or **Bash** for running scripts
 
-1. Clone the repository:
+### Method 1: Clone from GitHub (Recommended)
+
 ```bash
+# Clone the repository
 git clone https://github.com/sarmkadan/dotnet-outbox-pattern.git
 cd dotnet-outbox-pattern
-```
 
-2. Update connection string in `appsettings.json`:
-```json
-"ConnectionStrings": {
-  "DefaultConnection": "Server=your-server;Database=OutboxPattern;Trusted_Connection=true;"
-}
-```
+# Restore dependencies
+dotnet restore
 
-3. Create and migrate the database:
-```bash
+# Update database connection string in appsettings.json
+# See Configuration section below
+
+# Create and seed the database
 dotnet ef database update
-```
 
-4. Run the application:
-```bash
+# Run the application
 dotnet run
 ```
 
-The API will be available at `https://localhost:5001` with Swagger documentation at `/swagger`.
+The API will be available at `https://localhost:5001` with Swagger/OpenAPI documentation at `/swagger`.
 
-## Usage
+### Method 2: Using Docker
 
-### Publishing Events
+```bash
+# Build the Docker image
+docker build -t dotnet-outbox-pattern:latest .
+
+# Run with docker-compose (includes SQL Server)
+docker-compose up
+
+# Access the API at http://localhost:5001
+```
+
+### Method 3: Add as Library
+
+```bash
+# Install from NuGet (when published)
+dotnet add package DotnetOutboxPattern
+
+# Or build from source
+cd src
+dotnet pack
+dotnet add package ./DotnetOutboxPattern.*.nupkg
+```
+
+### Database Setup
+
+The application uses Entity Framework Core migrations for schema management:
+
+```bash
+# View available migrations
+dotnet ef migrations list
+
+# Apply all pending migrations
+dotnet ef database update
+
+# Create a new migration (for customizations)
+dotnet ef migrations add "YourMigrationName"
+
+# Revert to previous migration
+dotnet ef database update PreviousMigration
+```
+
+## Quick Start
+
+### 1. Define Your Domain Event
+
+```csharp
+// Domain/Events/OrderCreatedEvent.cs
+using DotnetOutboxPattern.Domain;
+
+public class OrderCreatedEvent : PublishableEvent
+{
+    public string OrderId { get; set; } = string.Empty;
+    public string CustomerId { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public DateTime CreatedAt { get; set; }
+
+    public override string EventType => "order.created";
+    public override int Version => 1;
+}
+```
+
+### 2. Publish the Event
+
+```csharp
+// In your business logic (OrderService, Controller, etc.)
+using DotnetOutboxPattern.Services;
+
+public class OrderService
+{
+    private readonly IOutboxService _outboxService;
+    private readonly OrderRepository _orderRepo;
+
+    public OrderService(IOutboxService outboxService, OrderRepository orderRepo)
+    {
+        _outboxService = outboxService;
+        _orderRepo = orderRepo;
+    }
+
+    public async Task CreateOrderAsync(CreateOrderRequest request)
+    {
+        // Create order in your domain
+        var order = new Order
+        {
+            Id = Guid.NewGuid(),
+            CustomerId = request.CustomerId,
+            Amount = request.Amount,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        // Save to database
+        _orderRepo.Add(order);
+        await _orderRepo.SaveAsync();
+
+        // Publish event to outbox
+        var evt = new OrderCreatedEvent
+        {
+            OrderId = order.Id.ToString(),
+            CustomerId = request.CustomerId,
+            Amount = request.Amount,
+            CreatedAt = order.CreatedAt
+        };
+
+        await _outboxService.PublishEventAsync(
+            @event: evt,
+            topic: "orders.created",
+            partitionKey: order.CustomerId,
+            idempotencyKey: $"order-{order.Id}");
+    }
+}
+```
+
+### 3. Handle the Event (Subscriber)
+
+In another microservice or worker:
+
+```csharp
+public class OrderEventHandler
+{
+    private readonly IMessagePublisher _publisher;
+    private readonly ILogger<OrderEventHandler> _logger;
+
+    public async Task HandleOrderCreatedAsync(OrderCreatedEvent evt)
+    {
+        _logger.LogInformation("Handling order created: {OrderId}", evt.OrderId);
+
+        // Process idempotently
+        var processed = await _db.OrderProcessing.AnyAsync(
+            p => p.IdempotencyKey == $"order-{evt.OrderId}");
+
+        if (processed)
+        {
+            _logger.LogInformation("Event already processed: {OrderId}", evt.OrderId);
+            return;
+        }
+
+        // Your business logic (send email, update inventory, etc.)
+        await SendOrderConfirmationEmailAsync(evt);
+
+        // Mark as processed
+        await _db.OrderProcessing.AddAsync(new ProcessedEvent
+        {
+            IdempotencyKey = $"order-{evt.OrderId}",
+            ProcessedAt = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task SendOrderConfirmationEmailAsync(OrderCreatedEvent evt)
+    {
+        // Implementation
+        await Task.CompletedTask;
+    }
+}
+```
+
+## Usage Examples
+
+### Example 1: Basic Event Publishing
 
 ```csharp
 var outboxService = serviceProvider.GetRequiredService<IOutboxService>();
 
-// Create and publish an event
-var customerEvent = new EntityCreatedEvent
+var userEvent = new EntityCreatedEvent
 {
-    EntityId = "CUST-123",
-    EntityType = "Customer",
+    EntityId = "USER-456",
+    EntityType = "User",
     EntityData = new Dictionary<string, object>
     {
-        { "Name", "John Doe" },
-        { "Email", "john@example.com" }
+        { "Name", "Alice Johnson" },
+        { "Email", "alice@example.com" },
+        { "Role", "Admin" }
     }
 };
 
-var message = await outboxService.PublishEventAsync(
-    customerEvent,
-    topic: "customer.events",
-    partitionKey: "CUST-123");
+await outboxService.PublishEventAsync(
+    @event: userEvent,
+    topic: "users.created",
+    partitionKey: "USER-456",
+    idempotencyKey: "user-creation-2024-001");
 ```
 
-### Custom Message Publisher
-
-Replace `DefaultMessagePublisher` with your broker implementation:
+### Example 2: Publishing with Custom Metadata
 
 ```csharp
+var outboxMessage = await outboxService.PublishEventAsync(
+    @event: new OrderCreatedEvent { /* ... */ },
+    topic: "orders",
+    partitionKey: customerId,
+    idempotencyKey: $"order-{orderId}",
+    metadata: new Dictionary<string, string>
+    {
+        { "source", "web-api" },
+        { "user-id", currentUserId },
+        { "request-id", correlationId }
+    });
+
+Console.WriteLine($"Message published with ID: {outboxMessage.Id}");
+```
+
+### Example 3: Custom Message Publisher (RabbitMQ)
+
+```csharp
+// Infrastructure/RabbitMqPublisher.cs
+using DotnetOutboxPattern.Infrastructure;
+using RabbitMQ.Client;
+using System.Text;
+using System.Text.Json;
+
 public class RabbitMqPublisher : IMessagePublisher
 {
+    private readonly IConnection _connection;
+    private readonly ILogger<RabbitMqPublisher> _logger;
+
+    public RabbitMqPublisher(IConnectionFactory factory, ILogger<RabbitMqPublisher> logger)
+    {
+        _connection = factory.CreateConnection();
+        _logger = logger;
+    }
+
     public async Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken)
     {
-        var channel = _connection.CreateModel();
-        await channel.BasicPublishAsync(
+        using var channel = _connection.CreateModel();
+
+        // Declare exchange
+        channel.ExchangeDeclare(
             exchange: message.Topic,
-            routingKey: message.Topic,
-            body: Encoding.UTF8.GetBytes(message.EventData),
-            cancellationToken: cancellationToken);
+            type: ExchangeType.Topic,
+            durable: true);
+
+        // Prepare message
+        var body = Encoding.UTF8.GetBytes(message.EventData);
+        var properties = channel.CreateBasicProperties();
+        properties.ContentType = "application/json";
+        properties.DeliveryMode = 2; // Persistent
+        properties.Headers = new Dictionary<string, object>
+        {
+            { "x-outbox-id", message.Id.ToString() },
+            { "x-idempotency-key", message.IdempotencyKey ?? "" }
+        };
+
+        // Publish
+        channel.BasicPublish(
+            exchange: message.Topic,
+            routingKey: message.PartitionKey ?? message.Topic,
+            basicProperties: properties,
+            body: body);
+
+        _logger.LogInformation(
+            "Published message {MessageId} to {Topic}", message.Id, message.Topic);
+
+        await Task.CompletedTask;
     }
 }
 
 // Register in Program.cs
 builder.Services.AddMessagePublisher<RabbitMqPublisher>();
+builder.Services.AddSingleton<IConnectionFactory>(sp =>
+    new ConnectionFactory { HostName = "localhost" });
 ```
 
-### Managing Dead Letters
+### Example 4: Custom Message Publisher (Azure Service Bus)
+
+```csharp
+// Infrastructure/AzureServiceBusPublisher.cs
+using Azure.Messaging.ServiceBus;
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Infrastructure;
+
+public class AzureServiceBusPublisher : IMessagePublisher
+{
+    private readonly ServiceBusClient _client;
+    private readonly ILogger<AzureServiceBusPublisher> _logger;
+
+    public AzureServiceBusPublisher(
+        ServiceBusClient client,
+        ILogger<AzureServiceBusPublisher> logger)
+    {
+        _client = client;
+        _logger = logger;
+    }
+
+    public async Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken)
+    {
+        var sender = _client.CreateSender(message.Topic);
+
+        try
+        {
+            var sbMessage = new ServiceBusMessage(message.EventData)
+            {
+                ContentType = "application/json",
+                CorrelationId = message.IdempotencyKey,
+                SessionId = message.PartitionKey,
+                ApplicationProperties =
+                {
+                    { "outbox-id", message.Id.ToString() },
+                    { "aggregate-id", message.AggregateId }
+                }
+            };
+
+            await sender.SendMessageAsync(sbMessage, cancellationToken);
+
+            _logger.LogInformation(
+                "Published message {MessageId} to topic {Topic}",
+                message.Id, message.Topic);
+        }
+        finally
+        {
+            await sender.DisposeAsync();
+        }
+    }
+}
+
+// Register in Program.cs
+var serviceBusConnectionString = builder.Configuration["AzureServiceBus:ConnectionString"];
+builder.Services.AddSingleton(_ =>
+    new ServiceBusClient(serviceBusConnectionString));
+builder.Services.AddMessagePublisher<AzureServiceBusPublisher>();
+```
+
+### Example 5: Dead Letter Management
 
 ```csharp
 var dlService = serviceProvider.GetRequiredService<IDeadLetterService>();
 
-// Get unreviewed dead letters
+// Get all unreviewed dead letters
 var unreviewed = await dlService.GetUnreviewedAsync();
+Console.WriteLine($"Unreviewed dead letters: {unreviewed.Count}");
 
-// Review a dead letter
-await dlService.ReviewAsync(deadLetterId, "Checked with team - retry recommended");
+// Review a dead letter with notes
+await dlService.ReviewAsync(
+    deadLetterId: deadLetterId,
+    reviewNotes: "Reviewed by ops team - database connection issue resolved");
 
 // Requeue for retry
-await dlService.RequeueAsync(deadLetterId, "Fixed upstream issue");
+await dlService.RequeueAsync(
+    deadLetterId: deadLetterId,
+    reason: "Upstream service is now healthy, retrying message");
+
+// Get details
+var details = await dlService.GetByIdAsync(deadLetterId);
+Console.WriteLine($"Message: {details?.OriginalMessage}");
+Console.WriteLine($"Error: {details?.LastError}");
 ```
 
-## API Endpoints
+### Example 6: Metrics and Monitoring
 
-### Outbox Operations
-- `GET /api/outbox/statistics` - Get outbox statistics
-- `GET /api/outbox/messages/{messageId}` - Get message details
-- `POST /api/outbox/events` - Publish an event
-- `GET /health` - Health check
+```csharp
+var metricsService = serviceProvider.GetRequiredService<IMetricsService>();
 
-### Dead Letter Queue
-- `GET /api/deadletters/unreviewed` - Get unreviewed dead letters
-- `PUT /api/deadletters/{deadLetterId}/review` - Mark as reviewed
-- `PUT /api/deadletters/{deadLetterId}/requeue` - Requeue for retry
+// Get current statistics
+var stats = await metricsService.GetStatisticsAsync();
+Console.WriteLine($"Pending messages: {stats.PendingCount}");
+Console.WriteLine($"Published: {stats.PublishedCount}");
+Console.WriteLine($"Failed (DLQ): {stats.DeadLetterCount}");
+Console.WriteLine($"Success rate: {stats.SuccessRate:P}");
 
-## Configuration
-
-Key configuration options in `appsettings.json`:
-
-```json
-"Outbox": {
-  "ProcessorEnabled": true,
-  "BatchSize": 100,
-  "DelayBetweenBatches": 5000,
-  "MaxRetries": 5,
-  "RetryPolicy": "ExponentialBackoff",
-  "DeliveryGuarantee": "AtLeastOnce",
-  "PublishTimeoutSeconds": 30
+// Get detailed breakdown
+var breakdown = await metricsService.GetDetailedMetricsAsync();
+foreach (var topic in breakdown.ByTopic)
+{
+    Console.WriteLine($"Topic {topic.Topic}: " +
+        $"{topic.Pending} pending, " +
+        $"{topic.Published} published, " +
+        $"{topic.Failed} failed");
 }
 ```
 
-## Performance Considerations
-
-1. **Batch Processing**: Adjust `BatchSize` based on message volume
-2. **Partition Ordering**: Use partition keys to maintain order for related events
-3. **Lock Duration**: Set appropriately for message processing time
-4. **Database Indexes**: Leverages indexes on State, IdempotencyKey, AggregateId, Topic
-5. **Archive Strategy**: Regularly archive published messages to maintain performance
-
-## Testing
-
-Use the in-memory `DefaultMessagePublisher` or the Logging publisher for testing:
+### Example 7: Batch Processing in Unit Tests
 
 ```csharp
-var testPublisher = MessagePublisherFactory.CreateLoggingPublisher(logger);
+[Fact]
+public async Task ProcessOutboxMessages_WithBatch_PublishesSuccessfully()
+{
+    // Arrange
+    var mockPublisher = new Mock<IMessagePublisher>();
+    var services = new ServiceCollection();
+
+    services.AddOutboxPattern("Data Source=:memory:");
+    services.AddSingleton(mockPublisher.Object);
+
+    var provider = services.BuildServiceProvider();
+    var outboxService = provider.GetRequiredService<IOutboxService>();
+
+    // Act - Publish events
+    for (int i = 0; i < 10; i++)
+    {
+        await outboxService.PublishEventAsync(
+            new TestEvent { Data = $"Test-{i}" },
+            topic: "test.events",
+            partitionKey: "batch-1");
+    }
+
+    // Get processor and trigger batch
+    var processor = provider.GetRequiredService<OutboxProcessor>();
+    await processor.ProcessBatchAsync(CancellationToken.None);
+
+    // Assert
+    mockPublisher.Verify(
+        p => p.PublishAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()),
+        Times.Exactly(10),
+        "All 10 messages should be published");
+}
 ```
 
-## Thread Safety
+### Example 8: Idempotency Key Strategy
 
-- All repository operations are thread-safe
-- Lock management prevents concurrent processing
-- Message locking uses distributed locking at the database level
-- Background processor uses scoped services per batch
+```csharp
+// Generate idempotency keys consistently for replay safety
+public class IdempotencyKeyGenerator
+{
+    public static string ForEntityCreation(string entityType, Guid entityId)
+        => $"{entityType.ToLower()}-create-{entityId:N}";
 
-## License
+    public static string ForStateTransition(
+        string aggregateType,
+        Guid aggregateId,
+        string transitionName)
+        => $"{aggregateType.ToLower()}-{transitionName}-{aggregateId:N}";
 
-MIT License - See LICENSE file for details.
+    public static string ForWebhook(string webhookId, int attemptNumber)
+        => $"webhook-{webhookId}-attempt-{attemptNumber}";
+}
 
-## Author
+// Usage
+await outboxService.PublishEventAsync(
+    @event: new CustomerCreatedEvent { /* ... */ },
+    topic: "customers.created",
+    partitionKey: customer.Id.ToString(),
+    idempotencyKey: IdempotencyKeyGenerator.ForEntityCreation("customer", customer.Id));
+```
 
-**Vladyslav Zaiets** - CTO & Software Architect
-- Website: https://sarmkadan.com
-- Email: rutova2@gmail.com
+## API Reference
+
+### IOutboxService
+
+The primary API for publishing domain events.
+
+#### PublishEventAsync
+
+```csharp
+Task<OutboxMessage> PublishEventAsync(
+    PublishableEvent @event,
+    string topic,
+    string? partitionKey = null,
+    string? idempotencyKey = null,
+    Dictionary<string, string>? metadata = null,
+    CancellationToken cancellationToken = default)
+```
+
+**Parameters:**
+- `@event`: Domain event to publish
+- `topic`: Message broker topic/queue name
+- `partitionKey`: (Optional) Ensures FIFO ordering for related messages
+- `idempotencyKey`: (Optional) Prevents duplicate processing
+- `metadata`: (Optional) Custom key-value pairs attached to message
+- `cancellationToken`: Standard cancellation token
+
+**Returns:** `OutboxMessage` with ID and creation timestamp
+
+**Example:**
+```csharp
+var message = await outboxService.PublishEventAsync(
+    new OrderCreatedEvent { OrderId = "123", Amount = 99.99m },
+    topic: "orders.created",
+    partitionKey: customerId,
+    idempotencyKey: $"order-{orderId}");
+```
+
+#### GetStatisticsAsync
+
+```csharp
+Task<OutboxStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default)
+```
+
+**Returns:** Statistics object with counts and success rates
+
+```csharp
+public class OutboxStatistics
+{
+    public long TotalCount { get; set; }
+    public long PendingCount { get; set; }
+    public long PublishedCount { get; set; }
+    public long DeadLetterCount { get; set; }
+    public decimal SuccessRate { get; set; }
+    public decimal AverageRetries { get; set; }
+    public DateTime LastProcessedTime { get; set; }
+}
+```
+
+### IMessagePublishingService
+
+Handles message processing and retry logic. Typically used internally by `OutboxProcessor`.
+
+#### ProcessNextBatchAsync
+
+```csharp
+Task<int> ProcessNextBatchAsync(
+    int batchSize,
+    bool preserveOrdering = true,
+    CancellationToken cancellationToken = default)
+```
+
+**Returns:** Number of messages successfully processed
+
+### IDeadLetterService
+
+Manages dead letter queue and failed message reviews.
+
+#### GetUnreviewedAsync
+
+```csharp
+Task<IReadOnlyList<DeadLetter>> GetUnreviewedAsync(
+    CancellationToken cancellationToken = default)
+```
+
+#### ReviewAsync
+
+```csharp
+Task ReviewAsync(
+    Guid deadLetterId,
+    string reviewNotes,
+    CancellationToken cancellationToken = default)
+```
+
+#### RequeueAsync
+
+```csharp
+Task RequeueAsync(
+    Guid deadLetterId,
+    string reason,
+    CancellationToken cancellationToken = default)
+```
+
+### REST API Endpoints
+
+#### Get Outbox Statistics
+
+```http
+GET /api/outbox/statistics
+```
+
+**Response:**
+```json
+{
+  "totalCount": 1500,
+  "pendingCount": 23,
+  "publishedCount": 1450,
+  "deadLetterCount": 27,
+  "successRate": 0.967,
+  "averageRetries": 1.2,
+  "lastProcessedTime": "2024-01-15T14:32:45.000Z"
+}
+```
+
+#### Get Message Details
+
+```http
+GET /api/outbox/messages/{messageId}
+```
+
+**Response:**
+```json
+{
+  "id": "7b2a1c3d-4e5f-6g7h-8i9j-0k1l2m3n4o5p",
+  "aggregateId": "order-123",
+  "topic": "orders.created",
+  "eventData": "{\"orderId\":\"123\",\"amount\":99.99}",
+  "state": "Published",
+  "createdAt": "2024-01-15T10:00:00Z",
+  "publishedAt": "2024-01-15T10:00:05Z",
+  "retryCount": 0
+}
+```
+
+#### Publish Event
+
+```http
+POST /api/outbox/events
+Content-Type: application/json
+
+{
+  "event": {
+    "eventType": "order.created",
+    "version": 1,
+    "data": {
+      "orderId": "123",
+      "customerId": "CUST-456",
+      "amount": 99.99
+    }
+  },
+  "topic": "orders.created",
+  "partitionKey": "CUST-456",
+  "idempotencyKey": "order-123-create"
+}
+```
+
+#### Get Unreviewed Dead Letters
+
+```http
+GET /api/deadletters/unreviewed
+```
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "id": "9d8c7b6a-5f4e-3d2c-1b0a-f9e8d7c6b5a4",
+      "originalMessageId": "7b2a1c3d-4e5f-6g7h-8i9j-0k1l2m3n4o5p",
+      "originalMessage": "{...}",
+      "lastError": "Failed to publish to RabbitMQ: Connection timeout",
+      "failureCount": 5,
+      "createdAt": "2024-01-15T10:00:00Z",
+      "reviewedAt": null
+    }
+  ],
+  "totalCount": 42
+}
+```
+
+#### Review Dead Letter
+
+```http
+PUT /api/deadletters/{deadLetterId}/review
+Content-Type: application/json
+
+{
+  "reviewNotes": "Checked with team - database connection issue resolved"
+}
+```
+
+#### Requeue for Retry
+
+```http
+PUT /api/deadletters/{deadLetterId}/requeue
+Content-Type: application/json
+
+{
+  "reason": "Upstream service restored, safe to retry"
+}
+```
+
+## Configuration
+
+### appsettings.json
+
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost\\SQLEXPRESS;Database=OutboxPattern;Integrated Security=true;Encrypt=false;"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft": "Warning",
+      "DotnetOutboxPattern": "Debug"
+    }
+  },
+  "Outbox": {
+    "ProcessorEnabled": true,
+    "BatchSize": 100,
+    "DelayBetweenBatches": 5000,
+    "MaxRetries": 5,
+    "RetryPolicy": "ExponentialBackoff",
+    "InitialRetryDelaySeconds": 5,
+    "MaxRetryDelaySeconds": 300,
+    "DeliveryGuarantee": "AtLeastOnce",
+    "PublishTimeoutSeconds": 30,
+    "MessageTtlDays": 90,
+    "PreservePartitionOrdering": true,
+    "LockDurationSeconds": 300
+  }
+}
+```
+
+### Configuration Reference
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `ProcessorEnabled` | bool | true | Enable background message processor |
+| `BatchSize` | int | 100 | Messages per batch |
+| `DelayBetweenBatches` | int | 5000 | Milliseconds between processing batches |
+| `MaxRetries` | int | 5 | Max retry attempts before DLQ |
+| `RetryPolicy` | enum | ExponentialBackoff | Fixed / Linear / ExponentialBackoff |
+| `InitialRetryDelaySeconds` | int | 5 | First retry delay |
+| `MaxRetryDelaySeconds` | int | 300 | Maximum retry delay |
+| `DeliveryGuarantee` | enum | AtLeastOnce | AtMostOnce / AtLeastOnce / ExactlyOnce |
+| `PublishTimeoutSeconds` | int | 30 | Timeout for message publisher |
+| `MessageTtlDays` | int | 90 | Days before published messages archived |
+| `PreservePartitionOrdering` | bool | true | Maintain FIFO per partition key |
+| `LockDurationSeconds` | int | 300 | Lock timeout for processing |
+
+### Retry Policy Configuration
+
+#### ExponentialBackoff (Recommended)
+
+```csharp
+// Delays: 5s, 10s, 20s, 40s, 80s, 160s, 300s (max)
+"RetryPolicy": "ExponentialBackoff",
+"InitialRetryDelaySeconds": 5,
+"MaxRetryDelaySeconds": 300
+```
+
+#### Linear Backoff
+
+```csharp
+// Delays: 5s, 10s, 15s, 20s, 25s
+"RetryPolicy": "LinearBackoff",
+"InitialRetryDelaySeconds": 5
+```
+
+#### Fixed Delay
+
+```csharp
+// Delays: 30s, 30s, 30s, 30s, 30s
+"RetryPolicy": "FixedDelay",
+"InitialRetryDelaySeconds": 30
+```
+
+## Advanced Features
+
+### Partition Key Ordering
+
+Ensure causally-related messages are processed in order:
+
+```csharp
+// All orders from customer CUST-123 will be processed sequentially
+await outboxService.PublishEventAsync(
+    new OrderCreatedEvent { ... },
+    topic: "orders",
+    partitionKey: "CUST-123");  // Ensures FIFO per customer
+
+await outboxService.PublishEventAsync(
+    new OrderShippedEvent { ... },
+    topic: "orders",
+    partitionKey: "CUST-123");  // Processed after OrderCreated
+```
+
+### Idempotent Event Processing
+
+Subscribers should implement idempotent handlers:
+
+```csharp
+public class OrderEventHandler
+{
+    public async Task HandleOrderCreatedAsync(OrderCreatedEvent evt)
+    {
+        // Check if already processed (idempotency)
+        var existing = await _db.ProcessedEvents
+            .FirstOrDefaultAsync(p => p.IdempotencyKey == evt.IdempotencyKey);
+
+        if (existing != null)
+        {
+            _logger.LogInformation("Event already processed: {Key}", evt.IdempotencyKey);
+            return;
+        }
+
+        // Process the event
+        await _db.Orders.AddAsync(new Order { /* ... */ });
+        await _db.ProcessedEvents.AddAsync(new ProcessedEvent
+        {
+            IdempotencyKey = evt.IdempotencyKey,
+            ProcessedAt = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+    }
+}
+```
+
+### Custom Event Serialization
+
+Override default JSON serialization:
+
+```csharp
+public class CustomSerializationPublisher : IMessagePublisher
+{
+    private readonly JsonSerializerOptions _options = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
+    public async Task PublishAsync(OutboxMessage message, CancellationToken ct)
+    {
+        var @event = JsonSerializer.Deserialize<PublishableEvent>(
+            message.EventData, _options);
+
+        // Custom publishing logic
+        await Task.CompletedTask;
+    }
+}
+```
+
+### Message Enrichment Interceptor
+
+Add cross-cutting concerns before publishing:
+
+```csharp
+public class EnrichingOutboxService : IOutboxService
+{
+    private readonly IOutboxService _inner;
+    private readonly IHttpContextAccessor _httpContext;
+
+    public async Task<OutboxMessage> PublishEventAsync(
+        PublishableEvent @event,
+        string topic,
+        string? partitionKey = null,
+        string? idempotencyKey = null,
+        Dictionary<string, string>? metadata = null,
+        CancellationToken cancellationToken = default)
+    {
+        var enrichedMetadata = metadata ?? new();
+
+        // Add correlation ID
+        var correlationId = _httpContext.HttpContext?.TraceIdentifier ?? Guid.NewGuid().ToString();
+        enrichedMetadata["correlation-id"] = correlationId;
+
+        // Add user context
+        var userId = _httpContext.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId != null)
+            enrichedMetadata["user-id"] = userId;
+
+        return await _inner.PublishEventAsync(
+            @event, topic, partitionKey, idempotencyKey, enrichedMetadata, cancellationToken);
+    }
+}
+
+// Register decorator pattern
+builder.Services
+    .AddScoped<IOutboxService, OutboxService>()
+    .Decorate<IOutboxService, EnrichingOutboxService>();
+```
+
+## Deployment
+
+### Docker Deployment
+
+```bash
+# Build image
+docker build -t dotnet-outbox-pattern:1.0 .
+
+# Run with docker-compose
+docker-compose -f docker-compose.yml up
+
+# Access API at http://localhost:5001
+```
+
+### Kubernetes Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: outbox-pattern
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: outbox-pattern
+  template:
+    metadata:
+      labels:
+        app: outbox-pattern
+    spec:
+      containers:
+      - name: api
+        image: dotnet-outbox-pattern:1.0
+        ports:
+        - containerPort: 5001
+        env:
+        - name: Outbox__ProcessorEnabled
+          value: "true"
+        - name: Outbox__BatchSize
+          value: "100"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+```
+
+### Production Checklist
+
+- [ ] Use SQL Server backups for disaster recovery
+- [ ] Configure appropriate database indexes (created via migrations)
+- [ ] Set up monitoring and alerting on metrics endpoint
+- [ ] Configure dead letter review process and escalation
+- [ ] Test message broker failover scenarios
+- [ ] Document custom `IMessagePublisher` implementation
+- [ ] Configure log retention and archival
+- [ ] Set up certificate-based database encryption
+- [ ] Enable database audit logging for compliance
+- [ ] Test horizontal scaling with multiple processor instances
+
+## Troubleshooting
+
+### Messages Not Being Published
+
+**Symptom:** Messages accumulate in `OutboxMessages` table with `Pending` state
+
+**Diagnostics:**
+```csharp
+var stats = await outboxService.GetStatisticsAsync();
+Console.WriteLine($"Pending: {stats.PendingCount}");
+Console.WriteLine($"Published: {stats.PublishedCount}");
+```
+
+**Solutions:**
+1. **Check processor is running:**
+   ```bash
+   dotnet run --configuration Release
+   # Check logs for "Processing batch" messages
+   ```
+
+2. **Verify message broker connectivity:**
+   ```csharp
+   var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
+   await publisher.PublishAsync(testMessage, CancellationToken.None);
+   ```
+
+3. **Check configuration:**
+   - Verify `ProcessorEnabled` is `true` in `appsettings.json`
+   - Ensure `ConnectionStrings:DefaultConnection` is correct
+   - Validate message broker connection string if using custom publisher
+
+4. **Review logs:**
+   ```bash
+   tail -f logs/outbox-*.txt
+   grep -i "error\|exception" logs/outbox-*.txt
+   ```
+
+### Messages in Dead Letter Queue
+
+**Symptom:** Messages fail and move to dead letter table
+
+**Root Causes:**
+1. **Message broker unreachable**
+   - Check network connectivity
+   - Verify broker credentials
+   - Review firewall rules
+
+2. **Serialization errors**
+   - Ensure event properties are serializable
+   - Check for circular references
+   - Verify custom serializers
+
+3. **Subscriber failures**
+   - Messages published successfully but subscriber crashes
+   - Review subscriber error logs
+   - Implement idempotent handlers
+
+**Recovery:**
+```csharp
+// Review the dead letter
+var deadLetter = await dlService.GetByIdAsync(deadLetterId);
+Console.WriteLine($"Error: {deadLetter.LastError}");
+
+// Fix upstream issue, then requeue
+await dlService.RequeueAsync(deadLetterId, "Issue resolved");
+```
+
+### Database Lock Timeout
+
+**Symptom:** "Execution Timeout Expired" in logs
+
+**Solution:**
+1. Increase `LockDurationSeconds` in config
+2. Reduce `BatchSize` to process fewer messages per cycle
+3. Review long-running subscriber handlers
+4. Check for database blocking with:
+   ```sql
+   SELECT * FROM sys.dm_exec_requests WHERE session_id > 50
+   ```
+
+### High Memory Usage
+
+**Cause:** Large batch sizes or message payloads
+
+**Solutions:**
+1. Reduce `BatchSize` (default 100, try 25-50)
+2. Compress large payloads before storing
+3. Archive published messages (TTL cleanup)
+4. Monitor with:
+   ```bash
+   dotnet counters monitor DotnetOutboxPattern
+   ```
 
 ## Contributing
 
-Contributions are welcome! Please follow the code style and include tests for new features.
+Contributions are welcome! Please follow these guidelines:
 
-## Support
+1. **Fork and branch:**
+   ```bash
+   git checkout -b feature/your-feature
+   ```
 
-For issues, questions, or feature requests, please open an issue on GitHub.
+2. **Code style:**
+   - Follow existing code patterns
+   - Add XML comments to public methods
+   - Include unit tests for new features
+
+3. **Testing:**
+   ```bash
+   dotnet test
+   ```
+
+4. **Commit messages:**
+   ```
+   feat(outbox): add webhook retry logic
+   
+   - Implement exponential backoff for webhooks
+   - Add webhook retry metrics
+   - Add integration tests
+   
+   Fixes #42
+   ```
+
+5. **Submit PR:**
+   - Describe changes clearly
+   - Link related issues
+   - Ensure CI passes
+
+## License
+
+MIT License - See [LICENSE](LICENSE) file for details.
+
+Copyright © 2026 Vladyslav Zaiets
+
+## Support & Resources
+
+- **GitHub Issues:** [Report bugs or request features](https://github.com/sarmkadan/dotnet-outbox-pattern/issues)
+- **Documentation:** Full docs in `/docs` directory
+- **Examples:** Complete working examples in `/examples` directory
+- **Architecture Guide:** See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
+---
+
+**Built by [Vladyslav Zaiets](https://sarmkadan.com) - CTO & Software Architect**
+
+[Portfolio](https://sarmkadan.com) | [GitHub](https://github.com/Sarmkadan) | [Telegram](https://t.me/sarmkadan)
