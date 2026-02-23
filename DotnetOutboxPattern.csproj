@@ -10,7 +10,7 @@
     <AssemblyName>DotnetOutboxPattern</AssemblyName>
     <RootNamespace>DotnetOutboxPattern</RootNamespace>
     <PackageId>Zaiets.dotnet.outbox.pattern</PackageId>
-    <Version>1.0.0</Version>
+    <Version>2.0.0</Version>
     <Authors>Vladyslav Zaiets</Authors>
     <Description>Transactional outbox pattern for .NET - guaranteed message delivery, deduplication, ordering, dead letter handling</Description>
     <PackageTags>outbox outbox-pattern transactional-outbox message-delivery deduplication event-driven</PackageTags>
