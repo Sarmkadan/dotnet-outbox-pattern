@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -34,7 +35,7 @@ public interface IWebhookHandler
 /// <summary>
 /// Default implementation of webhook handler
 /// </summary>
-public class WebhookHandler : IWebhookHandler
+public sealed class WebhookHandler : IWebhookHandler
 {
     private readonly ILogger<WebhookHandler> _logger;
     private readonly IWebhookService _webhookService;

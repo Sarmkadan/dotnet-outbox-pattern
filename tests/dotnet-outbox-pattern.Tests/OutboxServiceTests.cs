@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -13,7 +14,7 @@ using Moq;
 
 namespace DotnetOutboxPattern.Tests;
 
-public class OutboxServiceTests
+public sealed class OutboxServiceTests
 {
     private readonly Mock<IOutboxRepository> _repositoryMock;
     private readonly Mock<ILogger<OutboxService>> _loggerMock;

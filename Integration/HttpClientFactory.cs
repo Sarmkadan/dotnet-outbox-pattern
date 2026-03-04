@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -21,7 +22,7 @@ public interface IHttpClientFactory
 /// <summary>
 /// Configuration for HTTP client creation
 /// </summary>
-public class HttpClientConfig
+public sealed class HttpClientConfig
 {
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
     public int MaxRetries { get; set; } = 3;
@@ -35,7 +36,7 @@ public class HttpClientConfig
 /// <summary>
 /// Proxy configuration for HTTP clients
 /// </summary>
-public class ProxyConfig
+public sealed class ProxyConfig
 {
     public string? ProxyUrl { get; set; }
     public string? Username { get; set; }
@@ -46,7 +47,7 @@ public class ProxyConfig
 /// <summary>
 /// Default HTTP client factory implementation
 /// </summary>
-public class CustomHttpClientFactory : IHttpClientFactory
+public sealed class CustomHttpClientFactory : IHttpClientFactory
 {
     private readonly Dictionary<string, HttpClient> _clients = new();
     private readonly ILogger<CustomHttpClientFactory> _logger;
@@ -67,7 +68,7 @@ public class CustomHttpClientFactory : IHttpClientFactory
         };
 
         // Configure proxy if specified
-        if (config.ProxyConfig?.ProxyUrl != null)
+        if (config.ProxyConfig?.ProxyUrl is not null)
         {
             var proxy = new WebProxy(config.ProxyConfig.ProxyUrl);
 
@@ -102,7 +103,7 @@ public class CustomHttpClientFactory : IHttpClientFactory
         }
 
         // Add default headers
-        if (config.DefaultHeaders != null)
+        if (config.DefaultHeaders is not null)
         {
             foreach (var header in config.DefaultHeaders)
             {
@@ -132,7 +133,7 @@ public class CustomHttpClientFactory : IHttpClientFactory
 /// <summary>
 /// Resilient HTTP client wrapper with retry and timeout handling
 /// </summary>
-public class ResilientHttpClient
+public sealed class ResilientHttpClient
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<ResilientHttpClient> _logger;

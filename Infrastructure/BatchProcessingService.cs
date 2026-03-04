@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -35,7 +36,7 @@ public interface IBatchProcessingService
 /// Wraps <see cref="IMessagePublishingService"/> to subdivide large batches into smaller chunks,
 /// supporting sequential ordering, bounded parallelism, inter-chunk delays, and per-chunk metrics
 /// </summary>
-public class BatchProcessingService : IBatchProcessingService
+public sealed class BatchProcessingService : IBatchProcessingService
 {
     private readonly IMessagePublishingService _publishingService;
     private readonly BatchProcessingOptions _options;

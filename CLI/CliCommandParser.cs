@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -11,7 +12,7 @@ namespace DotnetOutboxPattern.CLI;
 /// Parser for command-line arguments
 /// Provides structured access to CLI commands and options
 /// </summary>
-public class CliCommandParser
+public sealed class CliCommandParser
 {
     private readonly Dictionary<string, CliCommand> _commands = new();
 
@@ -106,7 +107,7 @@ public class CliCommandParser
 /// <summary>
 /// Represents a CLI command
 /// </summary>
-public class CliCommand
+public sealed class CliCommand
 {
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
@@ -117,7 +118,7 @@ public class CliCommand
 /// <summary>
 /// Represents a CLI command option
 /// </summary>
-public class CliOption
+public sealed class CliOption
 {
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
@@ -128,7 +129,7 @@ public class CliOption
 /// <summary>
 /// Context for a parsed CLI command
 /// </summary>
-public class CliCommandContext
+public sealed class CliCommandContext
 {
     public bool IsValid { get; set; }
     public string? ErrorMessage { get; set; }

@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -24,7 +25,7 @@ public static class ServiceCollectionExtensions
         string connectionString,
         Action<PublishingOptions>? configureOptions = null)
     {
-        if (services == null)
+        if (services is null)
             throw new ArgumentNullException(nameof(services));
 
         if (string.IsNullOrWhiteSpace(connectionString))

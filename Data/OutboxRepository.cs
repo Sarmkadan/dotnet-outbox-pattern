@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -38,7 +39,7 @@ public interface IOutboxRepository
 /// <summary>
 /// Default implementation of IOutboxRepository using Entity Framework Core
 /// </summary>
-public class OutboxRepository : IOutboxRepository
+public sealed class OutboxRepository : IOutboxRepository
 {
     private readonly OutboxDbContext _context;
 
@@ -211,7 +212,7 @@ public class OutboxRepository : IOutboxRepository
         try
         {
             var message = await _context.OutboxMessages.FindAsync(new object[] { id }, cancellationToken);
-            if (message != null)
+            if (message is not null)
             {
                 _context.OutboxMessages.Remove(message);
                 await _context.SaveChangesAsync(cancellationToken);
@@ -300,7 +301,7 @@ public class OutboxRepository : IOutboxRepository
                 ArchivedMessages = messages.Count(x => x.State == OutboxMessageState.Archived),
                 DeadLetterCount = dlCount,
                 AveragePublishTime = TimeSpan.FromSeconds(avgPublishTime),
-                OldestPendingAge = oldestPending != null ? DateTime.UtcNow - oldestPending.CreatedAt : null
+                OldestPendingAge = oldestPending is not null ? DateTime.UtcNow - oldestPending.CreatedAt : null
             };
         }
         catch (Exception ex)

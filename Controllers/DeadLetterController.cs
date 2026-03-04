@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -16,7 +17,7 @@ namespace DotnetOutboxPattern.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/deadletters")]
-public class DeadLetterController : ControllerBase
+public sealed class DeadLetterController : ControllerBase
 {
     private readonly IDeadLetterService _dlService;
     private readonly INotificationService _notificationService;
@@ -99,7 +100,7 @@ public class DeadLetterController : ControllerBase
         {
             var deadLetter = await _dlService.GetAsync(id);
 
-            if (deadLetter == null)
+            if (deadLetter is null)
                 return NotFound();
 
             return Ok(deadLetter);
@@ -120,7 +121,7 @@ public class DeadLetterController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ReviewAsync(Guid id, [FromBody] ReviewDeadLetterRequest request)
     {
-        if (request == null || string.IsNullOrEmpty(request.Notes))
+        if (request is null || string.IsNullOrEmpty(request.Notes))
             return BadRequest(new ErrorResponse { Message = "Notes are required" });
 
         try
@@ -154,7 +155,7 @@ public class DeadLetterController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RequeueAsync(Guid id, [FromBody] RequeueDeadLetterRequest request)
     {
-        if (request == null || string.IsNullOrEmpty(request.Reason))
+        if (request is null || string.IsNullOrEmpty(request.Reason))
             return BadRequest(new ErrorResponse { Message = "Reason is required" });
 
         try
@@ -277,7 +278,7 @@ public class DeadLetterController : ControllerBase
 /// <summary>
 /// Dead letter queue statistics
 /// </summary>
-public class DeadLetterStatistics
+public sealed class DeadLetterStatistics
 {
     public int TotalDeadLetters { get; set; }
     public int UnreviewedCount { get; set; }

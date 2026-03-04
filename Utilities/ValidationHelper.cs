@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -24,7 +25,7 @@ public static class ValidationHelper
     /// </summary>
     public static void ValidateNotNull<T>(T? value, string paramName) where T : class
     {
-        if (value == null)
+        if (value is null)
             throw new ArgumentNullException(paramName);
     }
 
@@ -105,7 +106,7 @@ public static class ValidationHelper
 /// <summary>
 /// Fluent validation context for chaining validations
 /// </summary>
-public class ValidationContext<T>
+public sealed class ValidationContext<T>
 {
     private readonly T _value;
     private readonly List<string> _errors = new();
@@ -117,7 +118,7 @@ public class ValidationContext<T>
 
     public ValidationContext<T> NotNull(string fieldName)
     {
-        if (_value == null)
+        if (_value is null)
             _errors.Add($"{fieldName} cannot be null");
         return this;
     }
