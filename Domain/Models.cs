@@ -213,6 +213,11 @@ public sealed class PublishingOptions
     /// Timeout for publishing a single message
     /// </summary>
     public TimeSpan PublishTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Clock skew tolerance for deduplication window (how far in the past/future to consider messages as duplicates)
+    /// </summary>
+    public TimeSpan ClockSkewTolerance { get; set; } = TimeSpan.FromMinutes(1);
 }
 
 /// <summary>
