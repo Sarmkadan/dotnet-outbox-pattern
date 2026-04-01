@@ -69,6 +69,30 @@ public static class DependencyInjectionExtensions
 
         // Add performance monitor for metrics
         services.AddSingleton<PerformanceMonitor>();
+        
+        // Add OpenTelemetry metrics
+        services.AddOutboxOpenTelemetry();
+        services.AddSingleton<OutboxMetrics>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Configures OpenTelemetry for the outbox pattern.
+    /// </summary>
+    public static IServiceCollection AddOutboxOpenTelemetry(this IServiceCollection services)
+    {
+        services.AddOpenTelemetry()
+            .WithMetrics(builder =>
+            {
+                builder
+                    .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("dotnet-outbox-pattern"))
+                    .AddAspNetCoreInstrumentation()
+                    .AddRuntimeInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddMeter("DotnetOutboxPattern.Outbox") // The name of our custom meter
+                    .AddPrometheusExporter();
+            });
 
         return services;
     }
