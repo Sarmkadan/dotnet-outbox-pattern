@@ -34,6 +34,7 @@ public interface IOutboxRepository
     Task ArchiveOldMessagesAsync(DateTime olderThan, CancellationToken cancellationToken = default);
     Task<int> DeleteArchivedMessagesAsync(DateTime olderThan, CancellationToken cancellationToken = default);
     Task<List<OutboxMessage>> GetAllAsync(int limit = 10000, CancellationToken cancellationToken = default);
+    Task<DateTime?> GetOldestPendingMessageCreatedAtAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -420,6 +421,28 @@ public sealed class OutboxRepository : IOutboxRepository
         catch (Exception ex)
         {
             throw new OutboxRepositoryException("Failed to retrieve all messages", nameof(GetAllAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Returns the creation timestamp of the oldest pending (unprocessed) message,
+    /// or <c>null</c> if there are no pending messages.
+    /// </summary>
+    public async Task<DateTime?> GetOldestPendingMessageCreatedAtAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _context.OutboxMessages.AsNoTracking()
+                .Where(x => x.State == OutboxMessageState.Pending && !x.IsLocked)
+                .OrderBy(x => x.CreatedAt)
+                .Select(x => (DateTime?)x.CreatedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            throw new OutboxRepositoryException(
+                "Failed to retrieve oldest pending message timestamp",
+                nameof(GetOldestPendingMessageCreatedAtAsync), ex);
         }
     }
 }

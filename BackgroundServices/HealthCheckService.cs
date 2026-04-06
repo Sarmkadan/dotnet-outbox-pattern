@@ -114,7 +114,8 @@ public sealed class HealthCheckService : BackgroundService
                 Status = _activeAlerts.Count == 0 ? "Healthy" : "Unhealthy",
                 CheckTime = DateTime.UtcNow,
                 Alerts = _activeAlerts,
-                Statistics = stats
+                Statistics = stats,
+                OldestMessageAge = stats.OldestPendingAge
             };
 
             await _cacheService.SetAsync("system:health", health, TimeSpan.FromMinutes(1));
