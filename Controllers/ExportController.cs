@@ -189,5 +189,5 @@ public sealed class ExportInfo
     public int MaxMessagesPerExport { get; set; }
     public List<string> SupportedFormats { get; set; } = new();
     public string DefaultFormat { get; set; } = string.Empty;
-    public string[] FilterableFields { get; set; } = []<string>();
+    public string[] FilterableFields { get; set; } = Array.Empty<string>();
 }

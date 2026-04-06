@@ -18,26 +18,28 @@ public sealed class OutboxServiceTests
 {
     private readonly Mock<IOutboxRepository> _repositoryMock;
     private readonly Mock<ILogger<OutboxService>> _loggerMock;
+    private readonly Mock<IOutboxSerializer> _serializerMock;
     private readonly OutboxService _sut;
 
     public OutboxServiceTests()
     {
         _repositoryMock = new Mock<IOutboxRepository>();
         _loggerMock = new Mock<ILogger<OutboxService>>();
-        _sut = new OutboxService(_repositoryMock.Object, _loggerMock.Object);
+        _serializerMock = new Mock<IOutboxSerializer>();
+        _sut = new OutboxService(_repositoryMock.Object, _loggerMock.Object, _serializerMock.Object);
     }
 
     [Fact]
     public void Constructor_WithNullRepository_ThrowsArgumentNullException()
     {
-        var act = () => new OutboxService(null!, _loggerMock.Object);
+        var act = () => new OutboxService(null!, _loggerMock.Object, _serializerMock.Object);
         act.Should().Throw<ArgumentNullException>().WithParameterName("repository");
     }
 
     [Fact]
     public void Constructor_WithNullLogger_ThrowsArgumentNullException()
     {
-        var act = () => new OutboxService(_repositoryMock.Object, null!);
+        var act = () => new OutboxService(_repositoryMock.Object, null!, _serializerMock.Object);
         act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
     }
 
