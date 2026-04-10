@@ -4,7 +4,7 @@
 # =============================================================================
 
 # Build stage
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 
 WORKDIR /src
 
@@ -23,16 +23,15 @@ FROM build AS publish
 RUN dotnet publish "DotnetOutboxPattern.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
 
 WORKDIR /app
 
 # Install curl for health checks
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache curl
 
 # Create non-root user
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 # Copy published application from publish stage
 COPY --from=publish /app/publish .
