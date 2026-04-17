@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -15,7 +16,7 @@ namespace DotnetOutboxPattern.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/outbox")]
-public class OutboxMessageController : ControllerBase
+public sealed class OutboxMessageController : ControllerBase
 {
     private readonly IOutboxService _outboxService;
     private readonly ILogger<OutboxMessageController> _logger;
@@ -36,7 +37,7 @@ public class OutboxMessageController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> PublishEventAsync([FromBody] PublishableEvent request)
     {
-        if (request == null)
+        if (request is null)
             return BadRequest(new ErrorResponse { Message = "Request body cannot be empty" });
 
         try
@@ -75,7 +76,7 @@ public class OutboxMessageController : ControllerBase
         {
             var message = await _outboxService.GetMessageAsync(id);
 
-            if (message == null)
+            if (message is null)
             {
                 _logger.LogWarning("Message not found: {MessageId}", id);
                 return NotFound();

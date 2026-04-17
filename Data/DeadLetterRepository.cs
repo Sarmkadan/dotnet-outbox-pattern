@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -31,7 +32,7 @@ public interface IDeadLetterRepository
 /// <summary>
 /// Default implementation of IDeadLetterRepository using Entity Framework Core
 /// </summary>
-public class DeadLetterRepository : IDeadLetterRepository
+public sealed class DeadLetterRepository : IDeadLetterRepository
 {
     private readonly OutboxDbContext _context;
 
@@ -191,7 +192,7 @@ public class DeadLetterRepository : IDeadLetterRepository
         try
         {
             var deadLetter = await _context.DeadLetters.FindAsync(new object[] { id }, cancellationToken);
-            if (deadLetter != null)
+            if (deadLetter is not null)
             {
                 _context.DeadLetters.Remove(deadLetter);
                 await _context.SaveChangesAsync(cancellationToken);

@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -83,7 +84,7 @@ public static class RetryPolicyHelper
 /// <summary>
 /// Statistics about retry behavior
 /// </summary>
-public class RetryStatistics
+public sealed class RetryStatistics
 {
     /// <summary>
     /// The retry policy being used

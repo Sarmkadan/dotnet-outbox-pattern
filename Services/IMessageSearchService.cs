@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -61,7 +62,7 @@ public interface IMessageSearchService
 /// <summary>
 /// Default implementation of message search service
 /// </summary>
-public class MessageSearchService : IMessageSearchService
+public sealed class MessageSearchService : IMessageSearchService
 {
     private readonly IOutboxRepository _repository;
     private readonly ILogger<MessageSearchService> _logger;

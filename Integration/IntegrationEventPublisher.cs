@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -40,7 +41,7 @@ public interface IIntegrationEventPublisherChannel<in T> where T : class
 /// <summary>
 /// Default implementation of integration event publisher
 /// </summary>
-public class IntegrationEventPublisher : IIntegrationEventPublisher
+public sealed class IntegrationEventPublisher : IIntegrationEventPublisher
 {
     private readonly Dictionary<Type, Dictionary<string, object>> _publishers = new();
     private readonly ILogger<IntegrationEventPublisher> _logger;
@@ -93,7 +94,7 @@ public class IntegrationEventPublisher : IIntegrationEventPublisher
 
     public void RegisterPublisher<T>(string channel, IIntegrationEventPublisherChannel<T> publisher) where T : class
     {
-        if (publisher == null)
+        if (publisher is null)
             throw new ArgumentNullException(nameof(publisher));
 
         var eventType = typeof(T);
@@ -116,11 +117,11 @@ public class IntegrationEventPublisher : IIntegrationEventPublisher
         {
             var method = publisher.GetType().GetMethod("PublishAsync");
 
-            if (method != null)
+            if (method is not null)
             {
                 var task = method.Invoke(publisher, new object[] { @event }) as Task;
 
-                if (task != null)
+                if (task is not null)
                 {
                     await task;
                 }
@@ -136,7 +137,7 @@ public class IntegrationEventPublisher : IIntegrationEventPublisher
 /// <summary>
 /// Webhook integration event publisher - publishes events to webhooks
 /// </summary>
-public class WebhookIntegrationEventPublisher : IIntegrationEventPublisherChannel<DomainEvent>
+public sealed class WebhookIntegrationEventPublisher : IIntegrationEventPublisherChannel<DomainEvent>
 {
     private readonly IWebhookHandler _webhookHandler;
     private readonly ILogger<WebhookIntegrationEventPublisher> _logger;
@@ -168,7 +169,7 @@ public class WebhookIntegrationEventPublisher : IIntegrationEventPublisherChanne
 /// <summary>
 /// External API integration event publisher - calls external APIs on events
 /// </summary>
-public class ExternalApiIntegrationEventPublisher : IIntegrationEventPublisherChannel<DomainEvent>
+public sealed class ExternalApiIntegrationEventPublisher : IIntegrationEventPublisherChannel<DomainEvent>
 {
     private readonly IExternalApiClient _apiClient;
     private readonly string _apiUrl;
@@ -211,7 +212,7 @@ public class ExternalApiIntegrationEventPublisher : IIntegrationEventPublisherCh
 /// <summary>
 /// In-process event publisher - publishes events to internal subscribers
 /// </summary>
-public class InProcessIntegrationEventPublisher : IIntegrationEventPublisherChannel<DomainEvent>
+public sealed class InProcessIntegrationEventPublisher : IIntegrationEventPublisherChannel<DomainEvent>
 {
     private readonly IEventPublisher _eventPublisher;
     private readonly ILogger<InProcessIntegrationEventPublisher> _logger;

@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -22,7 +23,7 @@ namespace Examples
     /// <summary>
     /// Comprehensive metrics collection for the outbox pattern.
     /// </summary>
-    public class OutboxMetricsCollector
+    public sealed class OutboxMetricsCollector
     {
         private readonly IOutboxService _outboxService;
         private readonly IDeadLetterService _dlService;
@@ -117,7 +118,7 @@ Quality Indicators:
     /// <summary>
     /// Health check implementation for Kubernetes/Docker container orchestration.
     /// </summary>
-    public class OutboxHealthCheck
+    public sealed class OutboxHealthCheck
     {
         private readonly IOutboxService _outboxService;
         private readonly IDeadLetterService _dlService;
@@ -210,7 +211,7 @@ Quality Indicators:
     /// <summary>
     /// Alerting system for monitoring outbox health.
     /// </summary>
-    public class OutboxAlertingService
+    public sealed class OutboxAlertingService
     {
         private readonly IOutboxService _outboxService;
         private readonly ILogger<OutboxAlertingService> _logger;
@@ -290,7 +291,7 @@ Quality Indicators:
 
         public enum AlertLevel { Info, Warning, Error }
 
-        public class AlertThresholds
+        public sealed class AlertThresholds
         {
             public int MaxPendingMessages { get; set; }
             public int MaxDlqMessages { get; set; }
@@ -304,7 +305,7 @@ Quality Indicators:
     /// <summary>
     /// Background job that periodically collects metrics and checks health.
     /// </summary>
-    public class MetricsCollectionJob
+    public sealed class MetricsCollectionJob
     {
         private readonly OutboxMetricsCollector _metricsCollector;
         private readonly OutboxAlertingService _alertingService;

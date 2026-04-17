@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -33,7 +34,7 @@ public interface IExportService
 /// <summary>
 /// Result of an export operation
 /// </summary>
-public class ExportResult
+public sealed class ExportResult
 {
     public string Content { get; set; } = string.Empty;
     public string Format { get; set; } = string.Empty;
@@ -46,7 +47,7 @@ public class ExportResult
 /// <summary>
 /// Default implementation of export service
 /// </summary>
-public class ExportService : IExportService
+public sealed class ExportService : IExportService
 {
     private readonly IOutboxService _outboxService;
     private readonly IEnumerable<IDataFormatter> _formatters;
@@ -69,7 +70,7 @@ public class ExportService : IExportService
             var format = request.Format.ToLower();
             var formatter = _formatters.FirstOrDefault(f => f.FormatName == format);
 
-            if (formatter == null)
+            if (formatter is null)
                 throw new InvalidOperationException($"Unsupported export format: {format}");
 
             // Get messages based on filters
