@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -19,9 +20,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Examples
 {
-    public class DeadLetterHandlingExample
+    public sealed class DeadLetterHandlingExample
     {
-        public class DeadLetterMonitor
+        public sealed class DeadLetterMonitor
         {
             private readonly IDeadLetterService _deadLetterService;
             private readonly ILogger<DeadLetterMonitor> _logger;
@@ -63,7 +64,7 @@ namespace Examples
             {
                 var deadLetter = await _deadLetterService.GetAsync(deadLetterId);
 
-                if (deadLetter == null)
+                if (deadLetter is null)
                     return "Dead letter not found";
 
                 var details = $@"
@@ -129,7 +130,7 @@ Review Status:
         /// <summary>
         /// Automated recovery strategies for common failure patterns.
         /// </summary>
-        public class AutomatedDeadLetterRecovery
+        public sealed class AutomatedDeadLetterRecovery
         {
             private readonly IDeadLetterService _dlService;
             private readonly ILogger<AutomatedDeadLetterRecovery> _logger;
@@ -217,7 +218,7 @@ Review Status:
         /// <summary>
         /// Health check that can be used for monitoring/alerting.
         /// </summary>
-        public class DeadLetterHealthCheck
+        public sealed class DeadLetterHealthCheck
         {
             private readonly IDeadLetterService _dlService;
 
@@ -241,7 +242,7 @@ Review Status:
                     .OrderBy(dl => dl.MovedToDlqAt)
                     .FirstOrDefault();
 
-                if (oldestUnreviewed != null)
+                if (oldestUnreviewed is not null)
                 {
                     var age = DateTime.UtcNow - oldestUnreviewed.OriginalCreatedAt;
                     if (age.TotalHours > 24)

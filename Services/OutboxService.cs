@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -29,7 +30,7 @@ public interface IOutboxService
 /// Core service for managing outbox message publishing
 /// Handles transactional consistency and message deduplication
 /// </summary>
-public class OutboxService : IOutboxService
+public sealed class OutboxService : IOutboxService
 {
     private readonly IOutboxRepository _repository;
     private readonly ILogger<OutboxService> _logger;
@@ -54,7 +55,7 @@ public class OutboxService : IOutboxService
 
             // Check for duplicate using idempotency key
             var existing = await _repository.GetByIdempotencyKeyAsync(idempotencyKey, cancellationToken);
-            if (existing != null)
+            if (existing is not null)
             {
                 _logger.LogInformation("Message with idempotency key {IdempotencyKey} already exists", idempotencyKey);
                 return existing;
@@ -160,7 +161,7 @@ public class OutboxService : IOutboxService
         try
         {
             var message = await _repository.GetByIdAsync(messageId, cancellationToken);
-            if (message == null)
+            if (message is null)
                 throw new OutboxMessageNotFoundException(messageId);
 
             if (message.State != OutboxMessageState.Failed)

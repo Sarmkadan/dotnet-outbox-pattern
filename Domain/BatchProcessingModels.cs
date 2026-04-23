@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -8,7 +9,7 @@ namespace DotnetOutboxPattern.Domain;
 /// <summary>
 /// Configuration options for batch processing with configurable chunk size
 /// </summary>
-public class BatchProcessingOptions
+public sealed class BatchProcessingOptions
 {
     /// <summary>
     /// Total number of messages to process per cycle across all chunks
@@ -49,7 +50,7 @@ public class BatchProcessingOptions
 /// <summary>
 /// Processing result for a single chunk within a batch run
 /// </summary>
-public class BatchChunkResult
+public sealed class BatchChunkResult
 {
     /// <summary>
     /// Zero-based position of this chunk in the overall batch
@@ -95,7 +96,7 @@ public class BatchChunkResult
 /// <summary>
 /// Aggregated result across all chunks in a single batch processing run
 /// </summary>
-public class BatchProcessingSummary
+public sealed class BatchProcessingSummary
 {
     /// <summary>
     /// Whether the batch completed without a top-level error

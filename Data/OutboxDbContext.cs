@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -11,7 +12,7 @@ namespace DotnetOutboxPattern.Data;
 /// <summary>
 /// Entity Framework Core DbContext for the outbox pattern
 /// </summary>
-public class OutboxDbContext : DbContext
+public sealed class OutboxDbContext : DbContext
 {
     public DbSet<OutboxMessage> OutboxMessages { get; set; } = null!;
     public DbSet<DeadLetter> DeadLetters { get; set; } = null!;

@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -8,7 +9,7 @@ namespace DotnetOutboxPattern.Dtos;
 /// <summary>
 /// Request to publish an event to the outbox
 /// </summary>
-public class PublishEventRequest
+public sealed class PublishEventRequest
 {
     public string AggregateId { get; set; } = string.Empty;
     public string AggregateType { get; set; } = string.Empty;
@@ -23,7 +24,7 @@ public class PublishEventRequest
 /// <summary>
 /// Request to register a webhook subscription
 /// </summary>
-public class RegisterWebhookRequest
+public sealed class RegisterWebhookRequest
 {
     public string Url { get; set; } = string.Empty;
     public List<string> Events { get; set; } = new();
@@ -34,7 +35,7 @@ public class RegisterWebhookRequest
 /// <summary>
 /// Request to update a webhook subscription
 /// </summary>
-public class UpdateWebhookRequest
+public sealed class UpdateWebhookRequest
 {
     public string? Url { get; set; }
     public List<string>? Events { get; set; }
@@ -45,7 +46,7 @@ public class UpdateWebhookRequest
 /// <summary>
 /// Request to manually archive messages
 /// </summary>
-public class ArchiveMessagesRequest
+public sealed class ArchiveMessagesRequest
 {
     public int DaysOld { get; set; } = 30;
     public int? MaxMessages { get; set; }
@@ -55,7 +56,7 @@ public class ArchiveMessagesRequest
 /// <summary>
 /// Request to batch process messages
 /// </summary>
-public class BatchProcessRequest
+public sealed class BatchProcessRequest
 {
     public List<Guid> MessageIds { get; set; } = new();
     public string Action { get; set; } = string.Empty; // "retry", "archive", "delete"
@@ -64,7 +65,7 @@ public class BatchProcessRequest
 /// <summary>
 /// Request to search messages with filters
 /// </summary>
-public class MessageSearchRequest
+public sealed class MessageSearchRequest
 {
     public string? AggregateId { get; set; }
     public string? AggregateType { get; set; }
@@ -82,7 +83,7 @@ public class MessageSearchRequest
 /// <summary>
 /// Request for dead letter review
 /// </summary>
-public class ReviewDeadLetterRequest
+public sealed class ReviewDeadLetterRequest
 {
     public string Notes { get; set; } = string.Empty;
     public string Status { get; set; } = "Reviewed"; // Reviewed, Ignored
@@ -91,7 +92,7 @@ public class ReviewDeadLetterRequest
 /// <summary>
 /// Request to requeue a dead letter message
 /// </summary>
-public class RequeueDeadLetterRequest
+public sealed class RequeueDeadLetterRequest
 {
     public string Reason { get; set; } = string.Empty;
     public int? MaxRetries { get; set; }
@@ -100,7 +101,7 @@ public class RequeueDeadLetterRequest
 /// <summary>
 /// Batch configuration for message export
 /// </summary>
-public class ExportRequest
+public sealed class ExportRequest
 {
     public string Format { get; set; } = "json"; // json, csv, xml
     public DateTime? StartDate { get; set; }
@@ -112,7 +113,7 @@ public class ExportRequest
 /// <summary>
 /// Request to create a new event type configuration
 /// </summary>
-public class CreateEventTypeRequest
+public sealed class CreateEventTypeRequest
 {
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
@@ -124,7 +125,7 @@ public class CreateEventTypeRequest
 /// <summary>
 /// Request to update event type configuration
 /// </summary>
-public class UpdateEventTypeRequest
+public sealed class UpdateEventTypeRequest
 {
     public string? Description { get; set; }
     public string? Topic { get; set; }
@@ -135,7 +136,7 @@ public class UpdateEventTypeRequest
 /// <summary>
 /// Request to create a notification
 /// </summary>
-public class CreateNotificationRequest
+public sealed class CreateNotificationRequest
 {
     public string Title { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;

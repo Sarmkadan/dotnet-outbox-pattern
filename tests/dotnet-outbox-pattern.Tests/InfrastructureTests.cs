@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -13,7 +14,7 @@ using Moq;
 
 namespace DotnetOutboxPattern.Tests;
 
-public class SerializationHelperTests
+public sealed class SerializationHelperTests
 {
     [Fact]
     public void Serialize_ProducesCamelCasePropertyNames()
@@ -117,7 +118,7 @@ public class SerializationHelperTests
     }
 }
 
-public class EventPublisherTests
+public sealed class EventPublisherTests
 {
     private readonly Mock<ILogger<EventPublisher>> _loggerMock;
     private readonly EventPublisher _sut;

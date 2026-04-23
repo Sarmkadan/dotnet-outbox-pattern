@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -14,7 +15,7 @@ namespace DotnetOutboxPattern.Middleware;
 /// Centralized error handling middleware that catches and formats all unhandled exceptions
 /// Ensures consistent error responses and proper logging of errors
 /// </summary>
-public class ErrorHandlingMiddleware
+public sealed class ErrorHandlingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ErrorHandlingMiddleware> _logger;

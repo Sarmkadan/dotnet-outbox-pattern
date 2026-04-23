@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -21,7 +22,7 @@ public interface IExternalApiClient
 /// <summary>
 /// Result of an external API call
 /// </summary>
-public class ApiCallResult
+public sealed class ApiCallResult
 {
     public bool IsSuccess { get; set; }
     public int StatusCode { get; set; }
@@ -33,7 +34,7 @@ public class ApiCallResult
 /// <summary>
 /// Default implementation of external API client
 /// </summary>
-public class ExternalApiClient : IExternalApiClient
+public sealed class ExternalApiClient : IExternalApiClient
 {
     private readonly ResilientHttpClient _httpClient;
     private readonly ILogger<ExternalApiClient> _logger;
@@ -60,7 +61,7 @@ public class ExternalApiClient : IExternalApiClient
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             // Add custom headers
-            if (headers != null)
+            if (headers is not null)
             {
                 foreach (var header in headers)
                 {

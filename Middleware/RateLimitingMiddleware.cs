@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -12,7 +13,7 @@ namespace DotnetOutboxPattern.Middleware;
 /// Rate limiting middleware using sliding window token bucket algorithm
 /// Protects the API from abuse and ensures fair resource allocation
 /// </summary>
-public class RateLimitingMiddleware
+public sealed class RateLimitingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<RateLimitingMiddleware> _logger;
@@ -150,7 +151,7 @@ public class RateLimitingMiddleware
 /// <summary>
 /// Configuration options for rate limiting
 /// </summary>
-public class RateLimitingOptions
+public sealed class RateLimitingOptions
 {
     public int RequestsPerWindow { get; set; } = 1000;
     public int WindowSeconds { get; set; } = 60;

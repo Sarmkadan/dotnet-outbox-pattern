@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -88,7 +89,7 @@ try
     app.MapGet("/api/outbox/messages/{messageId}", async (Guid messageId, IOutboxService outboxService) =>
     {
         var message = await outboxService.GetMessageAsync(messageId);
-        return message != null ? Results.Ok(message) : Results.NotFound();
+        return message is not null ? Results.Ok(message) : Results.NotFound();
     }).WithName("GetMessage");
 
     // Publish event endpoint (for testing)
@@ -133,7 +134,7 @@ finally
 /// <summary>
 /// Request model for reviewing dead letters
 /// </summary>
-public class ReviewRequest
+public sealed class ReviewRequest
 {
     public string Notes { get; set; } = null!;
 }
@@ -141,7 +142,7 @@ public class ReviewRequest
 /// <summary>
 /// Request model for requeuing dead letters
 /// </summary>
-public class RequeueRequest
+public sealed class RequeueRequest
 {
     public string Reason { get; set; } = null!;
 }

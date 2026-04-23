@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -13,7 +14,7 @@ namespace DotnetOutboxPattern.Formatters;
 /// Formatter for exporting outbox messages to JSON format
 /// Preserves all message details including event data
 /// </summary>
-public class JsonFormatter : IDataFormatter
+public sealed class JsonFormatter : IDataFormatter
 {
     public string FormatName => "json";
     public string ContentType => "application/json";

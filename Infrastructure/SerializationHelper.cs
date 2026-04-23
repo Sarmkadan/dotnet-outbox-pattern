@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -74,7 +75,7 @@ public static class SerializationHelper
         try
         {
             var result = JsonSerializer.Deserialize<T>(json, DefaultOptions);
-            if (result == null)
+            if (result is null)
                 throw new SerializationException($"Deserialized null for type {typeof(T).Name}", typeof(T).Name);
 
             return result;

@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -9,7 +10,7 @@ namespace DotnetOutboxPattern.Domain;
 /// Represents a message that failed to be published after maximum retry attempts.
 /// Dead letters require manual intervention or investigation.
 /// </summary>
-public class DeadLetter
+public sealed class DeadLetter
 {
     /// <summary>
     /// Unique identifier for the dead letter record

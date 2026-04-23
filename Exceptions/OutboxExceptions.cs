@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -8,7 +9,7 @@ namespace DotnetOutboxPattern.Exceptions;
 /// <summary>
 /// Base exception for outbox pattern related errors
 /// </summary>
-public class OutboxException : Exception
+public sealed class OutboxException : Exception
 {
     /// <summary>
     /// Error code for this exception
@@ -38,7 +39,7 @@ public class OutboxException : Exception
 /// <summary>
 /// Exception thrown when message publishing fails
 /// </summary>
-public class MessagePublishingException : OutboxException
+public sealed class MessagePublishingException : OutboxException
 {
     /// <summary>
     /// ID of the message that failed to publish
@@ -61,7 +62,7 @@ public class MessagePublishingException : OutboxException
 /// <summary>
 /// Exception thrown when a dead letter operation fails
 /// </summary>
-public class DeadLetterException : OutboxException
+public sealed class DeadLetterException : OutboxException
 {
     /// <summary>
     /// ID of the message moved to dead letter
@@ -78,7 +79,7 @@ public class DeadLetterException : OutboxException
 /// <summary>
 /// Exception thrown when message validation fails
 /// </summary>
-public class InvalidMessageException : OutboxException
+public sealed class InvalidMessageException : OutboxException
 {
     public InvalidMessageException(string message, Exception? innerException = null)
         : base(message, innerException ?? new Exception(message), "INVALID_MESSAGE")
@@ -89,7 +90,7 @@ public class InvalidMessageException : OutboxException
 /// <summary>
 /// Exception thrown when database operations fail
 /// </summary>
-public class OutboxRepositoryException : OutboxException
+public sealed class OutboxRepositoryException : OutboxException
 {
     /// <summary>
     /// Operation that failed
@@ -106,7 +107,7 @@ public class OutboxRepositoryException : OutboxException
 /// <summary>
 /// Exception thrown when message locking fails
 /// </summary>
-public class MessageLockingException : OutboxException
+public sealed class MessageLockingException : OutboxException
 {
     /// <summary>
     /// ID of the message that failed to lock
@@ -123,7 +124,7 @@ public class MessageLockingException : OutboxException
 /// <summary>
 /// Exception thrown when an outbox message is not found
 /// </summary>
-public class OutboxMessageNotFoundException : OutboxException
+public sealed class OutboxMessageNotFoundException : OutboxException
 {
     /// <summary>
     /// ID of the message that was not found
@@ -140,7 +141,7 @@ public class OutboxMessageNotFoundException : OutboxException
 /// <summary>
 /// Exception thrown when serialization/deserialization fails
 /// </summary>
-public class SerializationException : OutboxException
+public sealed class SerializationException : OutboxException
 {
     /// <summary>
     /// Type that failed to serialize/deserialize
@@ -157,7 +158,7 @@ public class SerializationException : OutboxException
 /// <summary>
 /// Exception thrown when processing is already in progress
 /// </summary>
-public class ProcessingInProgressException : OutboxException
+public sealed class ProcessingInProgressException : OutboxException
 {
     public ProcessingInProgressException(string message)
         : base(message, "PROCESSING_IN_PROGRESS")
@@ -168,7 +169,7 @@ public class ProcessingInProgressException : OutboxException
 /// <summary>
 /// Exception thrown when configuration is invalid
 /// </summary>
-public class InvalidConfigurationException : OutboxException
+public sealed class InvalidConfigurationException : OutboxException
 {
     /// <summary>
     /// Configuration property that is invalid

@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -15,7 +16,7 @@ namespace DotnetOutboxPattern.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/export")]
-public class ExportController : ControllerBase
+public sealed class ExportController : ControllerBase
 {
     private readonly IExportService _exportService;
     private readonly ILogger<ExportController> _logger;
@@ -37,7 +38,7 @@ public class ExportController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ExportMessagesAsync([FromBody] ExportRequest request)
     {
-        if (request == null)
+        if (request is null)
             return BadRequest(new ErrorResponse { Message = "Export request is required" });
 
         try
@@ -110,7 +111,7 @@ public class ExportController : ControllerBase
         {
             var info = GetFormatInfo(format.ToLower());
 
-            if (info == null)
+            if (info is null)
                 return NotFound();
 
             return Ok(info);
@@ -172,7 +173,7 @@ public class ExportController : ControllerBase
 /// <summary>
 /// Information about an export format
 /// </summary>
-public class ExportFormatInfo
+public sealed class ExportFormatInfo
 {
     public string Format { get; set; } = string.Empty;
     public string ContentType { get; set; } = string.Empty;
@@ -183,10 +184,10 @@ public class ExportFormatInfo
 /// <summary>
 /// General export service information
 /// </summary>
-public class ExportInfo
+public sealed class ExportInfo
 {
     public int MaxMessagesPerExport { get; set; }
     public List<string> SupportedFormats { get; set; } = new();
     public string DefaultFormat { get; set; } = string.Empty;
-    public string[] FilterableFields { get; set; } = Array.Empty<string>();
+    public string[] FilterableFields { get; set; } = []<string>();
 }

@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -39,7 +40,7 @@ public abstract class DomainEvent
 /// <summary>
 /// Event raised when an entity is created
 /// </summary>
-public class EntityCreatedEvent : DomainEvent
+public sealed class EntityCreatedEvent : DomainEvent
 {
     /// <summary>
     /// ID of the created entity
@@ -60,7 +61,7 @@ public class EntityCreatedEvent : DomainEvent
 /// <summary>
 /// Event raised when an entity is updated
 /// </summary>
-public class EntityUpdatedEvent : DomainEvent
+public sealed class EntityUpdatedEvent : DomainEvent
 {
     /// <summary>
     /// ID of the updated entity
@@ -91,7 +92,7 @@ public class EntityUpdatedEvent : DomainEvent
 /// <summary>
 /// Event raised when an entity is deleted
 /// </summary>
-public class EntityDeletedEvent : DomainEvent
+public sealed class EntityDeletedEvent : DomainEvent
 {
     /// <summary>
     /// ID of the deleted entity
@@ -112,7 +113,7 @@ public class EntityDeletedEvent : DomainEvent
 /// <summary>
 /// Event for custom business domain events
 /// </summary>
-public class CustomDomainEvent : DomainEvent
+public sealed class CustomDomainEvent : DomainEvent
 {
     /// <summary>
     /// Name/type of the custom event
@@ -138,7 +139,7 @@ public class CustomDomainEvent : DomainEvent
 /// <summary>
 /// Notification event for alerting subscribers
 /// </summary>
-public class NotificationEvent : DomainEvent
+public sealed class NotificationEvent : DomainEvent
 {
     /// <summary>
     /// Type of notification
@@ -174,7 +175,7 @@ public class NotificationEvent : DomainEvent
 /// <summary>
 /// Represents an event with metadata for publishing
 /// </summary>
-public class PublishableEvent
+public sealed class PublishableEvent
 {
     /// <summary>
     /// The domain event to publish

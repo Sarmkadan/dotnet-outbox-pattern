@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -18,10 +19,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Examples
 {
-    public class BasicEventPublishingExample
+    public sealed class BasicEventPublishingExample
     {
         // Define your domain event
-        public class UserRegisteredEvent : DomainEvent
+        public sealed class UserRegisteredEvent : DomainEvent
         {
             public string UserId { get; set; } = string.Empty;
             public string Email { get; set; } = string.Empty;
@@ -29,7 +30,7 @@ namespace Examples
             public DateTime RegisteredAt { get; set; }
         }
 
-        public class UserService
+        public sealed class UserService
         {
             private readonly IOutboxService _outboxService;
             private readonly ILogger<UserService> _logger;

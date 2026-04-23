@@ -1,3 +1,4 @@
+#nullable enable
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -14,7 +15,7 @@ namespace DotnetOutboxPattern.Infrastructure;
 /// In production, replace this with your actual message broker implementation
 /// (e.g., RabbitMQ, Azure Service Bus, Kafka, AWS SQS, etc.)
 /// </summary>
-public class DefaultMessagePublisher : IMessagePublisher
+public sealed class DefaultMessagePublisher : IMessagePublisher
 {
     private readonly ILogger<DefaultMessagePublisher> _logger;
 
