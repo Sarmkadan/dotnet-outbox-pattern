@@ -213,6 +213,60 @@ class Program
 ```
 ```
 
+## RetryPolicyHelperTests
+
+The `RetryPolicyHelperTests` class provides comprehensive unit tests for the `RetryPolicyHelper` class, which handles retry policy calculations for outbox message publishing. These tests verify various retry scenarios including fixed interval, linear backoff, exponential backoff, jitter, and edge cases like zero/negative attempts and maximum delay limits.
+
+### Example Usage
+
+```csharp
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Infrastructure;
+using System;
+
+class Program
+{
+    static void Main()
+    {
+        // Create publishing options with exponential backoff policy
+        var options = new PublishingOptions
+        {
+            RetryPolicy = RetryPolicyType.ExponentialBackoff,
+            InitialRetryDelay = TimeSpan.FromSeconds(1),
+            BackoffMultiplier = 2,
+            MaxRetryDelay = TimeSpan.FromSeconds(30),
+            UseJitter = true
+        };
+
+        // Calculate delay for different attempts
+        var delay1 = RetryPolicyHelper.CalculateDelay(1, options);
+        var delay2 = RetryPolicyHelper.CalculateDelay(2, options);
+        var delay3 = RetryPolicyHelper.CalculateDelay(3, options);
+
+        Console.WriteLine($"Attempt 1 delay: {delay1.TotalSeconds:F2} seconds");
+        Console.WriteLine($"Attempt 2 delay: {delay2.TotalSeconds:F2} seconds");
+        Console.WriteLine($"Attempt 3 delay: {delay3.TotalSeconds:F2} seconds");
+
+        // Calculate statistics for the retry policy
+        var stats = RetryPolicyHelper.CalculateStatistics(options, maxAttempts: 5);
+        Console.WriteLine($"Max attempts: {stats.MaxAttempts}");
+        Console.WriteLine($"Total retries: {stats.TotalRetries}");
+        Console.WriteLine($"Total delay: {stats.TotalDelayTime.TotalSeconds:F2} seconds");
+        Console.WriteLine($"Average delay: {stats.AverageRetryDelay.TotalSeconds:F2} seconds");
+
+        // Test edge cases
+        try
+        {
+            RetryPolicyHelper.CalculateDelay(0, options);
+        }
+        catch (ArgumentException ex)
+        {
+            Console.WriteLine($"Expected exception for zero attempt: {ex.Message}");
+        }
+    }
+}
+```
+
 ## SystemTextJsonOutboxSerializerTests
 
 The `SystemTextJsonOutboxSerializerTests` class provides comprehensive unit tests for the `SystemTextJsonOutboxSerializer` class, which handles serialization and deserialization of outbox messages using System.Text.Json. These tests verify constructor behavior, serialization of various data types (null values, primitives, strings, simple objects, complex objects), and deserialization with different scenarios including error cases.
