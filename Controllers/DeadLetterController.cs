@@ -4,6 +4,7 @@
 // =============================================================================
 
 using Microsoft.AspNetCore.Mvc;
+using DotnetOutboxPattern.Domain;
 using DotnetOutboxPattern.Services;
 using DotnetOutboxPattern.Dtos;
 
@@ -35,13 +36,13 @@ public class DeadLetterController : ControllerBase
     /// Gets unreviewed dead letters - messages awaiting operator review
     /// </summary>
     [HttpGet("unreviewed")]
-    [ProducesResponseType(typeof(List<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<DeadLetter>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUnreviewedAsync([FromQuery] int limit = 100)
     {
         try
         {
-            var deadLetters = await _dlService.GetUnreviewedAsync();
-            return Ok(deadLetters.Take(limit).ToList());
+            var deadLetters = await _dlService.GetUnreviewedAsync(limit);
+            return Ok(deadLetters);
         }
         catch (Exception ex)
         {
@@ -55,7 +56,7 @@ public class DeadLetterController : ControllerBase
     /// Gets dead letters with optional filtering and pagination
     /// </summary>
     [HttpGet]
-    [ProducesResponseType(typeof(PaginatedResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PaginatedResponse<DeadLetter>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetDeadLettersAsync(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,
@@ -66,13 +67,13 @@ public class DeadLetterController : ControllerBase
             if (page < 1 || pageSize < 1 || pageSize > 500)
                 return BadRequest(new ErrorResponse { Message = "Invalid pagination parameters" });
 
-            var deadLetters = await _dlService.GetAllAsync();
+            var deadLetters = await _dlService.GetUnreviewedAsync(1000);
 
-            var result = new PaginatedResponse<object>
+            var result = new PaginatedResponse<DeadLetter>
             {
                 Page = page,
                 PageSize = pageSize,
-                Items = deadLetters.Skip((page - 1) * pageSize).Take(pageSize).Cast<object>().ToList(),
+                Items = deadLetters.Skip((page - 1) * pageSize).Take(pageSize).ToList(),
                 TotalItems = deadLetters.Count
             };
 
@@ -90,13 +91,13 @@ public class DeadLetterController : ControllerBase
     /// Gets a specific dead letter entry with full details
     /// </summary>
     [HttpGet("{id:guid}")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(DeadLetter), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetDeadLetterAsync(Guid id)
     {
         try
         {
-            var deadLetter = await _dlService.GetByIdAsync(id);
+            var deadLetter = await _dlService.GetAsync(id);
 
             if (deadLetter == null)
                 return NotFound();
@@ -124,17 +125,10 @@ public class DeadLetterController : ControllerBase
 
         try
         {
-            var success = await _dlService.ReviewAsync(id, request.Notes);
-
-            if (!success)
-            {
-                _logger.LogWarning("Dead letter not found for review: {DeadLetterId}", id);
-                return NotFound();
-            }
+            await _dlService.ReviewAsync(id, request.Notes);
 
             _logger.LogInformation("Dead letter reviewed: {DeadLetterId}", id);
 
-            // Send notification
             await _notificationService.SendAsync(new Notification
             {
                 Title = "Dead Letter Reviewed",
@@ -165,17 +159,10 @@ public class DeadLetterController : ControllerBase
 
         try
         {
-            var success = await _dlService.RequeueAsync(id, request.Reason);
-
-            if (!success)
-            {
-                _logger.LogWarning("Dead letter not found for requeue: {DeadLetterId}", id);
-                return NotFound();
-            }
+            await _dlService.RequeueAsync(id, request.Reason);
 
             _logger.LogInformation("Dead letter requeued: {DeadLetterId}", id);
 
-            // Send notification
             await _notificationService.SendAsync(new Notification
             {
                 Title = "Dead Letter Requeued",
@@ -202,7 +189,15 @@ public class DeadLetterController : ControllerBase
     {
         try
         {
-            var stats = await _dlService.GetStatisticsAsync();
+            var unreviewedCount = await _dlService.GetUnreviewedCountAsync();
+            var health = await _dlService.GetHealthAsync();
+
+            var stats = new DeadLetterStatistics
+            {
+                UnreviewedCount = unreviewedCount,
+                LastUpdated = DateTime.UtcNow
+            };
+
             return Ok(stats);
         }
         catch (Exception ex)
@@ -218,16 +213,11 @@ public class DeadLetterController : ControllerBase
     /// </summary>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteAsync(Guid id)
     {
         try
         {
-            var success = await _dlService.DeleteAsync(id);
-
-            if (!success)
-                return NotFound();
-
+            await _dlService.DeleteAsync(id);
             _logger.LogInformation("Dead letter deleted: {DeadLetterId}", id);
             return NoContent();
         }
@@ -249,14 +239,13 @@ public class DeadLetterController : ControllerBase
         try
         {
             var format = request.Format.ToLower();
-            var deadLetters = await _dlService.GetAllAsync();
+            var deadLetters = await _dlService.GetUnreviewedAsync(10000);
 
-            // In a real implementation, this would use formatters
             var content = format switch
             {
-                "json" => System.Text.Json.JsonSerializer.Serialize(deadLetters, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }),
-                "csv" => ExportAsCSV(deadLetters),
-                _ => ExportAsCSV(deadLetters)
+                "json" => System.Text.Json.JsonSerializer.Serialize(deadLetters,
+                    new System.Text.Json.JsonSerializerOptions { WriteIndented = true }),
+                _ => ExportAsCsv(deadLetters)
             };
 
             var filename = $"deadletters_{DateTime.UtcNow:yyyyMMdd_HHmmss}.{format}";
@@ -270,14 +259,15 @@ public class DeadLetterController : ControllerBase
         }
     }
 
-    private string ExportAsCSV(List<dynamic> deadLetters)
+    private static string ExportAsCsv(List<DeadLetter> deadLetters)
     {
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("Id,MessageId,AggregateId,ErrorMessage,CreatedAt,ReviewedAt,Status");
+        sb.AppendLine("Id,OutboxMessageId,AggregateId,ErrorMessage,MovedToDlqAt,IsReviewed");
 
-        foreach (var dl in deadLetters.Take(1000))
+        foreach (var dl in deadLetters)
         {
-            sb.AppendLine($"{dl.Id},{dl.MessageId},{dl.AggregateId},\"{dl.ErrorMessage}\",{dl.CreatedAt},{dl.ReviewedAt},{dl.Status}");
+            sb.AppendLine($"{dl.Id},{dl.OutboxMessageId},{dl.AggregateId}," +
+                          $"\"{dl.ErrorMessage?.Replace("\"", "\"\"")}\",{dl.MovedToDlqAt:O},{dl.IsReviewed}");
         }
 
         return sb.ToString();

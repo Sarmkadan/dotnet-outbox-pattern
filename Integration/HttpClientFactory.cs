@@ -3,6 +3,7 @@
 // CTO & Software Architect
 // =============================================================================
 
+using System.Net;
 using System.Net.Http.Headers;
 
 namespace DotnetOutboxPattern.Integration;

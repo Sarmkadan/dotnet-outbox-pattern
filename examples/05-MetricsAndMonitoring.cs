@@ -52,21 +52,21 @@ namespace Examples
                 "Total={Total}, Pending={Pending}, Published={Published}, DLQ={DLQ}, " +
                 "SuccessRate={SuccessRate:P}, AvgRetries={AvgRetries:F2}, " +
                 "UnreviewedDLQ={UnreviewedDLQ}, LastProcessed={LastProcessed}",
-                stats.TotalCount,
-                stats.PendingCount,
-                stats.PublishedCount,
+                stats.TotalMessages,
+                stats.PendingMessages,
+                stats.PublishedMessages,
                 stats.DeadLetterCount,
                 stats.SuccessRate,
-                stats.AverageRetries,
+                stats.AveragePublishTime.TotalSeconds,
                 unreviewed.Count,
-                stats.LastProcessedTime);
+                DateTime.UtcNow);
 
             // Example: Alert if pending count is growing
-            if (stats.PendingCount > 1000)
+            if (stats.PendingMessages > 1000)
             {
                 _logger.LogWarning(
                     "Alert: Pending message count is high: {PendingCount}",
-                    stats.PendingCount);
+                    stats.PendingMessages);
             }
 
             // Example: Alert if DLQ is too large
@@ -91,18 +91,18 @@ Outbox Pattern Metrics Report
 ═══════════════════════════════════════════
 
 Summary:
-  Total Messages:      {stats.TotalCount}
-  Pending:            {stats.PendingCount}
-  Published:          {stats.PublishedCount}
+  Total Messages:      {stats.TotalMessages}
+  Pending:            {stats.PendingMessages}
+  Published:          {stats.PublishedMessages}
   Failed (DLQ):       {stats.DeadLetterCount}
   Success Rate:       {stats.SuccessRate:P2}
-  Average Retries:    {stats.AverageRetries:F2}
-  Last Processed:     {stats.LastProcessedTime:O}
+  Average Retries:    {stats.AveragePublishTime.TotalSeconds:F2}
+  Last Processed:     {DateTime.UtcNow:O}
 
 Quality Indicators:
   Messages/Sec:       {CalculateMessagesPerSecond(stats)}
   Failure Rate:       {(1 - stats.SuccessRate):P2}
-  DLQ Percentage:     {((double)stats.DeadLetterCount / stats.TotalCount):P2}
+  DLQ Percentage:     {((double)stats.DeadLetterCount / stats.TotalMessages):P2}
 ";
             return report;
         }
@@ -149,7 +149,7 @@ Quality Indicators:
                 var stats = await _outboxService.GetStatisticsAsync();
                 var unreviewed = await _dlService.GetUnreviewedAsync();
 
-                _lastProcessed = stats.LastProcessedTime;
+                _lastProcessed = DateTime.UtcNow;
 
                 // Check 1: Processing is happening
                 var timeSinceLastProcess = DateTime.UtcNow - _lastProcessed;
@@ -165,9 +165,9 @@ Quality Indicators:
                 }
 
                 // Check 3: Pending queue not overflowing
-                if (stats.PendingCount > PendingThreshold)
+                if (stats.PendingMessages > PendingThreshold)
                 {
-                    return (503, $"Pending queue too large: {stats.PendingCount}");
+                    return (503, $"Pending queue too large: {stats.PendingMessages}");
                 }
 
                 // Check 4: Success rate acceptable
@@ -245,10 +245,10 @@ Quality Indicators:
             var stats = await _outboxService.GetStatisticsAsync();
 
             // Check pending count
-            if (stats.PendingCount > _thresholds.MaxPendingMessages)
+            if (stats.PendingMessages > _thresholds.MaxPendingMessages)
             {
                 LogAlert(AlertLevel.Warning,
-                    $"Pending messages exceed threshold: {stats.PendingCount} > {_thresholds.MaxPendingMessages}");
+                    $"Pending messages exceed threshold: {stats.PendingMessages} > {_thresholds.MaxPendingMessages}");
             }
 
             // Check DLQ count
@@ -363,15 +363,18 @@ Quality Indicators:
         }
     }
 
-    public static async Task Main(string[] args)
+    public static class MetricsAndMonitoringExample
     {
-        Console.WriteLine("Example: Metrics and Monitoring");
-        Console.WriteLine("Features:");
-        Console.WriteLine("  - Comprehensive metrics collection");
-        Console.WriteLine("  - Health checks for orchestrators");
-        Console.WriteLine("  - Alerting on thresholds");
-        Console.WriteLine("  - Performance monitoring");
+        public static async Task Main(string[] args)
+        {
+            Console.WriteLine("Example: Metrics and Monitoring");
+            Console.WriteLine("Features:");
+            Console.WriteLine("  - Comprehensive metrics collection");
+            Console.WriteLine("  - Health checks for orchestrators");
+            Console.WriteLine("  - Alerting on thresholds");
+            Console.WriteLine("  - Performance monitoring");
 
-        await Task.CompletedTask;
+            await Task.CompletedTask;
+        }
     }
 }

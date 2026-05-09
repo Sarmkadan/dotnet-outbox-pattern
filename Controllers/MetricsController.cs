@@ -192,7 +192,7 @@ public class MetricsController : ControllerBase
         try
         {
             var metrics = await _metricsService.GetResourceMetricsAsync();
-            return Ok(new ResourceMetricsDto(metrics));
+            return Ok(metrics);
         }
         catch (Exception ex)
         {

@@ -3,6 +3,7 @@
 // CTO & Software Architect
 // =============================================================================
 
+using DotnetOutboxPattern.Data;
 using DotnetOutboxPattern.Domain;
 using DotnetOutboxPattern.Dtos;
 
@@ -86,7 +87,7 @@ public class MessageSearchService : IMessageSearchService
 
             // Apply pagination
             var pageSize = Math.Min(request.PageSize, 500); // Cap at 500
-            var totalPages = (int)Math.Ceiling(allMessages.PendingCount / (double)pageSize);
+            var totalPages = (int)Math.Ceiling(allMessages.PendingMessages / (double)pageSize);
 
             // Return mock results for now (real implementation would query database)
             return new PaginatedResponse<OutboxMessageDto>
@@ -94,7 +95,7 @@ public class MessageSearchService : IMessageSearchService
                 Page = request.Page,
                 PageSize = pageSize,
                 Items = new List<OutboxMessageDto>(),
-                TotalItems = allMessages.PendingCount
+                TotalItems = (int)allMessages.PendingMessages
             };
         }
         catch (Exception ex)

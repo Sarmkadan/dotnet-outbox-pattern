@@ -3,6 +3,7 @@
 // CTO & Software Architect
 // =============================================================================
 
+using DotnetOutboxPattern.BackgroundServices;
 using DotnetOutboxPattern.Caching;
 using DotnetOutboxPattern.CLI;
 using DotnetOutboxPattern.Events;
@@ -51,7 +52,7 @@ public static class DependencyInjectionExtensions
         services.AddSingleton<IEventPublisher, EventPublisher>();
 
         // Add HTTP client factory
-        services.AddSingleton<IHttpClientFactory, CustomHttpClientFactory>();
+        services.AddSingleton<DotnetOutboxPattern.Integration.IHttpClientFactory, CustomHttpClientFactory>();
 
         // Add external API client with resilience
         services.AddScoped<ResilientHttpClient>();

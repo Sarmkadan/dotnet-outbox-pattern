@@ -61,44 +61,9 @@ public class MessageArchivalService : BackgroundService
 
         var cutoffDate = DateTime.UtcNow.AddDays(-_options.ArchiveDaysThreshold);
 
-        var messagesToArchive = await repository.GetPublishedMessagesOlderThanAsync(
-            cutoffDate,
-            _options.BatchSize,
-            cancellationToken);
+        await repository.ArchiveOldMessagesAsync(cutoffDate, cancellationToken);
 
-        if (messagesToArchive.Count == 0)
-            return;
-
-        _logger.LogInformation(
-            "Archiving {Count} messages published before {CutoffDate}",
-            messagesToArchive.Count,
-            cutoffDate);
-
-        // Archive messages in batches
-        var batches = messagesToArchive
-            .Select((item, index) => new { item, index })
-            .GroupBy(x => x.index / _options.BatchSize)
-            .Select(g => g.Select(x => x.item).ToList())
-            .ToList();
-
-        foreach (var batch in batches)
-        {
-            try
-            {
-                // In a real implementation, this would move messages to an archive table
-                // For now, we'll just mark them as archived
-                foreach (var message in batch)
-                {
-                    message.State = DotnetOutboxPattern.Domain.OutboxMessageState.Archived;
-                }
-
-                _logger.LogInformation("Archived batch of {Count} messages", batch.Count);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error archiving batch of messages");
-            }
-        }
+        _logger.LogInformation("Archived messages published before {CutoffDate}", cutoffDate);
     }
 }
 

@@ -32,6 +32,7 @@ public interface IOutboxRepository
     Task<List<OutboxMessage>> GetByCorrelationIdAsync(string correlationId, CancellationToken cancellationToken = default);
     Task ArchiveOldMessagesAsync(DateTime olderThan, CancellationToken cancellationToken = default);
     Task<int> DeleteArchivedMessagesAsync(DateTime olderThan, CancellationToken cancellationToken = default);
+    Task<List<OutboxMessage>> GetAllAsync(int limit = 10000, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -403,6 +404,21 @@ public class OutboxRepository : IOutboxRepository
         catch (Exception ex)
         {
             throw new OutboxRepositoryException("Failed to delete archived messages", nameof(DeleteArchivedMessagesAsync), ex);
+        }
+    }
+
+    public async Task<List<OutboxMessage>> GetAllAsync(int limit = 10000, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _context.OutboxMessages.AsNoTracking()
+                .OrderByDescending(x => x.CreatedAt)
+                .Take(limit)
+                .ToListAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            throw new OutboxRepositoryException("Failed to retrieve all messages", nameof(GetAllAsync), ex);
         }
     }
 }

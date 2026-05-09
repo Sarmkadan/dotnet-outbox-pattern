@@ -35,10 +35,11 @@ public class EventPublisher : IEventPublisher
         if (@event == null)
             throw new ArgumentNullException(nameof(@event));
 
+        var eventType = typeof(T);
+        List<Delegate>? handlersCopy = null;
+
         lock (_lock)
         {
-            var eventType = typeof(T);
-
             if (!_subscribers.TryGetValue(eventType, out var handlers))
             {
                 _logger.LogDebug("No subscribers for event type {EventType}", eventType.Name);
@@ -49,21 +50,23 @@ public class EventPublisher : IEventPublisher
                 "Publishing event {EventType} to {SubscriberCount} subscribers",
                 eventType.Name, handlers.Count);
 
-            foreach (var handler in handlers.ToList())
+            handlersCopy = handlers.ToList();
+        }
+
+        foreach (var handler in handlersCopy)
+        {
+            try
             {
-                try
+                if (handler is Func<T, Task> asyncHandler)
                 {
-                    if (handler is Func<T, Task> asyncHandler)
-                    {
-                        await asyncHandler(@event);
-                    }
+                    await asyncHandler(@event);
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex,
-                        "Error in event handler for {EventType}",
-                        eventType.Name);
-                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Error in event handler for {EventType}",
+                    eventType.Name);
             }
         }
     }

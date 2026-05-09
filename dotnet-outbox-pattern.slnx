@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="DotnetOutboxPattern.csproj" />
+  <Project Path="tests/dotnet-outbox-pattern.Tests/dotnet-outbox-pattern.Tests.csproj" />
 </Solution>

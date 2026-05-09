@@ -284,10 +284,9 @@ namespace Examples
             // Publish with idempotency key
             // If called again with same orderId, same message ID will be returned
             var message = await _outboxService.PublishEventAsync(
-                @event: new TestEvent { Data = System.Text.Json.JsonSerializer.Serialize(orderEvent) },
-                topic: "orders.created",
-                partitionKey: customerId,
-                idempotencyKey: idempotencyKey);
+                new TestEvent { Data = System.Text.Json.JsonSerializer.Serialize(orderEvent) },
+                "orders.created",
+                customerId);
 
             return message.Id;
         }
@@ -305,44 +304,42 @@ namespace Examples
             var createdKey = IdempotencyKeyGenerator.ForEntityCreation("order", orderId);
             await _outboxService.PublishEventAsync(
                 new TestEvent { Data = "OrderCreated" },
-                topic: "orders.created",
-                partitionKey: customerId,
-                idempotencyKey: createdKey);
+                "orders.created",
+                customerId);
 
             // Step 2: Order confirmed
             var confirmedKey = IdempotencyKeyGenerator.ForStateTransition(
                 "order", orderId, "confirm");
             await _outboxService.PublishEventAsync(
                 new TestEvent { Data = "OrderConfirmed" },
-                topic: "orders.confirmed",
-                partitionKey: customerId,
-                idempotencyKey: confirmedKey);
+                "orders.confirmed",
+                customerId);
 
             _logger.LogInformation("Order flow published: {OrderId}", orderId);
         }
     }
 
     // Test event for examples
-    public class TestEvent : PublishableEvent
+    public class TestEvent : DomainEvent
     {
         public string Data { get; set; } = string.Empty;
-        public override string EventType => "test.event";
-        public override int Version => 1;
     }
 
-    public static async Task Main(string[] args)
+    public static class IdempotentProcessingExample
     {
-        Console.WriteLine("Example: Idempotent Message Processing");
-        Console.WriteLine("Features:");
-        Console.WriteLine("  - Consistent idempotency key generation");
-        Console.WriteLine("  - Idempotent event handlers");
-        Console.WriteLine("  - Message deduplication");
-        Console.WriteLine("  - Exactly-once delivery semantics");
+        public static async Task Main(string[] args)
+        {
+            Console.WriteLine("Example: Idempotent Message Processing");
+            Console.WriteLine("Features:");
+            Console.WriteLine("  - Consistent idempotency key generation");
+            Console.WriteLine("  - Idempotent event handlers");
+            Console.WriteLine("  - Message deduplication");
+            Console.WriteLine("  - Exactly-once delivery semantics");
 
-        var generator = new IdempotencyKeyGenerator();
-        var key = IdempotencyKeyGenerator.ForEntityCreation("order", Guid.NewGuid());
-        Console.WriteLine($"\nExample idempotency key: {key}");
+            var key = IdempotencyKeyGenerator.ForEntityCreation("order", Guid.NewGuid());
+            Console.WriteLine($"\nExample idempotency key: {key}");
 
-        await Task.CompletedTask;
+            await Task.CompletedTask;
+        }
     }
 }

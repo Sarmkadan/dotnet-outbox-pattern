@@ -5,6 +5,7 @@
 
 using System.Security.Cryptography;
 using System.Text;
+using DotnetOutboxPattern.Services;
 
 namespace DotnetOutboxPattern.Integration;
 
@@ -125,8 +126,8 @@ public class WebhookHandler : IWebhookHandler
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning(
-                    "Webhook delivery failed for {WebhookId}: {StatusCode}",
-                    webhook.Id, response.StatusCode);
+                    "Webhook delivery failed: {StatusCode}",
+                    (int)response.StatusCode);
             }
         }
         catch (Exception ex)

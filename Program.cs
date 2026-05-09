@@ -15,10 +15,6 @@ var builder = WebApplication.CreateBuilder(args);
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .WriteTo.Console()
-    .WriteTo.File(
-        "logs/outbox-.txt",
-        rollingInterval: RollingInterval.Day,
-        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
 builder.Host.UseSerilog();
@@ -58,24 +54,6 @@ try
     // Add controllers
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen(options =>
-    {
-        options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
-        {
-            Title = "Outbox Pattern API",
-            Version = "v1",
-            Description = "Transactional outbox pattern for .NET - guaranteed message delivery",
-            Contact = new Microsoft.OpenApi.Models.OpenApiContact
-            {
-                Name = "Vladyslav Zaiets",
-                Url = new Uri("https://sarmkadan.com")
-            },
-            License = new Microsoft.OpenApi.Models.OpenApiLicense
-            {
-                Name = "MIT"
-            }
-        });
-    });
 
     var app = builder.Build();
 
@@ -84,12 +62,6 @@ try
     await app.Services.InitializeDatabaseAsync();
 
     // Configure middleware
-    if (app.Environment.IsDevelopment())
-    {
-        app.UseSwagger();
-        app.UseSwaggerUI();
-    }
-
     app.UseHttpsRedirection();
     app.UseAuthorization();
     app.MapControllers();
@@ -104,61 +76,47 @@ try
             timestamp = DateTime.UtcNow,
             statistics = stats
         };
-    })
-    .WithName("Health")
-    .WithOpenApi();
+    }).WithName("Health");
 
     // Outbox statistics endpoint
     app.MapGet("/api/outbox/statistics", async (IOutboxService outboxService) =>
     {
         return await outboxService.GetStatisticsAsync();
-    })
-    .WithName("GetOutboxStatistics")
-    .WithOpenApi();
+    }).WithName("GetOutboxStatistics");
 
     // Get message endpoint
     app.MapGet("/api/outbox/messages/{messageId}", async (Guid messageId, IOutboxService outboxService) =>
     {
         var message = await outboxService.GetMessageAsync(messageId);
         return message != null ? Results.Ok(message) : Results.NotFound();
-    })
-    .WithName("GetMessage")
-    .WithOpenApi();
+    }).WithName("GetMessage");
 
     // Publish event endpoint (for testing)
     app.MapPost("/api/outbox/events", async (DotnetOutboxPattern.Domain.PublishableEvent request, IOutboxService outboxService) =>
     {
         var message = await outboxService.PublishEventAsync(request);
         return Results.Created($"/api/outbox/messages/{message.Id}", message);
-    })
-    .WithName("PublishEvent")
-    .WithOpenApi();
+    }).WithName("PublishEvent");
 
     // Get unreviewed dead letters endpoint
     app.MapGet("/api/deadletters/unreviewed", async (IDeadLetterService dlService) =>
     {
         return await dlService.GetUnreviewedAsync();
-    })
-    .WithName("GetUnreviewedDeadLetters")
-    .WithOpenApi();
+    }).WithName("GetUnreviewedDeadLetters");
 
     // Review dead letter endpoint
     app.MapPut("/api/deadletters/{deadLetterId}/review", async (Guid deadLetterId, ReviewRequest request, IDeadLetterService dlService) =>
     {
         await dlService.ReviewAsync(deadLetterId, request.Notes);
         return Results.NoContent();
-    })
-    .WithName("ReviewDeadLetter")
-    .WithOpenApi();
+    }).WithName("ReviewDeadLetter");
 
     // Requeue dead letter endpoint
     app.MapPut("/api/deadletters/{deadLetterId}/requeue", async (Guid deadLetterId, RequeueRequest request, IDeadLetterService dlService) =>
     {
         await dlService.RequeueAsync(deadLetterId, request.Reason);
         return Results.NoContent();
-    })
-    .WithName("RequeueDeadLetter")
-    .WithOpenApi();
+    }).WithName("RequeueDeadLetter");
 
     Log.Information("Application started successfully");
     await app.RunAsync();

@@ -5,6 +5,7 @@
 
 using DotnetOutboxPattern.Domain;
 using DotnetOutboxPattern.Infrastructure;
+using DotnetOutboxPattern.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Text;

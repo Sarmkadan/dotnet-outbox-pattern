@@ -52,7 +52,7 @@ namespace Examples
                 {
                     _logger.LogWarning(
                         "Dead Letter {Id}: Error={Error}, Failures={FailureCount}",
-                        deadLetter.Id, deadLetter.LastError, deadLetter.FailureCount);
+                        deadLetter.Id, deadLetter.ErrorMessage, deadLetter.TotalAttempts);
                 }
             }
 
@@ -61,7 +61,7 @@ namespace Examples
             /// </summary>
             public async Task<string> InvestigateDeadLetterAsync(Guid deadLetterId)
             {
-                var deadLetter = await _deadLetterService.GetByIdAsync(deadLetterId);
+                var deadLetter = await _deadLetterService.GetAsync(deadLetterId);
 
                 if (deadLetter == null)
                     return "Dead letter not found";
@@ -69,20 +69,20 @@ namespace Examples
                 var details = $@"
 Dead Letter Details:
   ID: {deadLetter.Id}
-  Created: {deadLetter.CreatedAt:O}
-  Original Message ID: {deadLetter.OriginalMessageId}
+  Moved to DLQ: {deadLetter.MovedToDlqAt:O}
+  Original Message ID: {deadLetter.OutboxMessageId}
 
 Message Content:
-  {deadLetter.OriginalMessage}
+  {deadLetter.EventData}
 
 Error Information:
-  Last Error: {deadLetter.LastError}
-  Failure Count: {deadLetter.FailureCount}
+  Last Error: {deadLetter.ErrorMessage}
+  Failure Count: {deadLetter.TotalAttempts}
 
 Review Status:
   Reviewed: {(deadLetter.ReviewedAt.HasValue ? "Yes" : "No")}
   Reviewed At: {deadLetter.ReviewedAt:O}
-  Reviewed By: {deadLetter.ReviewedBy}
+  Reviewed By: {""}
   Notes: {deadLetter.ReviewNotes}
 ";
                 return details;
@@ -100,9 +100,7 @@ Review Status:
                     "Reviewing dead letter {Id}: {Reason}",
                     deadLetterId, reason);
 
-                await _deadLetterService.ReviewAsync(
-                    deadLetterId: deadLetterId,
-                    reviewNotes: reason);
+                await _deadLetterService.ReviewAsync(deadLetterId, reason);
 
                 _logger.LogInformation("Dead letter {Id} marked as reviewed", deadLetterId);
             }
@@ -155,9 +153,9 @@ Review Status:
                 foreach (var deadLetter in unreviewed)
                 {
                     // Example: Retry connection errors after 10 minutes
-                    if (IsTransientError(deadLetter.LastError))
+                    if (IsTransientError(deadLetter.ErrorMessage))
                     {
-                        var timeSinceDlq = DateTime.UtcNow - deadLetter.CreatedAt;
+                        var timeSinceDlq = DateTime.UtcNow - deadLetter.OriginalCreatedAt;
                         if (timeSinceDlq.TotalMinutes > 10)
                         {
                             _logger.LogInformation(
@@ -171,7 +169,7 @@ Review Status:
                     }
 
                     // Example: Skip rate-limited messages for later
-                    if (IsRateLimitError(deadLetter.LastError))
+                    if (IsRateLimitError(deadLetter.ErrorMessage))
                     {
                         _logger.LogInformation(
                             "Skipping rate-limited message {Id}, will retry later",
@@ -240,12 +238,12 @@ Review Status:
 
                 // Alert if any message has been unreviewed for more than 24 hours
                 var oldestUnreviewed = unreviewed
-                    .OrderBy(dl => dl.CreatedAt)
+                    .OrderBy(dl => dl.MovedToDlqAt)
                     .FirstOrDefault();
 
                 if (oldestUnreviewed != null)
                 {
-                    var age = DateTime.UtcNow - oldestUnreviewed.CreatedAt;
+                    var age = DateTime.UtcNow - oldestUnreviewed.OriginalCreatedAt;
                     if (age.TotalHours > 24)
                     {
                         return (false, $"Dead letter unreviewed for {age.TotalHours:F1} hours");

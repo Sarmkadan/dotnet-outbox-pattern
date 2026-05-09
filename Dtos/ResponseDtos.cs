@@ -87,14 +87,14 @@ public class OutboxStatisticsDto
 
     public OutboxStatisticsDto() { }
 
-    public OutboxStatisticsDto(OutboxMessageStatistics stats)
+    public OutboxStatisticsDto(OutboxStatistics stats)
     {
-        PendingCount = stats.PendingCount;
-        ProcessingCount = stats.ProcessingCount;
-        PublishedCount = stats.PublishedCount;
-        FailedCount = stats.FailedCount;
-        DeadLetterCount = stats.DeadLetterCount;
-        AveragePublishAttempts = stats.AveragePublishAttempts;
+        PendingCount = (int)stats.PendingMessages;
+        ProcessingCount = (int)stats.ProcessingMessages;
+        PublishedCount = (int)stats.PublishedMessages;
+        FailedCount = (int)stats.FailedMessages;
+        DeadLetterCount = (int)stats.DeadLetterCount;
+        AveragePublishAttempts = stats.AveragePublishTime.TotalMilliseconds;
         SuccessRate = stats.SuccessRate;
     }
 }
