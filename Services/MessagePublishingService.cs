@@ -58,20 +58,27 @@ public sealed class MessagePublishingService : IMessagePublishingService
     }
 
     /// <summary>
-    /// Processes pending outbox messages in a batch
+    /// Processes pending outbox messages in a batch.
+    /// Cancellation is checked between messages to allow graceful shutdown.
     /// </summary>
     public async Task<OutboxProcessingResult> ProcessPendingMessagesAsync(int batchSize, CancellationToken cancellationToken = default)
     {
+        if (batchSize <= 0)
+            throw new ArgumentOutOfRangeException(nameof(batchSize), "Batch size must be positive");
+
         var result = new OutboxProcessingResult { StartedAt = DateTime.UtcNow };
 
         try
         {
             var messages = await _outboxRepository.GetPendingMessagesAsync(batchSize, cancellationToken);
 
-            _logger.LogInformation("Processing {Count} pending messages", messages.Count);
+            _logger.LogInformation("Processing {Count} pending messages (batch size: {BatchSize})",
+                messages.Count, batchSize);
 
             foreach (var message in messages)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var success = await ProcessSingleMessageAsync(message.Id, cancellationToken);
 
                 if (success)
@@ -88,6 +95,14 @@ public sealed class MessagePublishingService : IMessagePublishingService
 
             result.Success = true;
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation(
+                "Pending message processing cancelled after {Processed}/{Failed} processed/failed",
+                result.ProcessedCount, result.FailedCount);
+            result.Success = false;
+            result.ErrorMessage = "Processing was cancelled";
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing pending messages");
@@ -98,6 +113,10 @@ public sealed class MessagePublishingService : IMessagePublishingService
         finally
         {
             result.CompletedAt = DateTime.UtcNow;
+            var elapsed = result.CompletedAt.Value - result.StartedAt;
+            _logger.LogInformation(
+                "Batch completed in {ElapsedMs}ms: {Processed} processed, {Failed} failed",
+                (long)elapsed.TotalMilliseconds, result.ProcessedCount, result.FailedCount);
         }
 
         return result;
@@ -202,8 +221,9 @@ public sealed class MessagePublishingService : IMessagePublishingService
     }
 
     /// <summary>
-    /// Processes a single outbox message
-    /// Handles publishing, retries, and dead letter routing
+    /// Processes a single outbox message.
+    /// Acquires a lock, attempts publishing with a timeout, and handles
+    /// failure routing to the dead letter queue when retries are exhausted.
     /// </summary>
     public async Task<bool> ProcessSingleMessageAsync(Guid messageId, CancellationToken cancellationToken = default)
     {
@@ -214,15 +234,22 @@ public sealed class MessagePublishingService : IMessagePublishingService
             message = await _outboxRepository.GetByIdAsync(messageId, cancellationToken);
             if (message is null)
             {
-                _logger.LogWarning("Message {MessageId} not found", messageId);
+                _logger.LogWarning("Message {MessageId} not found, skipping", messageId);
                 return false;
             }
 
-            // Lock the message
+            if (message.IsLocked && message.LockExpiresAt > DateTime.UtcNow)
+            {
+                _logger.LogDebug("Message {MessageId} is locked until {LockExpiry}, skipping",
+                    messageId, message.LockExpiresAt);
+                return false;
+            }
+
+            // Lock the message to prevent concurrent processing
             message.Lock(_options.PublishTimeout);
             await _outboxRepository.UpdateAsync(message, cancellationToken);
 
-            // Attempt to publish
+            // Attempt to publish with timeout
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(_options.PublishTimeout);
 
@@ -233,20 +260,31 @@ public sealed class MessagePublishingService : IMessagePublishingService
             await _outboxRepository.UpdateAsync(message, cancellationToken);
 
             _logger.LogInformation(
-                "Message {MessageId} published successfully on attempt {Attempt}",
-                messageId, message.PublishAttempts + 1);
+                "Message {MessageId} published to {Topic} (attempt {Attempt}, aggregate: {AggregateId})",
+                messageId, message.Topic, message.PublishAttempts, message.AggregateId);
 
             return true;
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            _logger.LogWarning("Publishing timed out for message {MessageId}", messageId);
+            // Only handle as timeout if the parent token was not cancelled
+            _logger.LogWarning(
+                "Publishing timed out for message {MessageId} after {Timeout}ms",
+                messageId, _options.PublishTimeout.TotalMilliseconds);
             await HandlePublishingFailureAsync(message, "Publishing timed out", null, cancellationToken);
             return false;
         }
+        catch (OperationCanceledException)
+        {
+            // Parent cancellation - release the lock so another processor can pick it up
+            if (message is not null)
+                await ReleaseLockAsync(message.Id, CancellationToken.None);
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error publishing message {MessageId}", messageId);
+            _logger.LogError(ex, "Error publishing message {MessageId} to {Topic}",
+                messageId, message?.Topic);
             await HandlePublishingFailureAsync(message, ex.Message, ex.StackTrace, cancellationToken);
             return false;
         }
