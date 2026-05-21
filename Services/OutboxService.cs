@@ -13,16 +13,36 @@ using Microsoft.Extensions.Logging;
 namespace DotnetOutboxPattern.Services;
 
 /// <summary>
-/// Interface for the outbox service that handles message publishing
+/// Defines the transactional outbox operations for reliable event publishing.
+/// Messages are first persisted to the outbox table within the same database transaction
+/// as the business operation, then delivered asynchronously by a background processor.
 /// </summary>
+/// <remarks>
+/// This pattern guarantees at-least-once delivery: if the application crashes after
+/// committing the business transaction, the outbox processor will pick up and deliver
+/// the pending messages on restart. Idempotency keys prevent duplicate publishing.
+/// </remarks>
 public interface IOutboxService
 {
+    /// <summary>Publishes an event to the outbox with automatic idempotency key generation.</summary>
     Task<OutboxMessage> PublishEventAsync(PublishableEvent publishableEvent, CancellationToken cancellationToken = default);
+
+    /// <summary>Publishes a domain event to the specified topic with an optional partition key for ordering.</summary>
     Task<OutboxMessage> PublishEventAsync(DomainEvent domainEvent, string topic, string? partitionKey = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Retrieves a specific outbox message by its ID, or <c>null</c> if not found.</summary>
     Task<OutboxMessage?> GetMessageAsync(Guid messageId, CancellationToken cancellationToken = default);
+
+    /// <summary>Returns aggregate statistics (pending, delivered, failed counts) for the outbox.</summary>
     Task<OutboxStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Resets a failed message to pending state for redelivery. Returns <c>true</c> if successful.</summary>
     Task<bool> RetryFailedMessageAsync(Guid messageId, CancellationToken cancellationToken = default);
+
+    /// <summary>Moves delivered messages older than <paramref name="olderThan"/> to the archive.</summary>
     Task ArchiveOldMessagesAsync(DateTime olderThan, CancellationToken cancellationToken = default);
+
+    /// <summary>Returns all outbox messages regardless of status. Use with caution on large tables.</summary>
     Task<List<OutboxMessage>> GetAllMessagesAsync(CancellationToken cancellationToken = default);
 }
 
