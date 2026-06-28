@@ -369,6 +369,11 @@ public class OrderEventHandler
 
 ## Usage Examples
 
+Additional practical examples are available in the `/examples` directory:
+- `BasicUsage.cs`: Minimal setup and first call.
+- `AdvancedUsage.cs`: Configuration, custom options, and error handling.
+- `IntegrationExample.cs`: Integration with ASP.NET Core DI.
+
 ### Example 1: Basic Event Publishing
 
 ```csharp
