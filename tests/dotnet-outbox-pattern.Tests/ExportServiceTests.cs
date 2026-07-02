@@ -155,4 +155,73 @@ public sealed class ExportServiceTests
         result.ExportedAt.Should().BeOnOrAfter(before);
         result.ExportedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
     }
+
+    [Fact]
+    public async Task ExportAsync_WhenFormatterThrows_PropagatesException()
+    {
+        var request = new ExportRequest { Format = "json" };
+        var stats = new OutboxStatistics { TotalMessages = 5 };
+
+        _outboxServiceMock
+            .Setup(s => s.GetStatisticsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(stats);
+
+        _formatterMocks[0].Setup(f => f.Format(It.IsAny<List<OutboxMessage>>()))
+            .Throws(new InvalidOperationException("formatter error"));
+
+        var act = async () => await _sut.ExportAsync(request);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task ExportToFileAsync_CreatesExportDirectory()
+    {
+        var request = new ExportRequest { Format = "json" };
+        var stats = new OutboxStatistics { TotalMessages = 1 };
+
+        _outboxServiceMock
+            .Setup(s => s.GetStatisticsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(stats);
+
+        _formatterMocks[0].Setup(f => f.Format(It.IsAny<List<OutboxMessage>>()))
+            .Returns("test content");
+        _formatterMocks[0].Setup(f => f.ContentType).Returns("application/json");
+
+        var result = await _sut.ExportToFileAsync(request);
+
+        result.Should().Contain("exports/");
+        result.Should().Contain(".json");
+    }
+
+    [Fact]
+    public void GetSupportedFormats_ReturnsEmptyList_WhenNoFormatters()
+    {
+        var emptyFormatterList = new List<IDataFormatter>();
+        var exportService = new ExportService(
+            _outboxServiceMock.Object,
+            emptyFormatterList,
+            _loggerMock.Object);
+
+        var formats = exportService.GetSupportedFormats();
+
+        formats.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ExportAsync_WithEmptyMessageList_ReturnsValidResult()
+    {
+        var request = new ExportRequest { Format = "json" };
+        var stats = new OutboxStatistics { TotalMessages = 0 };
+
+        _outboxServiceMock
+            .Setup(s => s.GetStatisticsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(stats);
+
+        var result = await _sut.ExportAsync(request);
+
+        result.Should().NotBeNull();
+        result.MessageCount.Should().Be(0);
+        result.Content.Should().NotBeNullOrEmpty();
+    }
 }

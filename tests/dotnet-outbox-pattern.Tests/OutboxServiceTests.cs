@@ -206,6 +206,209 @@ public sealed class OutboxServiceTests
         result.TotalMessages.Should().Be(42);
     }
 
+    [Fact]
+    public async Task GetAllMessagesAsync_DelegatesToRepository()
+    {
+        var messages = new List<OutboxMessage> { BuildMessage(Guid.NewGuid(), OutboxMessageState.Pending) };
+        _repositoryMock
+            .Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(messages);
+
+        var result = await _sut.GetAllMessagesAsync();
+
+        result.Should().BeSameAs(messages);
+        _repositoryMock.Verify(r => r.GetAllAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMessagesByTopicAsync_DelegatesToRepository()
+    {
+        var topic = "orders.created";
+        var messages = new List<OutboxMessage> { BuildMessage(Guid.NewGuid(), OutboxMessageState.Pending) };
+        _repositoryMock
+            .Setup(r => r.GetByTopicAsync(topic, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(messages);
+
+        var result = await _sut.GetMessagesByTopicAsync(topic);
+
+        result.Should().BeSameAs(messages);
+        _repositoryMock.Verify(r => r.GetByTopicAsync(topic, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMessagesByAggregateAsync_DelegatesToRepository()
+    {
+        var aggregateId = "order-123";
+        var messages = new List<OutboxMessage> { BuildMessage(Guid.NewGuid(), OutboxMessageState.Pending) };
+        _repositoryMock
+            .Setup(r => r.GetByAggregateIdAsync(aggregateId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(messages);
+
+        var result = await _sut.GetMessagesByAggregateAsync(aggregateId);
+
+        result.Should().BeSameAs(messages);
+        _repositoryMock.Verify(r => r.GetByAggregateIdAsync(aggregateId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMessagesByStateAsync_DelegatesToRepository()
+    {
+        var state = OutboxMessageState.Published;
+        var messages = new List<OutboxMessage> { BuildMessage(Guid.NewGuid(), state) };
+        _repositoryMock
+            .Setup(r => r.GetByStateAsync(state, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(messages);
+
+        var result = await _sut.GetMessagesByStateAsync(state);
+
+        result.Should().BeSameAs(messages);
+        _repositoryMock.Verify(r => r.GetByStateAsync(state, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMessagesByDateRangeAsync_DelegatesToRepository()
+    {
+        var startDate = DateTime.UtcNow.AddDays(-1);
+        var endDate = DateTime.UtcNow;
+        var messages = new List<OutboxMessage> { BuildMessage(Guid.NewGuid(), OutboxMessageState.Pending) };
+        _repositoryMock
+            .Setup(r => r.GetByDateRangeAsync(startDate, endDate, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(messages);
+
+        var result = await _sut.GetMessagesByDateRangeAsync(startDate, endDate);
+
+        result.Should().BeSameAs(messages);
+        _repositoryMock.Verify(r => r.GetByDateRangeAsync(startDate, endDate, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task PublishEventAsync_WithIdempotencyKey_UsesCorrectKey()
+    {
+        var domainEvent = new EntityCreatedEvent { EntityId = "e-3", EntityType = "Customer" };
+        var publishable = new PublishableEvent
+        {
+            Event = domainEvent,
+            Topic = "customers.created",
+            IdempotencyKey = "custom-idempotency-key"
+        };
+
+        _repositoryMock
+            .Setup(r => r.GetByIdempotencyKeyAsync("custom-idempotency-key", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OutboxMessage?)null);
+        _repositoryMock
+            .Setup(r => r.AddAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OutboxMessage msg, CancellationToken _) => msg);
+
+        var result = await _sut.PublishEventAsync(publishable);
+
+        result.IdempotencyKey.Should().Be("custom-idempotency-key");
+    }
+
+    [Fact]
+    public async Task PublishEventAsync_WithDeliveryGuaranteeAtMostOnce_SetsMaxAttemptsToOne()
+    {
+        var domainEvent = new EntityCreatedEvent { EntityId = "e-4", EntityType = "Product" };
+        var publishable = new PublishableEvent
+        {
+            Event = domainEvent,
+            Topic = "products.created",
+            DeliveryGuarantee = DeliveryGuarantee.AtMostOnce
+        };
+
+        _repositoryMock
+            .Setup(r => r.GetByIdempotencyKeyAsync(domainEvent.EventId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OutboxMessage?)null);
+        _repositoryMock
+            .Setup(r => r.AddAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OutboxMessage msg, CancellationToken _) => msg);
+
+        var result = await _sut.PublishEventAsync(publishable);
+
+        result.MaxPublishAttempts.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task PublishEventAsync_WithDeliveryGuaranteeAtLeastOnce_SetsMaxAttemptsToDefault()
+    {
+        var domainEvent = new EntityCreatedEvent { EntityId = "e-5", EntityType = "Product" };
+        var publishable = new PublishableEvent
+        {
+            Event = domainEvent,
+            Topic = "products.created",
+            DeliveryGuarantee = DeliveryGuarantee.AtLeastOnce,
+            MaxAttempts = 3
+        };
+
+        _repositoryMock
+            .Setup(r => r.GetByIdempotencyKeyAsync(domainEvent.EventId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OutboxMessage?)null);
+        _repositoryMock
+            .Setup(r => r.AddAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OutboxMessage msg, CancellationToken _) => msg);
+
+        var result = await _sut.PublishEventAsync(publishable);
+
+        result.MaxPublishAttempts.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task PublishEventAsync_WithScheduledTime_SetsScheduledFor()
+    {
+        var scheduledTime = DateTime.UtcNow.AddHours(1);
+        var domainEvent = new EntityCreatedEvent { EntityId = "e-6", EntityType = "Product" };
+        var publishable = new PublishableEvent
+        {
+            Event = domainEvent,
+            Topic = "products.created",
+            ScheduledTime = scheduledTime
+        };
+
+        _repositoryMock
+            .Setup(r => r.GetByIdempotencyKeyAsync(domainEvent.EventId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OutboxMessage?)null);
+        _repositoryMock
+            .Setup(r => r.AddAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OutboxMessage msg, CancellationToken _) => msg);
+
+        var result = await _sut.PublishEventAsync(publishable);
+
+        result.ScheduledFor.Should().BeCloseTo(scheduledTime, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task RetryFailedMessageAsync_WhenStateIsProcessing_ReturnsFalse()
+    {
+        var messageId = Guid.NewGuid();
+        var message = BuildMessage(messageId, OutboxMessageState.Processing);
+
+        _repositoryMock
+            .Setup(r => r.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message);
+        _repositoryMock
+            .Setup(r => r.UpdateAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await _sut.RetryFailedMessageAsync(messageId);
+
+        result.Should().BeFalse();
+        _repositoryMock.Verify(r => r.UpdateAsync(It.IsAny<OutboxMessage>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RetryFailedMessageAsync_WhenStateIsCompleted_ReturnsFalse()
+    {
+        var messageId = Guid.NewGuid();
+        var message = BuildMessage(messageId, OutboxMessageState.Completed);
+
+        _repositoryMock
+            .Setup(r => r.GetByIdAsync(messageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(message);
+
+        var result = await _sut.RetryFailedMessageAsync(messageId);
+
+        result.Should().BeFalse();
+    }
+
     private static OutboxMessage BuildMessage(Guid id, OutboxMessageState state) => new()
     {
         Id = id,
