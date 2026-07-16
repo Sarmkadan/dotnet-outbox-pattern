@@ -901,6 +901,61 @@ foreach (var notification in notifications)
 }
 ```
 
+## IWebhookService
+
+The `IWebhookService` interface provides functionality for managing webhook subscriptions and handling event deliveries to external systems. It enables external services to subscribe to domain events and receive real-time notifications when events occur in the system. This service is essential for integrating the outbox pattern with external webhook consumers and enabling event-driven architectures.
+
+The interface supports registering webhook subscriptions, retrieving subscription information, testing webhook connectivity, and managing delivery history.
+
+### Example Usage
+
+```csharp
+// Register services in Program.cs
+builder.Services.AddScoped<IWebhookService, WebhookService>();
+
+// Example: Create a webhook service instance
+var webhookService = new WebhookService(logger);
+
+// Register a new webhook subscription for order events
+var webhook = await webhookService.RegisterWebhookAsync(
+    url: "https://api.example.com/webhooks/orders",
+    events: new List<string> { "OrderCreated", "OrderUpdated", "OrderCancelled" }
+);
+
+Console.WriteLine($"Registered webhook: {webhook.Id} for URL: {webhook.Url}");
+
+// Get a specific webhook by ID
+var retrievedWebhook = await webhookService.GetWebhookAsync(webhook.Id);
+if (retrievedWebhook != null)
+{
+    Console.WriteLine($"Webhook found: {retrievedWebhook.Url} (Active: {retrievedWebhook.IsActive})");
+}
+
+// Get all active webhooks
+var activeWebhooks = await webhookService.GetWebhooksAsync(active: true);
+Console.WriteLine($"Found {activeWebhooks.Count} active webhooks");
+
+// Test webhook connectivity
+var testResult = await webhookService.TestWebhookAsync(webhook.Id);
+if (testResult != null)
+{
+    Console.WriteLine($"Webhook test: {(testResult.IsSuccessful ? "SUCCESS" : "FAILED")} " +
+                     $"(Status: {testResult.HttpStatusCode}, Duration: {testResult.DurationMs}ms)");
+    if (!testResult.IsSuccessful && testResult.ErrorMessage != null)
+    {
+        Console.WriteLine($"Error: {testResult.ErrorMessage}");
+    }
+}
+
+// Get delivery history for a webhook
+var deliveries = await webhookService.GetDeliveriesAsync(webhook.Id, limit: 50);
+Console.WriteLine($"Found {deliveries.Count} delivery records");
+
+// Delete a webhook subscription
+var isDeleted = await webhookService.DeleteWebhookAsync(webhook.Id);
+Console.WriteLine("Webhook deleted: {isDeleted}");
+```
+
 ## IMetricsService
 
 The `IMetricsService` interface provides comprehensive observability and monitoring capabilities for the transactional outbox pattern implementation. It enables real-time insights into system health, performance metrics, error analytics, throughput, latency, resource consumption, and active alerts. This service is essential for monitoring message processing pipelines, identifying bottlenecks, and maintaining system reliability.
