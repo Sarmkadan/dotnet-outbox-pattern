@@ -1386,9 +1386,129 @@ Console.WriteLine($"API key: {apiKey}");
 // Output: api key: api-stripe-req_1234567890
 ```
 
-## IDeadLetterRepository
+## IOutboxRepository
 
-The `IDeadLetterRepository` interface provides data access operations for managing dead letter queue (DLQ) messages in the database. It serves as the primary abstraction for persisting, retrieving, updating, and deleting dead letter records that have failed processing. This repository is consumed by `IDeadLetterService` and other components to implement DLQ workflows including monitoring, review, and reprocessing.
+The `IOutboxRepository` interface provides data access operations for managing outbox messages in the database. It serves as the primary abstraction for persisting, retrieving, updating, and deleting outbox messages, enabling reliable message delivery with transactional consistency and deduplication capabilities.
+
+This repository is consumed by `IOutboxService` and message publishing components to implement the transactional outbox pattern, ensuring that messages are stored atomically with domain state changes and published reliably to message brokers.
+
+### Key Features
+- **Message persistence**: Store messages with transactional consistency
+- **Deduplication**: Prevent duplicate processing using idempotency keys
+- **State management**: Track message states (Pending, Published, Failed, Processing, Archived)
+- **Query capabilities**: Filter messages by aggregate ID, topic, correlation ID, state, and date ranges
+- **Statistics**: Get comprehensive metrics about message processing
+- **Partitioning**: Support ordered message processing by partition key
+- **Scheduling**: Handle scheduled/delayed message delivery
+- **Lock management**: Support concurrent processing with lock expiration
+
+### Example Usage
+
+```csharp
+// Register the repository in Program.cs
+builder.Services.AddScoped<IOutboxRepository, OutboxRepository>();
+
+// Example: Add a new outbox message atomically with your domain changes
+var outboxRepository = serviceProvider.GetRequiredService<IOutboxRepository>();
+
+// Create a domain event
+var orderCreatedEvent = new OrderCreatedEvent
+{
+    OrderId = "order-12345",
+    CustomerId = "customer-67890",
+    Amount = 99.99m,
+    Items = new List<OrderItemDto>
+    {
+        new OrderItemDto { ProductId = "prod-001", Quantity = 2, Price = 49.99m },
+        new OrderItemDto { ProductId = "prod-002", Quantity = 1, Price = 0.01m }
+    },
+    CorrelationId = "corr-8675309",
+    CausationId = "command-98765"
+};
+
+// Create an outbox message with idempotency key
+var outboxMessage = new OutboxMessage
+{
+    IdempotencyKey = IdempotencyKeyGenerator.ForEntityCreation("order", Guid.Parse("3fa85f64-5717-4562-b3fc-2c963f66afa")),
+    AggregateId = "order-12345",
+    AggregateType = "Order",
+    EventType = EventType.OrderCreated,
+    EventData = JsonSerializer.Serialize(orderCreatedEvent),
+    EventTypeName = typeof(OrderCreatedEvent).FullName,
+    Topic = "orders",
+    PartitionKey = "order-12345",
+    DeliveryGuarantee = DeliveryGuarantee.AtLeastOnce,
+    CorrelationId = "corr-8675309",
+    CausationId = "command-98765"
+};
+
+// Add the message to the outbox repository
+var addedMessage = await outboxRepository.AddAsync(outboxMessage, cancellationToken);
+Console.WriteLine($"Message added to outbox: {addedMessage.Id}");
+
+// Example: Retrieve a message by ID
+var retrievedMessage = await outboxRepository.GetByIdAsync(addedMessage.Id, cancellationToken);
+if (retrievedMessage != null)
+{
+    Console.WriteLine($"Found message: {retrievedMessage.Topic} - State: {retrievedMessage.State}");
+}
+
+// Example: Get pending messages for processing (batch size = 100)
+var pendingMessages = await outboxRepository.GetPendingMessagesAsync(batchSize: 100, cancellationToken);
+Console.WriteLine($"Found {pendingMessages.Count} pending messages to process");
+
+// Example: Get messages by topic for monitoring
+var orderMessages = await outboxRepository.GetByTopicAsync("orders", limit: 500, cancellationToken);
+Console.WriteLine($"Found {orderMessages.Count} messages for 'orders' topic");
+
+// Example: Get messages by aggregate ID for entity-specific operations
+var customerEvents = await outboxRepository.GetByAggregateIdAsync("customer-67890", cancellationToken);
+Console.WriteLine($"Found {customerEvents.Count} events for customer-67890");
+
+// Example: Get messages by correlation ID for tracing a specific operation
+var correlationMessages = await outboxRepository.GetByCorrelationIdAsync("corr-8675309", cancellationToken);
+Console.WriteLine($"Found {correlationMessages.Count} messages with correlation ID corr-8675309");
+
+// Example: Get messages by state for monitoring and debugging
+var failedMessages = await outboxRepository.GetByStateAsync(OutboxMessageState.Failed, cancellationToken);
+Console.WriteLine($"Found {failedMessages.Count} failed messages");
+
+// Example: Update message state after successful processing
+retrievedMessage.State = OutboxMessageState.Published;
+retrievedMessage.PublishedAt = DateTime.UtcNow;
+retrievedMessage.CompletedAt = DateTime.UtcNow;
+await outboxRepository.UpdateAsync(retrievedMessage, cancellationToken);
+Console.WriteLine("Message state updated to Published");
+
+// Example: Get comprehensive statistics
+var statistics = await outboxRepository.GetStatisticsAsync(cancellationToken);
+Console.WriteLine($"Outbox Statistics:");
+Console.WriteLine($"  Total: {statistics.TotalMessages}");
+Console.WriteLine($"  Pending: {statistics.PendingMessages}");
+Console.WriteLine($"  Published: {statistics.PublishedMessages}");
+Console.WriteLine($"  Failed: {statistics.FailedMessages}");
+Console.WriteLine($"  Average publish time: {statistics.AveragePublishTime.TotalSeconds:F2}s");
+
+// Example: Get messages by date range for auditing
+var recentMessages = await outboxRepository.GetByDateRangeAsync(
+    DateTime.UtcNow.AddHours(-24),
+    DateTime.UtcNow,
+    cancellationToken
+);
+Console.WriteLine($"Found {recentMessages.Count} messages in last 24 hours");
+
+// Example: Archive old published messages to keep database clean
+await outboxRepository.ArchiveOldMessagesAsync(DateTime.UtcNow.AddDays(-30), cancellationToken);
+Console.WriteLine("Old published messages archived");
+
+// Example: Get count of messages in different states
+var pendingCount = await outboxRepository.GetPendingCountAsync(cancellationToken);
+var publishedCount = await outboxRepository.GetPublishedCountAsync(cancellationToken);
+var failedCount = await outboxRepository.GetFailedCountAsync(cancellationToken);
+Console.WriteLine($"Message counts - Pending: {pendingCount}, Published: {publishedCount}, Failed: {failedCount}");
+```
+
+## IDeadLetterRepository
 
 The repository supports comprehensive querying capabilities for investigating failed messages, including filtering by topic, aggregate ID, review status, and provides statistics for monitoring DLQ health.
 
