@@ -1,580 +1,199 @@
-// =============================================================================
-// Author: Vladyslav Zaiets | https://sarmkadan.com
-// CTO & Software Architect
-// =============================================================================
+# Architecture
 
-# Architecture Guide
+This document describes how the solution is actually put together - the moving parts, why
+they are shaped the way they are, and where the sharp edges live. It is written against the
+current code; if the code and this document disagree, the code wins and this file needs a PR.
 
-This document explains the architectural design of the Outbox Pattern implementation.
+## What this is
 
-## High-Level Design
+A transactional outbox implementation packaged as an ASP.NET Core application
+(`DotnetOutboxPattern.csproj`, net10.0, `Microsoft.NET.Sdk.Web`). It is both a runnable
+reference service (Program.cs wires everything up, controllers expose a management API) and
+a packable library (`Zaiets.dotnet.outbox.pattern` - the csproj excludes `tests/`,
+`examples/` and the benchmarks project from compilation so the package stays clean).
 
-The outbox pattern solves the distributed transaction problem with these key principles:
+The core promise: domain state and outgoing messages are persisted in the same database
+(SQL Server via EF Core), and a background service pushes the messages to a broker
+afterwards. If the broker is down, messages wait; if publishing keeps failing, they land in
+a dead-letter table for a human.
 
-1. **Atomic Persistence**: Domain data and messages are saved together
-2. **Eventual Publication**: A background process publishes messages asynchronously
-3. **Reliable Delivery**: Failed publishes are retried with exponential backoff
-4. **Dead Letter Queue**: Undeliverable messages are moved for manual review
-5. **Idempotent Processing**: Duplicate messages don't cause issues at the subscriber
-
-## Component Architecture
-
-### Layer 1: API Layer (Controllers)
-
-```csharp
-Controllers/
-├── OutboxMessageController.cs    // Event publishing API
-├── DeadLetterController.cs       // DLQ management
-├── MetricsController.cs          // Statistics and monitoring
-└── ExportController.cs           // Data export (CSV, JSON, XML)
-```
-
-**Responsibilities:**
-- Handle HTTP requests
-- Validate input
-- Delegate to service layer
-- Return responses
-
-**Examples:**
-```csharp
-[ApiController]
-[Route("api/[controller]")]
-public class OutboxMessageController : ControllerBase
-{
-    private readonly IOutboxService _outboxService;
-
-    [HttpPost("events")]
-    public async Task<IActionResult> PublishEvent(PublishEventRequest request)
-    {
-        // Request validation → Service call → Response
-        var message = await _outboxService.PublishEventAsync(
-            request.Event, request.Topic, request.PartitionKey);
-        return Ok(message);
-    }
-}
-```
-
-### Layer 2: Service Layer (Business Logic)
-
-```csharp
-Services/
-├── OutboxService.cs                    // Main publishing API
-├── MessagePublishingService.cs         // Retry logic and delivery
-├── DeadLetterService.cs                // DLQ operations
-├── IMessageSearchService.cs            // Query operations
-└── IMetricsService.cs                  // Statistics
-```
-
-**IOutboxService Responsibilities:**
-- Accept domain events
-- Store in outbox table
-- Apply idempotency keys
-- Return message ID to caller
-
-**IMessagePublishingService Responsibilities:**
-- Poll pending messages
-- Invoke IMessagePublisher
-- Handle retry logic
-- Move to DLQ on max retries
-- Update message state
-
-**IDeadLetterService Responsibilities:**
-- Retrieve failed messages
-- Mark as reviewed
-- Requeue for retry
-- Provide search/filtering
-
-### Layer 3: Data Access Layer (Repositories)
-
-```csharp
-Data/
-├── OutboxRepository.cs          // Outbox CRUD
-├── DeadLetterRepository.cs      // DLQ operations
-└── OutboxDbContext.cs           // Entity Framework context
-```
-
-**Key Operations:**
-```csharp
-// Outbox Repository
-GetPendingMessages(int batchSize, bool preserveOrdering)
-MarkAsPublished(Guid messageId)
-MarkAsLockedForProcessing(Guid messageId, TimeSpan duration)
-MoveToDlq(Guid messageId, string error)
-UpdateRetryCount(Guid messageId)
-
-// Dead Letter Repository
-GetUnreviewed()
-MarkAsReviewed(Guid deadLetterId, string notes)
-CreateFromOutboxMessage(OutboxMessage message, string error)
-Requeue(Guid deadLetterId, string reason)
-```
-
-### Layer 4: Infrastructure
-
-```csharp
-Infrastructure/
-├── OutboxProcessor.cs           // Hosted service (background task)
-├── DefaultMessagePublisher.cs   // Abstract message broker
-├── RetryPolicyHelper.cs         // Exponential/linear backoff
-└── SerializationHelper.cs       // JSON serialization
-```
-
-**OutboxProcessor** is an `IHostedService`:
-- Starts with the application
-- Runs background message processing loop
-- Respects configuration for batch size and delay
-- Handles exceptions gracefully
-
-**IMessagePublisher** is your extensibility point:
-- Implement for RabbitMQ, Azure Service Bus, Kafka, etc.
-- Called by OutboxProcessor for each pending message
-- Exception behavior determines retry vs. DLQ
-
-### Layer 5: Domain
-
-```csharp
-Domain/
-├── OutboxMessage.cs             // Core entity
-├── DeadLetter.cs                // Failed message entity
-├── Enums.cs                      // State, retry policies
-├── Events.cs                     // Domain event hierarchy
-└── Models.cs                     // Statistics, DTOs
-```
-
-## Data Flow Sequences
-
-### Publishing a Message
+## Layout
 
 ```
-1. Domain Event Created
-   └─ OrderCreatedEvent { OrderId, Amount, ... }
-
-2. IOutboxService.PublishEventAsync()
-   ├─ Serialize event to JSON
-   ├─ Create OutboxMessage entity
-   │  ├─ State = Pending
-   │  ├─ CreatedAt = now
-   │  ├─ IdempotencyKey (if provided)
-   │  └─ PartitionKey (for ordering)
-   └─ Insert into OutboxMessages table
-
-3. Return to caller
-   └─ MessageId to track
-
-4. Transaction commits
-   └─ Message is now persisted
+Program.cs                  composition root + /health minimal endpoint
+Configuration/              DI registration, options types, config builder/presets
+Domain/                     OutboxMessage, DeadLetter, enums, domain events, validation
+Data/                       OutboxDbContext, OutboxRepository, DeadLetterRepository
+Services/                   OutboxService, MessagePublishingService, DeadLetterService,
+                            serializer abstraction, metrics/search/export/webhook services
+Infrastructure/             OutboxProcessor (BackgroundService), DefaultMessagePublisher,
+                            retry/backoff helpers, serialization helper
+Controllers/                OutboxMessage / DeadLetter / Metrics / Export / Webhook APIs
+Middleware/                 error handling, request logging, rate limiting, perf monitoring
+BackgroundServices/         MessageArchivalService, HealthCheckService
+Events/, Caching/, CLI/,    supporting "phase 2" services registered by
+Integration/, Formatters/     AddOutboxPatternPhase2()
+tests/                      xUnit test project
+dotnet-outbox-pattern.Benchmarks/  BenchmarkDotNet project
+examples/                   standalone usage samples (not compiled into the package)
 ```
 
-### Processing Pending Messages
-
-```
-Background Loop (OutboxProcessor):
-
-1. Wait DelayBetweenBatches
-2. Query pending messages (BatchSize limit)
-3. Order by:
-   ├─ PartitionKey (group related messages)
-   └─ CreatedAt (maintain FIFO within partition)
-
-4. For each message:
-   a) Lock for processing
-      └─ Update State = Processing, LockedAt = now
-   
-   b) Call IMessagePublisher.PublishAsync()
-      ├─ On success:
-      │  ├─ Update State = Published
-      │  ├─ Set PublishedAt = now
-      │  └─ Release lock
-      │
-      └─ On failure:
-         ├─ If RetryCount < MaxRetries:
-         │  ├─ Increment RetryCount
-         │  ├─ Calculate next retry time based on policy
-         │  ├─ Release lock
-         │  └─ Wait until retry time
-         │
-         └─ If RetryCount == MaxRetries:
-            ├─ Create DeadLetter record
-            ├─ Move OutboxMessage to DLQ
-            ├─ Set State = MovedToDlq
-            └─ Log error for investigation
-
-5. Repeat
-```
-
-## Data Model
-
-### OutboxMessage Table
-
-```sql
-CREATE TABLE OutboxMessages (
-    Id UNIQUEIDENTIFIER PRIMARY KEY,
-    AggregateId NVARCHAR(255) NOT NULL,
-    Topic NVARCHAR(255) NOT NULL,
-    EventData NVARCHAR(MAX) NOT NULL,
-    EventType NVARCHAR(100),
-    
-    State INT NOT NULL,  -- 0=Pending, 1=Processing, 2=Published, 3=Failed
-    RetryCount INT DEFAULT 0,
-    IdempotencyKey NVARCHAR(255) UNIQUE,
-    PartitionKey NVARCHAR(255),
-    
-    CreatedAt DATETIME2 NOT NULL,
-    UpdatedAt DATETIME2,
-    PublishedAt DATETIME2,
-    LockedAt DATETIME2,
-    NextRetryAt DATETIME2,
-    
-    INDEX idx_state_created (State, CreatedAt),
-    INDEX idx_partition (PartitionKey, CreatedAt),
-    INDEX idx_idempotency (IdempotencyKey)
-);
-```
-
-### DeadLetters Table
-
-```sql
-CREATE TABLE DeadLetters (
-    Id UNIQUEIDENTIFIER PRIMARY KEY,
-    OriginalMessageId UNIQUEIDENTIFIER,
-    OriginalMessage NVARCHAR(MAX),
-    
-    LastError NVARCHAR(MAX),
-    FailureCount INT,
-    
-    ReviewedAt DATETIME2,
-    ReviewedBy NVARCHAR(255),
-    ReviewNotes NVARCHAR(MAX),
-    
-    CreatedAt DATETIME2 NOT NULL,
-    
-    INDEX idx_reviewed (ReviewedAt)
-);
-```
-
-## Concurrency & Locking
-
-### Optimistic Locking (Version-based)
-
-Not currently used, but extensible design allows adding:
-- Prevents lost updates to messages
-- Based on `RowVersion` column
-
-### Pessimistic Locking (Row-level)
-
-Current implementation uses database-level locks:
-
-```csharp
-// In OutboxProcessor
-await repository.MarkAsLockedForProcessing(messageId, lockDuration: 5minutes);
-
-// SQL Generated:
-// UPDATE OutboxMessages 
-// SET State = 1 (Processing), LockedAt = GETUTCDATE()
-// WHERE Id = @id AND LockedAt IS NULL
-
-// Ensures only one processor processes the message
-// Lock expires after 5 minutes (default configurable)
-```
-
-### Idempotency
-
-Duplicate messages are detected by:
-
-```csharp
-// Unique constraint on IdempotencyKey
-var existing = await repository.GetByIdempotencyKeyAsync(key);
-if (existing != null)
-{
-    return existing;  // Return existing message, don't create duplicate
-}
-```
-
-## Retry Policies
-
-### ExponentialBackoff (Recommended)
-
-```
-Attempt 1: 5 seconds
-Attempt 2: 10 seconds (5 * 2)
-Attempt 3: 20 seconds (10 * 2)
-Attempt 4: 40 seconds
-Attempt 5: 80 seconds
-After Attempt 5: Move to DLQ
-```
-
-**Algorithm:**
-```csharp
-NextRetryDelay = Math.Min(
-    InitialDelay * Math.Pow(2, attemptNumber),
-    MaxDelay
-);
-```
-
-### LinearBackoff
-
-```
-Attempt 1: 5 seconds
-Attempt 2: 10 seconds (5 + 5)
-Attempt 3: 15 seconds (10 + 5)
-Attempt 4: 20 seconds (15 + 5)
-Attempt 5: 25 seconds
-After Attempt 5: Move to DLQ
-```
-
-### FixedDelay
-
-```
-Attempt 1-5: 30 seconds each
-After Attempt 5: Move to DLQ
-```
-
-## Scalability Considerations
-
-### Horizontal Scaling
-
-Multiple instances can run simultaneously:
-
-```
-Instance 1 ──┐
-Instance 2 ──┼─→ SQL Server (OutboxMessages)
-Instance 3 ──┘
-             ↓
-         Message Broker
-```
-
-**Safety mechanisms:**
-- Row-level locking prevents duplicate publishing
-- `LockedAt` timestamp prevents indefinite locks
-- `NextRetryAt` ensures ordered retry attempts
-
-**Configuration for scale:**
-- Increase `BatchSize` for high throughput (100-500)
-- Reduce `DelayBetweenBatches` for lower latency (1000-5000ms)
-- Monitor database connection pool exhaustion
-
-### Vertical Scaling
-
-Single instance handling high volume:
-
-```csharp
-"Outbox": {
-    "BatchSize": 500,              // Process more per cycle
-    "DelayBetweenBatches": 1000,   // More frequent cycles
-    "ProcessorEnabled": true
-}
-```
-
-**Considerations:**
-- Memory usage grows with batch size
-- Database lock timeouts may increase
-- Message broker rate limits become bottleneck
-
-## Delivery Guarantees
-
-### At-Least-Once (Default)
-
-- Message is published one or more times
-- Retried on failure
-- **Use when:** Subscribers handle duplicates idempotently
-
-```csharp
-"DeliveryGuarantee": "AtLeastOnce"
-```
-
-**Example:** OrderCreated event where subscriber checks order ID before processing
-
-### At-Most-Once
-
-- Message published zero or one time
-- Not retried on failure
-- **Use when:** Exactly-once isn't critical
-
-```csharp
-"DeliveryGuarantee": "AtMostOnce"
-```
-
-**Example:** Analytics events where some loss is acceptable
-
-### Exactly-Once (Recommended with idempotency)
-
-- Achieved through:
-  1. Idempotency keys at publisher
-  2. Idempotent handlers at subscriber
-  3. Exactly-once message broker (e.g., Kafka with idempotent producer)
-
-```csharp
-// Publisher: Use consistent idempotency keys
-await outboxService.PublishEventAsync(
-    evt,
-    topic: "orders",
-    idempotencyKey: $"order-{order.Id}");  // Same key = same message
-
-// Subscriber: Check if already processed
-if (await _db.ProcessedEvents.AnyAsync(e => e.Key == idempotencyKey))
-    return;  // Already handled
-```
-
-## Extension Points
-
-### 1. Custom IMessagePublisher
-
-```csharp
-public class KafkaPublisher : IMessagePublisher
-{
-    public async Task PublishAsync(
-        OutboxMessage message,
-        CancellationToken cancellationToken)
-    {
-        // Publish to Kafka
-    }
-}
-
-// Register
-builder.Services.AddMessagePublisher<KafkaPublisher>();
-```
-
-### 2. Custom Serialization
-
-```csharp
-public class CustomSerializationPublisher : IMessagePublisher
-{
-    // Use Protocol Buffers, MessagePack, etc.
-}
-```
-
-### 3. Event Enrichment Decorator
-
-```csharp
-public class EnrichingOutboxService : IOutboxService
-{
-    // Add correlation IDs, user context, etc.
-}
-```
-
-### 4. Dead Letter Processing
-
-```csharp
-public class DlqProcessor : IHostedService
-{
-    // Custom logic to handle/recover failed messages
-}
-```
-
-## Testing Strategy
-
-### Unit Tests
-
-Test individual components in isolation:
-
-```csharp
-[Fact]
-public async Task PublishEventAsync_CreatesOutboxMessage()
-{
-    // Arrange
-    var mockRepository = new Mock<IOutboxRepository>();
-    var service = new OutboxService(mockRepository.Object, ...);
-
-    // Act
-    await service.PublishEventAsync(evt, "topic");
-
-    // Assert
-    mockRepository.Verify(r => r.AddAsync(It.IsAny<OutboxMessage>()));
-}
-```
-
-### Integration Tests
-
-Test with real database:
-
-```csharp
-[Fact]
-public async Task ProcessorPublishesAllPendingMessages()
-{
-    // Arrange - Use in-memory SQL Server
-    var options = new DbContextOptionsBuilder<OutboxDbContext>()
-        .UseSqlServer("connection-string")
-        .Options;
-
-    using var context = new OutboxDbContext(options);
-    await context.Database.EnsureCreatedAsync();
-
-    // Act - Publish and process
-    var outboxService = new OutboxService(context, ...);
-    await outboxService.PublishEventAsync(evt, "topic");
-
-    var processor = new OutboxProcessor(...);
-    await processor.ProcessBatchAsync(CancellationToken.None);
-
-    // Assert
-    var published = await context.OutboxMessages
-        .Where(m => m.State == OutboxMessageState.Published)
-        .CountAsync();
-    Assert.Equal(1, published);
-}
-```
-
-### Performance Tests
-
-Monitor throughput and latency:
-
-```csharp
-[Fact]
-public async Task ProcessorHandles10KMessages()
-{
-    // Publish 10K messages
-    for (int i = 0; i < 10000; i++)
-    {
-        await outboxService.PublishEventAsync(evt, "topic");
-    }
-
-    // Measure processing time
-    var stopwatch = Stopwatch.StartNew();
-    await processor.ProcessBatchAsync(CancellationToken.None);
-    stopwatch.Stop();
-
-    // Assert < 30 seconds for 10K messages
-    Assert.True(stopwatch.ElapsedMilliseconds < 30000);
-}
-```
-
-## Monitoring & Observability
-
-### Key Metrics
-
-- **Pending count:** Unprocessed messages
-- **Published rate:** Messages/second
-- **Retry rate:** Failure percentage
-- **DLQ count:** Messages awaiting review
-- **Processing latency:** Time from creation to publication
-
-### Logging
-
-Structured logging with Serilog:
-
-```csharp
-Log.Information(
-    "Published message {MessageId} to topic {Topic} after {Retries} retries",
-    messageId, topic, retryCount);
-
-Log.Warning(
-    "Message {MessageId} moved to DLQ. Error: {Error}",
-    messageId, lastError);
-```
-
-### Health Checks
-
-Custom health check for orchestrators:
-
-```csharp
-app.MapGet("/health", async (IOutboxService service) =>
-{
-    var stats = await service.GetStatisticsAsync();
-    
-    if (stats.DlqCount > 100)
-        return Results.StatusCode(503);  // Unhealthy
-    
-    return Results.Ok(new { status = "healthy", stats });
-});
-```
-
+## Core pipeline
+
+### Write side
+
+`IOutboxService` (Services/OutboxService.cs) is the entry point for producers. Overloads
+accept a `PublishableEvent` or a `DomainEvent` + topic (+ optional partition key). The
+service serializes the payload through the pluggable `IOutboxSerializer` (default:
+`SystemTextJsonOutboxSerializer`), builds an `OutboxMessage` in state `Pending`, applies
+the idempotency key if one is supplied, and stores it via `IOutboxRepository.AddAsync`.
+Idempotency is enforced by a lookup (`GetByIdempotencyKeyAsync`) - publishing twice with
+the same key returns the existing message instead of inserting a duplicate.
+
+Because the repository writes through the same `OutboxDbContext`, callers who share that
+context get message persistence inside their own business transaction - which is the whole
+point of the pattern.
+
+### Read side
+
+`OutboxProcessor` (Infrastructure/OutboxProcessor.cs) is a `BackgroundService` registered
+as a hosted service in Program.cs. Its loop, per iteration:
+
+1. Periodically (every `CheckExpiredLocksInterval` ms) releases expired processing locks so
+   messages abandoned by a crashed instance become eligible again.
+2. Logs a warning if the oldest pending message is older than
+   `OldestMessageAgeThresholdMinutes` - a cheap "the pipeline is stuck" signal.
+3. Creates a DI scope and calls `IMessagePublishingService.ProcessPendingMessagesAsync`
+   with the configured `BatchSize`, then `ProcessScheduledMessagesAsync` for messages with
+   a future delivery time.
+4. Sleeps. The delay is normally the fixed `DelayBetweenBatches`, but when
+   `BackoffStrategy` is `Exponential` and consecutive batches find no work, the delay grows
+   by `BackoffMultiplier` per empty batch, capped at `MaxDelayBetweenBatches`, and resets to
+   the base value as soon as a batch does work. This keeps an idle deployment from polling
+   the database every few seconds forever.
+
+The processor resolves scoped services (`IMessagePublishingService`, which pulls in the
+DbContext) from a fresh scope each iteration - the standard way to consume scoped
+dependencies from a singleton hosted service.
+
+`MessagePublishingService` (Services/) does the per-message work: lock the row (state
+`Processing` + `LockedAt`), call `IMessagePublisher.PublishAsync`, and on success mark
+`Published`. On failure it increments the retry count and computes the next attempt time
+via the retry policy helpers (fixed / linear / exponential, see `RetryPolicyType` in
+Domain/Enums.cs and `RetryPolicyHelper`); once retries are exhausted it creates a
+`DeadLetter` via `DeadLetter.FromOutboxMessage(message)` and parks the original.
+
+### Dead letters
+
+`DeadLetterService` + `DeadLetterRepository` + `DeadLetterController` form the manual-review
+loop: list unreviewed entries, mark reviewed with notes, or requeue back into the outbox.
+The `ReviewRequest`/`RequeueRequest` DTOs live at the bottom of Program.cs.
+
+## Composition (Program.cs)
+
+Two registration layers, deliberately split:
+
+- `AddOutboxPattern(connectionString)` (Configuration/ServiceCollectionExtensions.cs) -
+  the minimum viable outbox: `OutboxDbContext` on SQL Server (with
+  `EnableRetryOnFailure(3)` and a 30s command timeout), both repositories, the three core
+  services, and `TryAdd` registrations for `IOutboxSerializer` and `PublishingOptions` so a
+  host can override them before calling in.
+- `AddOutboxPatternPhase2()` (Configuration/DependencyInjectionExtensions.cs) - the
+  operational extras: metrics (`IMetricsService`, `OutboxMetrics` on a custom
+  `DotnetOutboxPattern.Outbox` meter, OpenTelemetry with a Prometheus exporter), webhooks,
+  in-memory caching, search, notifications, export formatters (JSON/CSV/XML as multiple
+  `IDataFormatter` registrations resolved as `IEnumerable`), a resilient HTTP client
+  (registered through `AddHttpClient<ResilientHttpClient>` because it needs a real
+  `HttpClient` injected), and the CLI command registry.
+
+The message publisher is swapped via `AddMessagePublisher<T>()`. The shipped
+`DefaultMessagePublisher` only logs and simulates latency - it is a stand-in you are
+expected to replace with a RabbitMQ/Kafka/Service Bus implementation (see
+`examples/02-CustomMessagePublisher.cs`).
+
+Processor settings bind from the `DotnetOutboxPatternOptions.SectionName` config section
+with data-annotation validation, and are exposed to the processor through
+`IOutboxProcessorOptions` so tests can hand it a stub.
+
+HTTP endpoints come from MVC controllers via `MapControllers()` plus one minimal-API
+`/health` route. Historically some routes were registered both ways, which caused
+`AmbiguousMatchException` on every request - the minimal-API duplicates were removed and a
+comment in Program.cs guards against reintroducing them.
+
+The Phase 2 middleware chain (`UseOutboxPatternMiddleware()`: error handling -> request
+logging -> rate limiting -> performance monitoring, in that order on purpose) is applied in
+Program.cs before authorization, and the Prometheus scrape endpoint is mapped so the
+OpenTelemetry metrics registered in DI are actually reachable.
+
+## Data model
+
+`OutboxDbContext` maps two aggregates:
+
+- **OutboxMessage** - id, aggregate id, topic, event type, serialized payload, state
+  (`Pending / Processing / Published / ...` - see `OutboxMessageState`), retry count,
+  idempotency key, partition key, correlation id, plus the timestamp trail
+  (`CreatedAt`, `PublishedAt`, `LockedAt`, next-retry / scheduled times). Indexed for the
+  hot query (state + created-at) and the idempotency lookup.
+- **DeadLetter** - snapshot of the failed message plus error, failure count, and the
+  review fields (`ReviewedAt`, notes).
+
+The repository is intentionally chatty (`GetByTopicAsync`, `GetByCorrelationIdAsync`,
+`GetByDateRangeAsync`, `GetStatisticsAsync`, archival operations...) because the
+controllers and the archival/health background services query along all those axes.
+
+## Key design decisions
+
+- **Polling, not CDC/triggers.** A poll loop with batch + lock is boring and portable; SQL
+  Server CDC or Debezium would cut latency but drags in infrastructure this repo doesn't
+  want to require. The idle backoff strategy is the mitigation for polling's main cost.
+- **Locking via state + `LockedAt` timestamp, not `SELECT ... FOR UPDATE`.** Works across
+  EF Core without raw SQL, and a crashed worker's lock simply expires
+  (`LockDurationSeconds`, default 300s) and gets released by the expired-lock sweep. The
+  trade-off: between crash and expiry, a message sits invisible; and delivery is
+  at-least-once, never exactly-once - a worker can publish and die before marking
+  `Published`. Consumers must be idempotent; the idempotency key gives them the handle.
+- **Partition ordering is opt-in** (`PreservePartitionOrdering`). FIFO within a partition
+  key costs parallelism, so it is only enforced where the key is set.
+- **Interface + concrete options split** (`IOutboxProcessorOptions` vs
+  `OutboxProcessorOptions`). The interface keeps the processor testable; backoff settings
+  live only on the concrete type, and the processor type-checks for it (`NextDelay()`) so
+  custom `IOutboxProcessorOptions` implementations keep the old fixed-delay behaviour
+  instead of breaking.
+- **Serializer behind `IOutboxSerializer`, registered with `TryAdd`.** System.Text.Json is
+  the default; swapping to MessagePack/protobuf is one registration, and hosts that
+  register their own before `AddOutboxPattern` win.
+- **SQL Server is hardcoded in `AddOutboxPattern`.** Deliberate simplification for the
+  reference implementation; supporting other providers would mean either an options
+  callback or provider-specific packages. Known limitation, see below.
+
+## Extension points
+
+- `IMessagePublisher` - the broker adapter. The one you will always implement.
+- `IOutboxSerializer` - payload serialization.
+- `IDataFormatter` (+ `AddDataFormatter<T>()`) - additional export formats.
+- `IOutboxProcessorOptions` - alternative options sources for the processor.
+- Decorating `IOutboxService` - enrichment (correlation ids, user context) without touching
+  the pipeline.
+- `ConfigureRateLimiting` / `ConfigureMessageArchival` / `ConfigureHealthCheck` - tuning
+  knobs for the phase 2 services.
+
+## Known limitations
+
+- `DefaultMessagePublisher` does not talk to any real broker; the app "works" out of the
+  box but delivers nothing anywhere.
+- EF provider is fixed to SQL Server inside `AddOutboxPattern`.
+- `MessageArchivalService` and `HealthCheckService` exist and have `Configure*` helpers,
+  but are not registered as hosted services in Program.cs - archival must be wired
+  explicitly by the host.
+- `AddExternalHttpClients` builds its own `LoggerFactory` and materializes clients at
+  registration time - fine for a handful of static clients, wrong if you need per-request
+  configuration.
+- At-least-once delivery only; exactly-once requires idempotent consumers (see above).
+- `Services/OutboxService.cs.backup*` files are editor leftovers, not part of the build.
+
+## Testing
+
+`tests/dotnet-outbox-pattern.Tests` (xUnit) covers domain validation, serialization,
+retry-policy math, services and repositories; `dotnet-outbox-pattern.Benchmarks` holds
+BenchmarkDotNet suites for the repository, serializer and publishing service. Both are
+excluded from the NuGet package build.
