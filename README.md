@@ -337,6 +337,34 @@ public static class RabbitMqPublisherExample
 }
 ```
 
+## BasicEventPublishingExample
+
+The `BasicEventPublishingExample` demonstrates the fundamental pattern for publishing domain events using the transactional outbox. This example shows how to create a domain event, register a user service, and publish events atomically with your domain changes. The outbox pattern ensures reliable event delivery even if the application crashes after saving domain state but before publishing events.
+
+### Example Usage
+
+```csharp
+// Create and register services
+var services = new ServiceCollection();
+services.AddLogging(configure => configure.AddConsole());
+services.AddOutboxPattern("your-connection-string");
+services.AddMessagePublisher<RabbitMqMessagePublisher>();
+services.AddScoped<UserService>();
+
+var serviceProvider = services.BuildServiceProvider();
+var userService = serviceProvider.GetRequiredService<UserService>();
+
+// Register a user and publish the event atomically
+await userService.RegisterUserAsync(
+    userId: "USER-123",
+    email: "alice@example.com", 
+    fullName: "Alice Johnson"
+);
+
+// The UserRegisteredEvent is now stored in the OutboxMessages table
+// and will be published to RabbitMQ by the background processor
+```
+
 ## IdempotencyKeyGenerator
 
 The `IdempotencyKeyGenerator` class provides deterministic methods for generating idempotency keys across various message types and scenarios. Idempotency keys ensure exactly-once message processing by creating consistent, unique identifiers that prevent duplicate processing of the same logical operation. This is critical for distributed systems where message delivery may be unreliable or retries may occur.
