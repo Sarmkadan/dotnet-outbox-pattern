@@ -1085,6 +1085,59 @@ public class MetricsCollectionService : BackgroundService
 }
 ```
 
+## SystemTextJsonOutboxSerializer
+
+The `SystemTextJsonOutboxSerializer` class provides JSON serialization and deserialization for outbox messages using System.Text.Json. It implements the `IOutboxSerializer` interface and is designed for high-performance, standards-compliant JSON processing with configurable options for handling various .NET types and scenarios.
+
+This serializer is the default implementation used by the outbox pattern for converting domain events and custom events to JSON format for storage in the outbox table, and for reconstructing them when publishing messages to message brokers.
+
+### Example Usage
+
+```csharp
+// Create the serializer with default options
+var serializer = new SystemTextJsonOutboxSerializer();
+
+// Serialize a domain event to JSON
+var orderCreatedEvent = new OrderCreatedEvent
+{
+    OrderId = "order-12345",
+    CustomerId = "customer-67890",
+    Amount = 99.99m,
+    Items = new List<OrderItemDto>
+    {
+        new OrderItemDto { ProductId = "prod-001", Quantity = 2, Price = 49.99m },
+        new OrderItemDto { ProductId = "prod-002", Quantity = 1, Price = 0.01m }
+    },
+    CorrelationId = "corr-8675309",
+    CausationId = "command-98765"
+};
+
+// Serialize to JSON string
+string json = serializer.Serialize(orderCreatedEvent);
+Console.WriteLine(json);
+
+// Deserialize back to a strongly-typed object
+var deserializedEvent = serializer.Deserialize<OrderCreatedEvent>(json);
+Console.WriteLine($"Deserialized OrderId: {deserializedEvent?.OrderId}");
+
+// Serialize a collection of events
+var events = new List<DomainEvent> { orderCreatedEvent };
+string collectionJson = serializer.Serialize(events);
+Console.WriteLine($"Serialized {events.Count} events");
+
+// Deserialize a collection
+var deserializedEvents = serializer.Deserialize<List<DomainEvent>>(collectionJson);
+Console.WriteLine($"Deserialized {deserializedEvents?.Count} events");
+
+// Deserialize to an anonymous type
+var anonymousData = serializer.Deserialize<dynamic>(json);
+Console.WriteLine($"Order ID: {anonymousData?.OrderId}");
+
+// Deserialize to object
+var objectData = serializer.Deserialize<object>(json);
+Console.WriteLine($"Type: {objectData?.GetType().Name}");
+```
+
 ## IOutboxService
 
 The `IOutboxService` interface provides the core contract for managing outbox message publishing in the transactional outbox pattern. It handles reliable message delivery with transactional consistency, deduplication, and comprehensive querying capabilities for monitoring and debugging message flow.
