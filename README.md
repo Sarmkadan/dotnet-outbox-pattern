@@ -1085,6 +1085,150 @@ public class MetricsCollectionService : BackgroundService
 }
 ```
 
+## IOutboxService
+
+The `IOutboxService` interface provides the core contract for managing outbox message publishing in the transactional outbox pattern. It handles reliable message delivery with transactional consistency, deduplication, and comprehensive querying capabilities for monitoring and debugging message flow.
+
+This service is the primary abstraction for publishing domain events, custom events, and scheduled messages while ensuring exactly-once or at-least-once delivery semantics depending on configuration. It integrates with the outbox repository to provide transactional consistency and automatic deduplication using idempotency keys.
+
+### Key Features
+- Publish domain events and custom events with transactional consistency
+- Message deduplication using idempotency keys
+- Support for at-least-once and at-most-once delivery guarantees
+- Comprehensive message querying by topic, aggregate, state, and date ranges
+- Failed message retry capabilities
+- Message archiving for long-term storage management
+- Statistics and health monitoring
+
+### Example Usage
+
+```csharp
+// Register the outbox service in Program.cs
+builder.Services.AddOutboxPattern("your-connection-string");
+builder.Services.AddScoped<IMessagePublisher, RabbitMqMessagePublisher>();
+
+// Example: Publish a domain event atomically with your domain changes
+public class OrderService
+{
+    private readonly IOutboxService _outboxService;
+    private readonly ILogger<OrderService> _logger;
+
+    public OrderService(IOutboxService outboxService, ILogger<OrderService> logger)
+    {
+        _outboxService = outboxService;
+        _logger = logger;
+    }
+
+    public async Task CreateOrderAsync(Order order, CancellationToken cancellationToken = default)
+    {
+        // 1. Save your domain state (e.g., to database)
+        await _orderRepository.AddAsync(order, cancellationToken);
+
+        // 2. Publish the domain event to the outbox (transactionally consistent)
+        var orderCreatedEvent = new OrderCreatedEvent
+        {
+            OrderId = order.Id,
+            CustomerId = order.CustomerId,
+            Amount = order.TotalAmount,
+            Items = order.Items.Select(i => new OrderItemDto
+            {
+                ProductId = i.ProductId,
+                Quantity = i.Quantity,
+                Price = i.Price
+            }).ToList(),
+            CorrelationId = order.CorrelationId,
+            CausationId = order.CommandId
+        };
+
+        // Publish with at-least-once delivery guarantee
+        var outboxMessage = await _outboxService.PublishEventAsync(
+            domainEvent: orderCreatedEvent,
+            topic: "orders",
+            partitionKey: order.Id.ToString()
+        );
+
+        _logger.LogInformation("Order event published to outbox: {MessageId}", outboxMessage.Id);
+    }
+}
+
+// Example: Publish a custom event with custom topic and partition key
+var customEvent = new CustomDomainEvent
+{
+    AggregateId = "payment-12345",
+    AggregateType = "Payment",
+    EventName = "PaymentProcessed",
+    Payload = new Dictionary<string, object>
+    {
+        ["paymentId"] = "payment-12345",
+        ["amount"] = 99.99m,
+        ["status"] = "Completed",
+        ["timestamp"] = DateTime.UtcNow.ToString("o")
+    }
+};
+
+var publishableEvent = new PublishableEvent
+{
+    Event = customEvent,
+    Topic = "payments",
+    PartitionKey = "payment-12345",
+    DeliveryGuarantee = DeliveryGuarantee.AtLeastOnce,
+    MaxAttempts = 3
+};
+
+var message = await _outboxService.PublishEventAsync(publishableEvent);
+Console.WriteLine($"Published message: {message.Id}");
+
+// Example: Query messages for monitoring and debugging
+var statistics = await _outboxService.GetStatisticsAsync();
+Console.WriteLine($"Pending messages: {statistics.PendingCount}");
+Console.WriteLine($"Failed messages: {statistics.FailedCount}");
+Console.WriteLine($"Total messages: {statistics.TotalCount}");
+
+// Get messages by topic for specific event types
+var orderMessages = await _outboxService.GetMessagesByTopicAsync("orders");
+Console.WriteLine($"Found {orderMessages.Count} order messages");
+
+// Get messages by aggregate for a specific entity
+var paymentMessages = await _outboxService.GetMessagesByAggregateAsync("payment-12345");
+Console.WriteLine($"Found {paymentMessages.Count} messages for payment-12345");
+
+// Get failed messages that need attention
+var failedMessages = await _outboxService.GetMessagesByStateAsync(OutboxMessageState.Failed);
+if (failedMessages.Count > 0)
+{
+    Console.WriteLine($"Found {failedMessages.Count} failed messages:");
+    foreach (var msg in failedMessages)
+    {
+        Console.WriteLine($"- Message {msg.Id}: {msg.ErrorMessage}");
+    }
+}
+
+// Retry a failed message after fixing the underlying issue
+var retrySuccess = await _outboxService.RetryFailedMessageAsync(failedMessageId);
+if (retrySuccess)
+{
+    Console.WriteLine("Message successfully queued for retry");
+}
+
+// Archive old published messages to keep the database clean
+await _outboxService.ArchiveOldMessagesAsync(DateTime.UtcNow.AddDays(-30));
+Console.WriteLine("Old messages archived");
+
+// Get a specific message by ID
+var specificMessage = await _outboxService.GetMessageAsync(messageId);
+if (specificMessage != null)
+{
+    Console.WriteLine($"Message found: {specificMessage.Topic} - {specificMessage.State}");
+}
+
+// Get messages by date range for auditing
+var recentMessages = await _outboxService.GetMessagesByDateRangeAsync(
+    DateTime.UtcNow.AddHours(-24),
+    DateTime.UtcNow
+);
+Console.WriteLine($"Found {recentMessages.Count} messages in last 24 hours");
+```
+
 ## IdempotencyKeyGenerator
 
 The `IdempotencyKeyGenerator` class provides deterministic methods for generating idempotency keys across various message types and scenarios. Idempotency keys ensure exactly-once message processing by creating consistent, unique identifiers that prevent duplicate processing of the same logical operation. This is critical for distributed systems where message delivery may be unreliable or retries may occur.
