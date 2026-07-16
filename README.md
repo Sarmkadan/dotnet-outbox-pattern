@@ -282,6 +282,121 @@ public class OrderResponse
 }
 ```
 
+## IIntegrationEventPublisher
+
+The `IIntegrationEventPublisher` interface serves as the main entry point for publishing integration events to various external systems and channels. It acts as a bridge between the outbox pattern's internal message storage and external consumers such as webhooks, external APIs, or in-process event handlers. The publisher maintains a registry of event publishers for different channels and provides methods to publish events either to all registered channels or to a specific channel.
+
+### Key Features
+- Register publishers for specific event types and channels
+- Publish events to all configured integration channels
+- Publish events to specific channels by name
+- Automatic error handling and logging for each publishing attempt
+
+### Example Usage
+
+```csharp
+using System;
+using System.Threading.Tasks;
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Events;
+using DotnetOutboxPattern.Integration;
+using Microsoft.Extensions.Logging;
+using Moq;
+
+class Program
+{
+    static async Task Main()
+    {
+        // Create mock logger
+        var loggerMock = new Mock<ILogger<IntegrationEventPublisher>>();
+        
+        // Create the main integration event publisher
+        var publisher = new IntegrationEventPublisher(loggerMock.Object);
+        
+        // Create a sample domain event
+        var orderCreatedEvent = new OrderCreatedEvent
+        {
+            OrderId = "order-123",
+            CustomerId = "customer-456",
+            Amount = 99.99m,
+            Items = new[]
+            {
+                new OrderItem { ProductId = "prod-1", Quantity = 2, Price = 49.99m },
+                new OrderItem { ProductId = "prod-2", Quantity = 1, Price = 0.00m }
+            }
+        };
+        
+        // Register webhook publisher for OrderCreatedEvent
+        var webhookHandlerMock = new Mock<IWebhookHandler>();
+        var webhookPublisher = new WebhookIntegrationEventPublisher(webhookHandlerMock.Object, loggerMock.Object);
+        publisher.RegisterPublisher<OrderCreatedEvent>("webhooks", webhookPublisher);
+        
+        // Register external API publisher for OrderCreatedEvent
+        var apiClientMock = new Mock<IExternalApiClient>();
+        var apiPublisher = new ExternalApiIntegrationEventPublisher(
+            apiClientMock.Object, 
+            "https://api.example.com/orders", 
+            loggerMock.Object
+        );
+        publisher.RegisterPublisher<OrderCreatedEvent>("external-api", apiPublisher);
+        
+        // Register in-process publisher for OrderCreatedEvent
+        var eventPublisherMock = new Mock<IEventPublisher>();
+        var inProcessPublisher = new InProcessIntegrationEventPublisher(eventPublisherMock.Object, loggerMock.Object);
+        publisher.RegisterPublisher<OrderCreatedEvent>("in-process", inProcessPublisher);
+        
+        // Publish to all registered channels (webhooks, external-api, in-process)
+        await publisher.PublishAsync(orderCreatedEvent);
+        Console.WriteLine("Event published to all channels");
+        
+        // Publish to a specific channel only
+        await publisher.PublishToChannelAsync(orderCreatedEvent, "webhooks");
+        Console.WriteLine("Event published to webhooks channel only");
+        
+        // Publish different event type to different channels
+        var paymentProcessedEvent = new PaymentProcessedEvent
+        {
+            PaymentId = "payment-789",
+            OrderId = "order-123",
+            Amount = 99.99m,
+            Status = PaymentStatus.Completed
+        };
+        
+        // Register publisher for PaymentProcessedEvent
+        var paymentPublisher = new InProcessIntegrationEventPublisher(eventPublisherMock.Object, loggerMock.Object);
+        publisher.RegisterPublisher<PaymentProcessedEvent>("payments", paymentPublisher);
+        
+        await publisher.PublishAsync(paymentProcessedEvent);
+        Console.WriteLine("Payment event published to payments channel");
+    }
+}
+
+public class OrderCreatedEvent : DomainEvent
+{
+    public string OrderId { get; set; }
+    public string CustomerId { get; set; }
+    public decimal Amount { get; set; }
+    public OrderItem[] Items { get; set; }
+}
+
+public class OrderItem
+{
+    public string ProductId { get; set; }
+    public int Quantity { get; set; }
+    public decimal Price { get; set; }
+}
+
+public class PaymentProcessedEvent : DomainEvent
+{
+    public string PaymentId { get; set; }
+    public string OrderId { get; set; }
+    public decimal Amount { get; set; }
+    public PaymentStatus Status { get; set; }
+}
+
+public enum PaymentStatus { Pending, Completed, Failed }
+```
+
 ## NotificationServiceTests
 
 The `NotificationServiceTests` class provides comprehensive unit tests for the `NotificationService` class, validating functionality related to notification sending, channel management, error handling, and notification retrieval. These tests ensure robust handling of notifications throughout their lifecycle, including proper validation of required parameters, channel routing, error logging, and recent notification tracking.
