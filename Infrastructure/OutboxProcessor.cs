@@ -54,6 +54,43 @@ public sealed class OutboxProcessorOptions : IOutboxProcessorOptions
     /// Default is 5 minutes.
     /// </summary>
     public int OldestMessageAgeThresholdMinutes { get; set; } = 5;
+
+    /// <summary>
+    /// Strategy used to grow the delay between batches when consecutive batches find no work.
+    /// Defaults to <see cref="BackoffStrategy.None"/>, which keeps the fixed
+    /// <see cref="DelayBetweenBatches"/> the service has always used.
+    /// </summary>
+    public BackoffStrategy BackoffStrategy { get; set; } = BackoffStrategy.None;
+
+    /// <summary>
+    /// Multiplier applied per empty batch when <see cref="BackoffStrategy"/> is
+    /// <see cref="BackoffStrategy.Exponential"/>. Must be greater than or equal to 1.
+    /// </summary>
+    public double BackoffMultiplier { get; set; } = 2.0;
+
+    /// <summary>
+    /// Upper bound (milliseconds) on the delay produced by backoff, so an idle processor never
+    /// waits longer than this between polls. Must be greater than or equal to
+    /// <see cref="DelayBetweenBatches"/>.
+    /// </summary>
+    public int MaxDelayBetweenBatches { get; set; } = 60000;
+}
+
+/// <summary>
+/// Strategy for scaling the poll delay when the outbox is idle. Backing off while there is no
+/// work reduces needless database round-trips; the delay resets to the base value as soon as a
+/// batch does work.
+/// </summary>
+public enum BackoffStrategy
+{
+    /// <summary>Always wait the fixed <see cref="OutboxProcessorOptions.DelayBetweenBatches"/>.</summary>
+    None = 0,
+
+    /// <summary>Wait a constant delay (identical to <see cref="None"/>, named for intent).</summary>
+    Fixed = 1,
+
+    /// <summary>Multiply the delay by <see cref="OutboxProcessorOptions.BackoffMultiplier"/> per empty batch, capped at the max.</summary>
+    Exponential = 2
 }
 
 /// <summary>
@@ -67,6 +104,7 @@ public sealed class OutboxProcessor : BackgroundService
     private readonly ILogger<OutboxProcessor> _logger;
     private readonly HealthMetrics _health;
     private DateTime _lastExpiredLockCheck = DateTime.UtcNow;
+    private int _consecutiveEmptyBatches;
 
     public OutboxProcessor(
         IServiceProvider serviceProvider,
@@ -106,13 +144,25 @@ public sealed class OutboxProcessor : BackgroundService
                 await CheckOldestMessageAgeAsync(stoppingToken);
 
                 // Process pending messages
-                await ProcessPendingMessagesAsync(stoppingToken);
+                var pendingWorked = await ProcessPendingMessagesAsync(stoppingToken);
 
                 // Process scheduled messages
-                await ProcessScheduledMessagesAsync(stoppingToken);
+                var scheduledWorked = await ProcessScheduledMessagesAsync(stoppingToken);
 
-                // Wait before next batch
-                await Task.Delay(_options.DelayBetweenBatches, stoppingToken);
+                // Track idle streak so an idle processor can back off its polling and stop
+                // hammering the database when there is nothing to publish.
+                if (pendingWorked || scheduledWorked)
+                {
+                    _consecutiveEmptyBatches = 0;
+                }
+                else if (_consecutiveEmptyBatches < int.MaxValue)
+                {
+                    _consecutiveEmptyBatches++;
+                }
+
+                // Wait before next batch (honouring the configured backoff strategy when the
+                // concrete options type exposes one; otherwise the fixed delay is used).
+                await Task.Delay(NextDelay(), stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -135,9 +185,26 @@ public sealed class OutboxProcessor : BackgroundService
     }
 
     /// <summary>
-    /// Processes pending outbox messages
+    /// Resolves the delay before the next poll. When the injected options are the concrete
+    /// <see cref="OutboxProcessorOptions"/>, the configured backoff strategy is applied via
+    /// <see cref="OutboxBackoffExtensions.ComputeDelay"/>; otherwise the interface's fixed
+    /// <see cref="IOutboxProcessorOptions.DelayBetweenBatches"/> is used unchanged.
     /// </summary>
-    private async Task ProcessPendingMessagesAsync(CancellationToken cancellationToken)
+    private TimeSpan NextDelay()
+    {
+        if (_options is OutboxProcessorOptions concrete)
+        {
+            return concrete.ComputeDelay(_consecutiveEmptyBatches);
+        }
+
+        return TimeSpan.FromMilliseconds(_options.DelayBetweenBatches);
+    }
+
+    /// <summary>
+    /// Processes pending outbox messages. Returns <c>true</c> when at least one message was
+    /// processed, so the caller can reset its idle-backoff streak.
+    /// </summary>
+    private async Task<bool> ProcessPendingMessagesAsync(CancellationToken cancellationToken)
     {
         using var scope = _serviceProvider.CreateScope();
         var publishingService = scope.ServiceProvider.GetRequiredService<IMessagePublishingService>();
@@ -161,12 +228,15 @@ public sealed class OutboxProcessor : BackgroundService
             }
             _health.LastSuccessfulPublish = DateTime.UtcNow;
         }
+
+        return result.ProcessedCount > 0 || result.FailedCount > 0;
     }
 
     /// <summary>
-    /// Processes messages scheduled for future delivery
+    /// Processes messages scheduled for future delivery. Returns <c>true</c> when at least one
+    /// message was processed, so the caller can reset its idle-backoff streak.
     /// </summary>
-    private async Task ProcessScheduledMessagesAsync(CancellationToken cancellationToken)
+    private async Task<bool> ProcessScheduledMessagesAsync(CancellationToken cancellationToken)
     {
         using var scope = _serviceProvider.CreateScope();
         var publishingService = scope.ServiceProvider.GetRequiredService<IMessagePublishingService>();
@@ -179,6 +249,8 @@ public sealed class OutboxProcessor : BackgroundService
                 "Processed {Processed} scheduled messages, {Failed} failed",
                 result.ProcessedCount, result.FailedCount);
         }
+
+        return result.ProcessedCount > 0 || result.FailedCount > 0;
     }
 
     /// <summary>
