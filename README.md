@@ -1,3 +1,54 @@
+## DomainEvent
+
+The `DomainEvent` class is an abstract base class that serves as the foundation for all domain events in the system. It provides essential event metadata including a unique identifier, timestamp, and correlation/causation tracking for distributed tracing scenarios. Domain events are used throughout the application to capture and propagate state changes and business-relevant occurrences.
+
+### Base Properties
+
+```csharp
+public Guid EventId { get; init; } = Guid.NewGuid();
+public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
+public string? CorrelationId { get; init; }
+public string? CausationId { get; init; }
+public string? UserId { get; init; }
+```
+
+### Example Usage
+
+```csharp
+// Creating a custom domain event
+var customEvent = new CustomDomainEvent
+{
+    EventName = "OrderStatusChanged",
+    AggregateId = "order-12345",
+    AggregateType = "Order",
+    CorrelationId = "corr-8675309",
+    CausationId = "command-98765",
+    UserId = "user-42",
+    Payload = new Dictionary<string, object>
+    {
+        ["orderId"] = "order-12345",
+        ["oldStatus"] = "Pending",
+        ["newStatus"] = "Processing",
+        ["timestamp"] = DateTime.UtcNow.ToString("o")
+    }
+};
+
+// Creating an entity created event
+var createdEvent = new EntityCreatedEvent
+{
+    EntityId = "customer-789",
+    EntityType = "Customer",
+    EntityData = new Dictionary<string, object>
+    {
+        ["name"] = "John Doe",
+        ["email"] = "john.doe@example.com",
+        ["createdAt"] = DateTime.UtcNow.ToString("o")
+    },
+    CorrelationId = "corr-12345",
+    UserId = "user-42"
+};
+```
+
 ## OutboxProcessingResult
 
 The `OutboxProcessingResult` class provides a comprehensive result object for outbox message processing operations. It encapsulates key information about the processing outcome, including success status, processed message count, failed message count, dead letter count, error message, stack trace, start and completion timestamps, processed message IDs, failed message IDs, batch size, lock duration, delay between batches, messages before break, break duration, and whether parallel processing is enabled.
