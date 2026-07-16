@@ -1,5 +1,57 @@
 # dotnet-outbox-pattern
 
+## SerializationHelperTests
+
+The `SerializationHelperTests` class provides comprehensive unit tests for the `SerializationHelper` class, verifying JSON serialization and deserialization behavior with camelCase property naming, null value omission, and validation utilities. These tests ensure reliable serialization of domain objects, statistics, and health metrics for storage and transmission.
+
+### Example Usage
+
+```csharp
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Infrastructure;
+
+class Program
+{
+  static void Main()
+  {
+    // Serialize domain objects with camelCase property names
+    var stats = new OutboxStatistics
+    {
+      TotalMessages = 100,
+      PublishedMessages = 90,
+      FailedMessages = 10
+    };
+    
+    string json = SerializationHelper.Serialize(stats);
+    Console.WriteLine(json);
+    // Output: {"totalMessages":100,"publishedMessages":90,"failedMessages":10}
+    
+    // Deserialize back to object
+    var deserialized = SerializationHelper.Deserialize<OutboxStatistics>(json);
+    Console.WriteLine($"Total: {deserialized.TotalMessages}");
+    
+    // Serialize health metrics (nulls omitted)
+    var metrics = new HealthMetrics
+    {
+      IsHealthy = false,
+      ConsecutiveFailures = 3,
+      ErrorMessage = "Connection timeout"
+    };
+    
+    string metricsJson = SerializationHelper.Serialize(metrics);
+    Console.WriteLine(metricsJson);
+    
+    // Pretty print for debugging
+    string prettyJson = SerializationHelper.SerializePretty(stats);
+    Console.WriteLine(prettyJson);
+    
+    // Validate JSON
+    bool isValid = SerializationHelper.IsValidJson(json);
+    Console.WriteLine($"Valid JSON: {isValid}");
+  }
+}
+```
+
 Transactional outbox pattern for .NET: persist domain changes and outgoing messages in the 
 same SQL Server transaction, then let a background processor deliver them with retries, 
 idempotency keys and a dead-letter queue.
