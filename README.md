@@ -1,5 +1,39 @@
 // existing content ...
 
+## OutboxMessageTests
+
+The `OutboxMessageTests` class provides comprehensive unit tests for the `OutboxMessage` domain model, verifying its core logic, state transitions, and validation rules. These tests ensure reliable handling of message publishing attempts, locking, and retry policies.
+
+### Example Usage
+
+```csharp
+using DotnetOutboxPattern.Domain;
+
+// Creating and validating a message
+var message = new OutboxMessage
+{
+    Id = Guid.NewGuid(),
+    IdempotencyKey = "key-001",
+    AggregateId = "agg-1",
+    AggregateType = "Order",
+    EventType = EventType.Created,
+    EventData = "{\"orderId\":\"1\"}",
+    EventTypeName = "OrderCreatedEvent",
+    Topic = "orders.created"
+};
+
+message.Validate();
+
+// Simulating state transitions
+message.Lock(TimeSpan.FromMinutes(5));
+message.RecordFailure("Connection failed");
+if (message.CanRetry())
+{
+    // Retry logic...
+}
+message.MarkAsPublished();
+```
+
 ## StringHelperTests
 
 The `StringHelperTests` class provides a set of unit tests for the string helper methods, including hash computation, email validation, string truncation, and string formatting. These tests verify the correctness of various string operations, ensuring that the helper methods behave as expected. 
