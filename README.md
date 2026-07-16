@@ -176,6 +176,89 @@ else
 }
 ```
 
+## OutboxMetricsCollector
+
+The `OutboxMetricsCollector` class provides comprehensive metrics collection and monitoring capabilities for the outbox pattern implementation. It tracks publishing metrics, monitors queue health, implements health checks, and enables observability through detailed reporting and alerting systems.
+
+The collector aggregates statistics from the outbox service and dead letter queue, providing real-time insights into system health, throughput, and failure rates. It includes built-in health checks for container orchestrators, alerting thresholds for proactive monitoring, and detailed metrics reports for dashboards and observability platforms.
+
+### Example Usage
+
+```csharp
+// Register services in Program.cs
+builder.Services.AddScoped<OutboxMetricsCollector>();
+builder.Services.AddScoped<OutboxAlertingService>();
+builder.Services.AddScoped<OutboxHealthCheck>();
+builder.Services.AddScoped<MetricsCollectionJob>();
+
+// Configure health checks
+builder.Services.AddHealthChecks()
+    .AddCheck<OutboxHealthCheck>("outbox");
+
+// Schedule metrics collection job
+builder.Services.AddHostedService<MetricsCollectionBackgroundService>();
+
+// Example: Inject and use in a background service
+public class MetricsCollectionBackgroundService : BackgroundService
+{
+    private readonly OutboxMetricsCollector _metricsCollector;
+    private readonly OutboxAlertingService _alertingService;
+    private readonly ILogger<MetricsCollectionBackgroundService> _logger;
+
+    public MetricsCollectionBackgroundService(
+        OutboxMetricsCollector metricsCollector,
+        OutboxAlertingService alertingService,
+        ILogger<MetricsCollectionBackgroundService> logger)
+    {
+        _metricsCollector = metricsCollector;
+        _alertingService = alertingService;
+        _logger = logger;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                _logger.LogInformation("Collecting outbox metrics");
+                
+                // Collect and log metrics
+                await _metricsCollector.CollectMetricsAsync();
+                
+                // Check alert conditions
+                await _alertingService.CheckAndAlertAsync();
+                
+                // Get detailed metrics report
+                var detailedReport = await _metricsCollector.GetDetailedMetricsAsync();
+                _logger.LogInformation(detailedReport);
+                
+                // Check health status
+                var (statusCode, message) = await _metricsCollector.HealthCheck.CheckHealthAsync();
+                _logger.LogInformation("Health check: {StatusCode} - {Message}", statusCode, message);
+                
+                // Check readiness
+                var isReady = await _metricsCollector.HealthCheck.IsReadyAsync();
+                _logger.LogInformation("System ready: {IsReady}", isReady);
+                
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Metrics collection failed");
+                await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+            }
+        }
+    }
+}
+
+// Example: Configure alerting thresholds
+var alertingService = new OutboxAlertingService(outboxService, logger);
+alertingService.Thresholds.MaxPendingMessages = 2000;
+alertingService.Thresholds.MaxDlqMessages = 200;
+alertingService.Thresholds.MaxFailureRate = 0.10; // 10% failure rate allowed
+```
+
 ## OutboxProcessingResult
 
 The `OutboxProcessingResult` class provides a comprehensive result object for outbox message processing operations. It encapsulates key information about the processing outcome, including success status, processed message count, failed message count, dead letter count, error message, stack trace, start and completion timestamps, processed message IDs, failed message IDs, batch size, lock duration, delay between batches, messages before break, break duration, and whether parallel processing is enabled.
