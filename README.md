@@ -666,6 +666,80 @@ class Program
 }
 ```
 
+## DeadLetterTests
+
+The `DeadLetterTests` class provides comprehensive unit tests for the `DeadLetter` domain model that verify property initialization, state management, and validation rules for dead-letter queue messages. These tests ensure reliable handling of messages that cannot be delivered, including proper tracking of failure reasons, suggested actions, review status, and requeue operations.
+
+### Example Usage
+
+```csharp
+using System;
+using DotnetOutboxPattern.Domain;
+
+class Program
+{
+    static void Main()
+    {
+        // Test default constructor initializes required properties
+        var deadLetter = new DeadLetter();
+        Console.WriteLine($"Default DeadLetter created - Id: {deadLetter.Id}");
+
+        // Test creating from failed outbox message
+        var failedMessage = new OutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            IdempotencyKey = "key-001",
+            AggregateId = "order-123",
+            AggregateType = "Order",
+            EventType = EventType.Created,
+            EventData = "{\"orderId\":\"123\"}",
+            EventTypeName = "OrderCreatedEvent",
+            Topic = "orders.created",
+            PublishAttempts = 5,
+            MaxPublishAttempts = 5,
+            ErrorMessage = "Failed to connect to message broker",
+            ErrorStackTrace = "at MessageBroker.Publish() in line 42",
+            CreatedAt = DateTime.UtcNow.AddMinutes(-30),
+            LastProcessedAt = DateTime.UtcNow.AddMinutes(-5),
+            CorrelationId = "corr-123",
+            CausationId = "caus-456",
+            Metadata = "{\"userId\":\"user-789\"}",
+            State = OutboxMessageState.Failed
+        };
+
+        var dlFromMessage = DeadLetter.FromOutboxMessage(failedMessage);
+        Console.WriteLine($"Created from message - Topic: {dlFromMessage.Topic}, Attempts: {dlFromMessage.TotalAttempts}");
+
+        // Test creating with failure reason and suggested action
+        var dlWithProps = new DeadLetter
+        {
+            Id = Guid.NewGuid(),
+            OutboxMessageId = Guid.NewGuid(),
+            IdempotencyKey = "key-123",
+            AggregateId = "order-123",
+            AggregateType = "Order",
+            EventType = EventType.Updated,
+            EventData = "{\"orderId\":\"123\"}",
+            EventTypeName = "OrderUpdatedEvent",
+            Topic = "orders.updated",
+            TotalAttempts = 5,
+            ErrorMessage = "Serialization failed",
+            FailureReason = "Invalid event data format",
+            SuggestedAction = "Fix event serialization logic"
+        };
+        Console.WriteLine($"DeadLetter - Failure: {dlWithProps.FailureReason}, Action: {dlWithProps.SuggestedAction}");
+
+        // Test marking as reviewed
+        dlFromMessage.MarkAsReviewed("Investigated - network issue resolved");
+        Console.WriteLine($"Reviewed: {dlFromMessage.IsReviewed}, Notes: {dlFromMessage.ReviewNotes}");
+
+        // Test marking as requeued
+        dlFromMessage.MarkAsRequeued("Network issue resolved, retrying");
+        Console.WriteLine($"Requeued: {dlFromMessage.IsRequeued}, Reason: {dlFromMessage.RequeueReason}");
+    }
+}
+```
+
 ## DeadLetterServiceTests
 
 The `DeadLetterServiceTests` class provides comprehensive unit tests for the `DeadLetterService` that verify dead-letter queue management, message review workflows, health checks, and requeue operations. These tests ensure proper handling of messages that cannot be delivered, including validation of constructor parameters, error conditions, and state transitions between dead-letter and pending states.
