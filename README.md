@@ -676,6 +676,75 @@ Console.WriteLine($"API key: {apiKey}");
 // Output: api key: api-stripe-req_1234567890
 ```
 
+## IDeadLetterService
+
+The `IDeadLetterService` interface provides operations for managing dead letter queue (DLQ) messages that have failed processing. It enables operators to move failed messages to the DLQ, review them, requeue them for retry, and monitor system health. The interface supports critical workflows for maintaining system reliability when messages repeatedly fail processing.
+
+### Key Features
+- Move failed outbox messages to DLQ with automatic error capture
+- Retrieve and review unreviewed dead letters requiring operator action
+- Requeue dead letters back to the outbox for retry after fixing underlying issues
+- Monitor DLQ health and count of unreviewed messages
+- Query dead letters by topic for targeted investigation
+- Delete resolved dead letters after review
+
+### Example Usage
+
+```csharp
+// Register the service in Program.cs
+builder.Services.AddScoped<IDeadLetterService, DeadLetterService>();
+
+// Example: Move a failed message to DLQ
+var outboxMessage = new OutboxMessage
+{
+    Id = Guid.NewGuid(),
+    IdempotencyKey = "order-created-12345",
+    AggregateId = "order-12345",
+    AggregateType = "Order",
+    EventType = EventType.OrderCreated,
+    EventData = JsonSerializer.Serialize(new { OrderId = "order-12345", Amount = 99.99m }),
+    EventTypeName = typeof(OrderCreatedEvent).FullName,
+    Topic = "orders",
+    State = OutboxMessageState.Failed,
+    PublishAttempts = 5,
+    ErrorMessage = "Failed to process order: inventory check timeout",
+    CorrelationId = "corr-8675309",
+    CausationId = "command-98765"
+};
+
+var deadLetterService = serviceProvider.GetRequiredService<IDeadLetterService>();
+var deadLetter = await deadLetterService.MoveToDlqAsync(outboxMessage, CancellationToken.None);
+Console.WriteLine($"Moved message to DLQ: {deadLetter.Id}");
+
+// Example: Get unreviewed dead letters
+var unreviewedLetters = await deadLetterService.GetUnreviewedAsync(limit: 50, CancellationToken.None);
+Console.WriteLine($"Found {unreviewedLetters.Count} unreviewed dead letters");
+
+// Example: Review a dead letter with operator notes
+await deadLetterService.ReviewAsync(deadLetter.Id, "Investigated - transient network timeout", CancellationToken.None);
+Console.WriteLine("Dead letter reviewed");
+
+// Example: Requeue a dead letter after fixing the issue
+await deadLetterService.RequeueAsync(deadLetter.Id, "Fixed database connection timeout", CancellationToken.None);
+Console.WriteLine("Dead letter requeued for retry");
+
+// Example: Get DLQ health metrics
+var healthMetrics = await deadLetterService.GetHealthAsync(CancellationToken.None);
+Console.WriteLine($"DLQ healthy: {healthMetrics.IsHealthy}, Unreviewed count: {healthMetrics.ErrorMessage?.Split(' ')[0] ?? "0"}");
+
+// Example: Get dead letters by topic
+var orderDeadLetters = await deadLetterService.GetByTopicAsync("orders", CancellationToken.None);
+Console.WriteLine($"Found {orderDeadLetters.Count} dead letters for orders topic");
+
+// Example: Delete a resolved dead letter
+await deadLetterService.DeleteAsync(deadLetter.Id, CancellationToken.None);
+Console.WriteLine("Dead letter deleted after resolution");
+
+// Example: Get unreviewed count
+var unreviewedCount = await deadLetterService.GetUnreviewedCountAsync(CancellationToken.None);
+Console.WriteLine($"Total unreviewed dead letters: {unreviewedCount}");
+```
+
 ## CliCommandParser
 
 The `CliCommandParser` class provides structured parsing and validation of command-line arguments, enabling robust CLI applications with typed command registration and option handling. It supports registering commands with their options, parsing arguments into a structured context, and retrieving option values with type conversion. The parser ensures type-safe access to command-line parameters and provides comprehensive error handling for invalid inputs.
