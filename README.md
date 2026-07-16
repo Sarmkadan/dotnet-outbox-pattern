@@ -337,6 +337,52 @@ public static class RabbitMqPublisherExample
 }
 ```
 
+## IdempotencyKeyGenerator
+
+The `IdempotencyKeyGenerator` class provides deterministic methods for generating idempotency keys across various message types and scenarios. Idempotency keys ensure exactly-once message processing by creating consistent, unique identifiers that prevent duplicate processing of the same logical operation. This is critical for distributed systems where message delivery may be unreliable or retries may occur.
+
+The generator produces keys that are:
+- **Deterministic**: Same input parameters always produce the same key
+- **Unique**: Different events generate different keys
+- **Collision-free**: Designed to avoid false duplicates
+- **Readable**: Human-readable format for debugging and logging
+
+### Example Usage
+
+```csharp
+// Generate an idempotency key for entity creation
+var creationKey = IdempotencyKeyGenerator.ForEntityCreation("order", Guid.Parse("3fa85f64-5717-4562-b3fc-2c963f66afa"));
+Console.WriteLine($"Creation key: {creationKey}");
+// Output: creation key: order-create-3fa85f6457174562b3fc2c963f66afa
+
+// Generate a key for state transition
+var transitionKey = IdempotencyKeyGenerator.ForStateTransition(
+    "order", 
+    Guid.Parse("3fa85f64-5717-4562-b3fc-2c963f66afa"), 
+    "confirm");
+Console.WriteLine($"Transition key: {transitionKey}");
+// Output: transition key: order-confirm-3fa85f6457174562b3fc2c963f66afa
+
+// Generate a key for webhook retry attempts
+var webhookKey = IdempotencyKeyGenerator.ForWebhookAttempt("webhook-123", 3);
+Console.WriteLine($"Webhook key: {webhookKey}");
+// Output: webhook key: webhook-webhook-123-attempt-3
+
+// Generate a timestamped key for events with temporal ordering
+var timestampKey = IdempotencyKeyGenerator.ForTimestampedEvent(
+    "payment.processed", 
+    Guid.Parse("3fa85f64-5717-4562-b3fc-2c963f66afa"),
+    DateTime.UtcNow);
+Console.WriteLine($"Timestamp key: {timestampKey}");
+
+// Generate a key for external API calls
+var apiKey = IdempotencyKeyGenerator.ForExternalApiCall(
+    "stripe", 
+    "req_1234567890");
+Console.WriteLine($"API key: {apiKey}");
+// Output: api key: api-stripe-req_1234567890
+```
+
 ## OutboxProcessingResult
 
 The `OutboxProcessingResult` class provides a comprehensive result object for outbox message processing operations. It encapsulates key information about the processing outcome, including success status, processed message count, failed message count, dead letter count, error message, stack trace, start and completion timestamps, processed message IDs, failed message IDs, batch size, lock duration, delay between batches, messages before break, break duration, and whether parallel processing is enabled.
