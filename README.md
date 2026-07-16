@@ -134,6 +134,48 @@ var reviewedDeadLetter = new DeadLetter
 };
 ```
 
+## OutboxMessage
+
+The `OutboxMessage` class represents a message stored in the transactional outbox, providing reliable delivery guarantees with ordering and deduplication. It captures essential metadata and state information for processing and retry logic.
+
+### Example Usage
+
+```csharp
+// Create a new outbox message
+var outboxMessage = new OutboxMessage
+{
+    IdempotencyKey = "order-created-12345",
+    AggregateId = "order-12345",
+    AggregateType = "Order",
+    EventType = EventType.OrderCreated,
+    EventData = JsonSerializer.Serialize(new { OrderId = "order-12345", Amount = 99.99m }),
+    EventTypeName = typeof(OrderCreatedEvent).FullName,
+    Topic = "orders",
+    PartitionKey = "order-12345",
+    DeliveryGuarantee = DeliveryGuarantee.AtLeastOnce,
+    CorrelationId = "corr-12345",
+    CausationId = "command-12345"
+};
+
+outboxMessage.Validate();
+
+// Simulate publishing the message
+outboxMessage.MarkAsPublished();
+
+// Record a processing failure
+outboxMessage.RecordFailure("Failed to publish message", "at OutboxService.Publish() in OutboxService.cs:line 42");
+
+// Check if the message can be retried
+if (outboxMessage.CanRetry())
+{
+    Console.WriteLine("Message can be retried");
+}
+else
+{
+    Console.WriteLine("Message cannot be retried");
+}
+```
+
 ## OutboxProcessingResult
 
 The `OutboxProcessingResult` class provides a comprehensive result object for outbox message processing operations. It encapsulates key information about the processing outcome, including success status, processed message count, failed message count, dead letter count, error message, stack trace, start and completion timestamps, processed message IDs, failed message IDs, batch size, lock duration, delay between batches, messages before break, break duration, and whether parallel processing is enabled.
