@@ -395,6 +395,113 @@ class Program
 }
 ```
 
+## MessagePublishingServiceTests
+
+The `MessagePublishingServiceTests` class provides comprehensive unit tests for the `MessagePublishingService` that verify message publishing behavior, batch processing, retry mechanisms, locking semantics, and dead-letter queue handling. These tests ensure reliable message delivery with proper error handling, idempotency checks, and state management for outbox messages.
+
+### Example Usage
+
+```csharp
+using System;
+using System.Threading.Tasks;
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Services;
+using DotnetOutboxPattern.Tests;
+using Microsoft.Extensions.Logging;
+using Moq;
+
+class Program
+{
+    static async Task Main()
+    {
+        // Setup mocks
+        var outboxRepositoryMock = new Mock<IOutboxRepository>();
+        var publisherMock = new Mock<IMessagePublisher>();
+        var loggerMock = new Mock<ILogger<MessagePublishingService>>();
+        var batchServiceMock = new Mock<IBatchProcessingService>();
+
+        // Create test instance
+        var publishingTests = new MessagePublishingServiceTests(
+            outboxRepositoryMock.Object,
+            publisherMock.Object,
+            loggerMock.Object,
+            batchServiceMock.Object
+        );
+
+        // Guard clause tests
+        publishingTests.Constructor_WithNullOutboxRepository_ThrowsArgumentNullException();
+        publishingTests.Constructor_WithNullPublisher_ThrowsArgumentNullException();
+
+        // Basic message processing scenarios
+        await publishingTests.ProcessPendingMessagesAsync_WithEmptyBatch_ReturnsZeroProcessed();
+        await publishingTests.ProcessPendingMessagesAsync_WithSingleMessage_PublishesAndMarksPublished();
+
+        // Error handling and retry logic
+        await publishingTests.ProcessPendingMessagesAsync_WhenPublisherThrows_RecordsFailureAndContinues();
+        await publishingTests.ProcessSingleMessageAsync_WhenMessageLocked_ReturnsFalse();
+        await publishingTests.ProcessSingleMessageAsync_WhenMessageCanRetry_AttemptsPublish();
+        await publishingTests.ProcessSingleMessageAsync_WhenReachedMaxRetries_MovesToDlq();
+
+        // Scheduled message processing
+        await publishingTests.ProcessScheduledMessagesAsync_WithFutureSchedule_DoesNotProcess();
+        await publishingTests.ProcessScheduledMessagesAsync_WithPastSchedule_ProcessesMessages();
+
+        // Lock management
+        await publishingTests.ReleaseLockAsync_UnlocksExpiredMessage();
+        await publishingTests.ReleaseLockAsync_WhenMessageNotFound_DoesNotThrow();
+        await publishingTests.ReleaseLockAsync_WhenMessageNotLocked_DoesNotUpdate();
+
+        // State-based processing rules
+        await publishingTests.ProcessPendingMessagesAsync_WhenMessageIsLocked_DoesNotProcess();
+        await publishingTests.ProcessPendingMessagesAsync_WhenMessageIsScheduled_DoesNotProcess();
+        await publishingTests.ProcessSingleMessageAsync_WhenMessageIsNull_ReturnsFalse();
+        await publishingTests.ProcessSingleMessageAsync_WhenMessageIsLocked_ReturnsFalse();
+        await publishingTests.ProcessSingleMessageAsync_WhenMessageIsScheduled_ReturnsFalse();
+
+        // Bulk error scenarios
+        await publishingTests.ProcessPendingMessagesAsync_WhenPublisherThrowsForAllMessages_RecordsAllFailures();
+
+        // Create a sample message for testing
+        var message = new OutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            IdempotencyKey = Guid.NewGuid().ToString(),
+            AggregateId = "order-123",
+            AggregateType = "Order",
+            EventType = EventType.Created,
+            EventData = "{\"orderId\":\"123\"}",
+            EventTypeName = "OrderCreatedEvent",
+            Topic = "orders.created",
+            State = OutboxMessageState.Pending,
+            CreatedAt = DateTime.UtcNow,
+            LockedAt = null,
+            LockedUntil = null,
+            FailedAttempts = 0,
+            MaxAttempts = 3,
+            DeliveryGuarantee = DeliveryGuarantee.AtLeastOnce,
+            ScheduledAt = null
+        };
+
+        // Test single message processing
+        var result = await publishingTests.ProcessSingleMessageAsync_WhenMessageCanRetry_AttemptsPublish(message);
+        Console.WriteLine($"Message processing result: {result}");
+
+        // Test lock expiration
+        var lockedMessage = new OutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            IdempotencyKey = Guid.NewGuid().ToString(),
+            State = OutboxMessageState.Pending,
+            LockedAt = DateTime.UtcNow.AddMinutes(-10),
+            LockedUntil = DateTime.UtcNow.AddMinutes(-5) // Expired lock
+        };
+
+        var unlocked = await publishingTests.ReleaseLockAsync_UnlocksExpiredMessage(lockedMessage.Id);
+        Console.WriteLine($"Lock released: {unlocked}");
+    }
+}
+```
+
 ## DeadLetterServiceTests
 
 The `DeadLetterServiceTests` class provides comprehensive unit tests for the `DeadLetterService` that verify dead-letter queue management, message review workflows, health checks, and requeue operations. These tests ensure proper handling of messages that cannot be delivered, including validation of constructor parameters, error conditions, and state transitions between dead-letter and pending states.
