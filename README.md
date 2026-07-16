@@ -2123,3 +2123,113 @@ public bool EnableDeadLetterProcessing { get; set; }
 public long TotalMessages { get; set; }
 public long PendingMessages { get; set; }
 ```
+
+## ICacheService
+
+The `ICacheService` interface provides an abstraction for caching frequently accessed data in memory, reducing database load and improving application response times. It supports time-based expiration, cache invalidation by key or prefix, and provides both synchronous and asynchronous operations for integration into async workflows.
+
+The primary implementation `MemoryCacheService` is an in-memory cache suitable for single-instance applications or as a foundation for distributed caching strategies with proper cache invalidation mechanisms.
+
+### Key Features
+
+- Get and set cache entries with optional TTL (time-to-live)
+- Remove individual entries or bulk-remove by key prefix
+- Atomic get-or-set operations to prevent cache stampede
+- Automatic cleanup of expired entries in the background
+- Thread-safe operations with fine-grained locking
+- Built-in metrics and logging for cache operations
+
+### Example Usage
+
+```csharp
+// Register the cache service in Program.cs
+builder.Services.AddSingleton<ICacheService, MemoryCacheService>();
+builder.Services.AddSingleton<ILogger<MemoryCacheService>>();
+
+// Example: Basic cache operations with user data
+var cacheService = serviceProvider.GetRequiredService<ICacheService>();
+
+// Set a value with 5-minute expiration
+await cacheService.SetAsync("user:123:profile", userProfile, TimeSpan.FromMinutes(5));
+
+// Get a cached value
+var cachedProfile = await cacheService.GetAsync<UserProfile>("user:123:profile");
+if (cachedProfile is not null)
+{
+    Console.WriteLine($"Retrieved user profile from cache: {cachedProfile.FullName}");
+}
+
+// Remove a specific cache entry
+await cacheService.RemoveAsync("user:123:profile");
+
+// Remove all entries with a specific prefix (e.g., all user-related cache)
+await cacheService.RemoveByPrefixAsync("user:");
+
+// Atomic get-or-set pattern to prevent cache stampede
+var product = await cacheService.GetOrSetAsync(
+    key: $"product:{productId}",
+    factory: async () => await _productRepository.GetByIdAsync(productId),
+    expiration: TimeSpan.FromMinutes(10)
+);
+
+// Example: Caching database query results
+public class ProductService
+{
+    private readonly ICacheService _cacheService;
+    private readonly IProductRepository _productRepository;
+
+    public ProductService(ICacheService cacheService, IProductRepository productRepository)
+    {
+        _cacheService = cacheService;
+        _productRepository = productRepository;
+    }
+
+    public async Task<Product> GetProductAsync(string productId)
+    {
+        // Try to get from cache first
+        var cachedProduct = await _cacheService.GetAsync<Product>($"product:{productId}");
+        if (cachedProduct is not null)
+        {
+            return cachedProduct;
+        }
+
+        // Cache miss - fetch from database and cache the result
+        var product = await _productRepository.GetByIdAsync(productId);
+        if (product is not null)
+        {
+            await _cacheService.SetAsync(
+                $"product:{productId}",
+                product,
+                TimeSpan.FromMinutes(30)
+            );
+        }
+
+        return product;
+    }
+
+    public async Task InvalidateProductCacheAsync(string productId)
+    {
+        // Invalidate cache when product is updated
+        await _cacheService.RemoveAsync($"product:{productId}");
+        await _cacheService.RemoveByPrefixAsync("product:");
+    }
+}
+
+// Example: Using cache key builder for consistent key generation
+var messageKey = CacheKeyBuilder.BuildMessageKey(messageId);
+await cacheService.SetAsync(messageKey, message, TimeSpan.FromHours(1));
+
+var statsKey = CacheKeyBuilder.BuildStatsKey("Order");
+await cacheService.SetAsync(statsKey, orderStats, TimeSpan.FromMinutes(15));
+
+// Check cache entry metadata (available on MemoryCacheService)
+var memoryCache = cacheService as MemoryCacheService;
+var entry = memoryCache?.GetEntry("user:123:profile");
+if (entry is not null)
+{
+    Console.WriteLine($"Cache entry created at: {entry.CreatedAt}");
+    Console.WriteLine($"Cache entry expires at: {entry.ExpiresAt}");
+    Console.WriteLine($"Cache entry last accessed: {entry.LastAccessed}");
+    Console.WriteLine($"Cache entry access count: {entry.AccessCount}");
+}
+```
