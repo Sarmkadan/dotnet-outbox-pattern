@@ -1075,6 +1075,175 @@ var isDeleted = await webhookService.DeleteWebhookAsync(webhook.Id);
 Console.WriteLine("Webhook deleted: {isDeleted}");
 ```
 
+## CollectionExtensions
+
+The `CollectionExtensions` class provides a comprehensive set of extension methods for working with collections, lists, and enumerables in .NET. It includes utilities for batch processing, safe element access, navigation between elements, duplicate detection, pagination, and merging collections. These methods simplify common collection operations and provide safer alternatives to built-in collection APIs.
+
+### Key Features
+- Chunk collections into smaller batches for processing
+- Safely access elements at specific indices with bounds checking
+- Navigate between elements in a collection (GetNext, GetPrevious)
+- Add multiple items to collections efficiently
+- Remove items matching predicates with count tracking
+- Check for null or empty collections
+- Find random elements from collections
+- Paginate collections into pages
+- Get specific pages from collections
+- Find duplicate elements based on key selectors
+- Merge multiple enumerables into a single sequence
+- Group items by count with predicates
+
+### Example Usage
+
+```csharp
+// Create a list of order events for processing
+var orderEvents = new List<OrderEvent>
+{
+    new OrderEvent { OrderId = "order-001", Status = "Created", Timestamp = DateTime.UtcNow.AddMinutes(-30) },
+    new OrderEvent { OrderId = "order-002", Status = "Processing", Timestamp = DateTime.UtcNow.AddMinutes(-20) },
+    new OrderEvent { OrderId = "order-003", Status = "Shipped", Timestamp = DateTime.UtcNow.AddMinutes(-10) },
+    new OrderEvent { OrderId = "order-004", Status = "Delivered", Timestamp = DateTime.UtcNow.AddMinutes(-5) },
+    new OrderEvent { OrderId = "order-005", Status = "Cancelled", Timestamp = DateTime.UtcNow }
+};
+
+// Use Chunk to process orders in batches of 2 for parallel processing
+var processingBatches = orderEvents.Chunk(2);
+Console.WriteLine($"Created {processingBatches.Count} batches for processing");
+
+foreach (var batch in processingBatches)
+{
+    Console.WriteLine($"Processing batch with {batch.Count} orders:");
+    foreach (var orderEvent in batch)
+    {
+        Console.WriteLine($"  - {orderEvent.OrderId}: {orderEvent.Status}");
+    }
+}
+
+// Use SafeGetAt to safely access elements without IndexOutOfRangeException
+var firstOrder = orderEvents.SafeGetAt(0); // Returns first order
+var tenthOrder = orderEvents.SafeGetAt(10); // Returns null instead of throwing
+var tenthOrderWithDefault = orderEvents.SafeGetAt(10, new OrderEvent { OrderId = "default-order", Status = "Unknown" });
+Console.WriteLine($"Tenth order (safe access): {(tenthOrder?.OrderId ?? "null")}");
+
+// Use GetNext and GetPrevious to navigate through a sequence
+var currentOrder = orderEvents.FirstOrDefault(o => o.Status == "Shipped");
+var nextOrder = orderEvents.GetNext(currentOrder); // Returns "Delivered" order
+var previousOrder = orderEvents.GetPrevious(currentOrder); // Returns "Processing" order
+Console.WriteLine($"Current: {currentOrder?.OrderId}, Next: {nextOrder?.OrderId}, Previous: {previousOrder?.OrderId}");
+
+// Use AddRange to efficiently add multiple items
+var additionalEvents = new List<OrderEvent>
+{
+    new OrderEvent { OrderId = "order-006", Status = "Created", Timestamp = DateTime.UtcNow },
+    new OrderEvent { OrderId = "order-007", Status = "Processing", Timestamp = DateTime.UtcNow.AddMinutes(1) }
+};
+orderEvents.AddRange(additionalEvents);
+Console.WriteLine($"Added {additionalEvents.Count} more events, total count: {orderEvents.Count}");
+
+// Use RemoveWhere to filter out specific items
+var cancelledOrdersRemoved = orderEvents.RemoveWhere(o => o.Status == "Cancelled");
+Console.WriteLine($"Removed {cancelledOrdersRemoved} cancelled orders");
+
+// Use IsNullOrEmpty for cleaner null/empty checks
+List<OrderEvent>? nullEvents = null;
+if (orderEvents.IsNullOrEmpty())
+{
+    Console.WriteLine("No events to process");
+}
+else if (nullEvents.IsNullOrEmpty())
+{
+    Console.WriteLine("Events collection is null");
+}
+
+// Use RandomElement to select a random item
+var randomOrder = orderEvents.RandomElement();
+Console.WriteLine($"Randomly selected order: {randomOrder?.OrderId}");
+
+// Use Paginate to split into pages for UI display
+var eventPages = orderEvents.Paginate(3);
+Console.WriteLine($"Paginated into {eventPages.Count} pages:");
+for (int i = 0; i < eventPages.Count; i++)
+{
+    Console.WriteLine($"  Page {i + 1}: {eventPages[i].Count} events");
+}
+
+// Use GetPage to retrieve a specific page
+var page2 = orderEvents.GetPage(2, 2); // Get page 2 with 2 items per page
+Console.WriteLine($"Page 2 contains {page2.Count} events:");
+foreach (var pageEvent in page2)
+{
+    Console.WriteLine($"  - {pageEvent.OrderId}");
+}
+
+// Use FindDuplicates to identify duplicate order IDs
+var duplicateOrders = orderEvents.FindDuplicates(e => e.OrderId);
+Console.WriteLine($"Found {duplicateOrders.Count()} duplicate orders");
+
+// Use Merge to combine multiple collections
+var moreEvents = new List<OrderEvent>
+{
+    new OrderEvent { OrderId = "order-008", Status = "Created", Timestamp = DateTime.UtcNow.AddMinutes(2) }
+};
+var allEvents = CollectionExtensions.Merge(orderEvents, moreEvents);
+Console.WriteLine($"Merged collections contain {allEvents.Count()} total events");
+
+// Use GroupByCount to find groups with specific sizes (e.g., find all orders that appear exactly once)
+var singleStatusGroups = orderEvents.GroupByCount(
+    e => e.Status, 
+    count => count == 1
+);
+Console.WriteLine("Status groups with exactly 1 occurrence:");
+foreach (var group in singleStatusGroups)
+{
+    Console.WriteLine($"  - {group.Key}: {group.Count()} orders");
+}
+
+// Practical example: Process outbox messages in batches with error handling
+public class OutboxProcessor
+{
+    private readonly List<OutboxMessage> _outboxMessages = new();
+    
+    public void ProcessMessages()
+    {
+        // Chunk messages into batches for parallel processing
+        var messageBatches = _outboxMessages.Chunk(100);
+        
+        foreach (var batch in messageBatches)
+        {
+            try
+            {
+                ProcessBatch(batch);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error processing batch: {ex.Message}");
+            }
+        }
+    }
+    
+    private void ProcessBatch(List<OutboxMessage> batch)
+    {
+        Console.WriteLine($"Processing {batch.Count} messages...");
+        
+        // Use SafeGetAt to safely access message metadata
+        var firstMessage = batch.SafeGetAt(0);
+        if (firstMessage != null)
+        {
+            Console.WriteLine($"First message topic: {firstMessage.Topic}");
+        }
+        
+        // Use RemoveWhere to filter successfully processed messages
+        var processedCount = batch.RemoveWhere(m => m.State == OutboxMessageState.Published);
+        Console.WriteLine($"Marked {processedCount} messages as processed");
+    }
+}
+
+// Define simple DTOs for the example
+public record OrderEvent(string OrderId, string Status, DateTime Timestamp);
+public record OutboxMessage(string Topic, OutboxMessageState State);
+public enum OutboxMessageState { Pending, Published, Failed }
+```
+
 ## DependencyInjectionExtensions
 
 The `DependencyInjectionExtensions` class provides extension methods for configuring the transactional outbox pattern's Phase 2 features in the .NET dependency injection container. It simplifies the registration of middleware, services, formatters, and utilities needed for production-grade outbox pattern implementations with monitoring, caching, webhooks, and OpenTelemetry integration.
