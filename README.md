@@ -705,6 +705,135 @@ foreach (var notification in notifications)
 }
 ```
 
+## IMetricsService
+
+The `IMetricsService` interface provides comprehensive observability and monitoring capabilities for the transactional outbox pattern implementation. It enables real-time insights into system health, performance metrics, error analytics, throughput, latency, resource consumption, and active alerts. This service is essential for monitoring message processing pipelines, identifying bottlenecks, and maintaining system reliability.
+
+The metrics service supports multiple output formats including structured dynamic objects for application consumption and Prometheus-compatible metrics for integration with monitoring systems like Grafana, Prometheus, and Datadog.
+
+### Example Usage
+
+```csharp
+// Register the metrics service in Program.cs
+builder.Services.AddScoped<IMetricsService, MetricsService>();
+builder.Services.AddScoped<IOutboxRepository, OutboxRepository>();
+
+// In a background service or controller
+public class MonitoringController : ControllerBase
+{
+    private readonly IMetricsService _metricsService;
+    private readonly ILogger<MonitoringController> _logger;
+
+    public MonitoringController(IMetricsService metricsService, ILogger<MonitoringController> logger)
+    {
+        _metricsService = metricsService;
+        _logger = logger;
+    }
+
+    [HttpGet("health")]
+    public async Task<IActionResult> GetSystemHealth()
+    {
+        var health = await _metricsService.GetSystemHealthAsync();
+        
+        return Ok(new
+        {
+            Status = health.Status,
+            CheckedAt = health.CheckedAt,
+            PendingMessages = health.PendingMessages,
+            ErrorRate = health.ErrorRate
+        });
+    }
+
+    [HttpGet("metrics/prometheus")]
+    public async Task<IActionResult> GetPrometheusMetrics()
+    {
+        var metrics = await _metricsService.GetPrometheusMetricsAsync();
+        return Content(metrics, "text/plain; version=0.0.1; charset=utf-8");
+    }
+
+    [HttpGet("metrics/alerts")]
+    public async Task<IActionResult> GetActiveAlerts()
+    {
+        var alerts = await _metricsService.GetActiveAlertsAsync();
+        
+        if (alerts.Count > 0)
+        {
+            _logger.LogWarning("System has {AlertCount} active alerts", alerts.Count);
+        }
+        
+        return Ok(alerts);
+    }
+
+    [HttpGet("metrics/performance")]
+    public async Task<IActionResult> GetPerformanceMetrics([FromQuery] string period = "24h")
+    {
+        var metrics = await _metricsService.GetPerformanceMetricsAsync(period);
+        
+        return Ok(new
+        {
+            AverageLatencyMs = metrics.AverageLatencyMs,
+            RequestsPerSecond = metrics.RequestsPerSecond,
+            ErrorRate = metrics.ErrorRate
+        });
+    }
+}
+
+// Example: Background service for continuous monitoring
+public class MetricsCollectionService : BackgroundService
+{
+    private readonly IMetricsService _metricsService;
+    private readonly ILogger<MetricsCollectionService> _logger;
+
+    public MetricsCollectionService(IMetricsService metricsService, ILogger<MetricsCollectionService> logger)
+    {
+        _metricsService = metricsService;
+        _logger = logger;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                _logger.LogInformation("Collecting system metrics...");
+
+                // Get system health
+                var health = await _metricsService.GetSystemHealthAsync();
+                _logger.LogInformation("System Health: {Status} | Pending: {Pending} | Errors: {ErrorRate:p}",
+                    health.Status, health.PendingMessages, health.ErrorRate);
+
+                // Get active alerts
+                var alerts = await _metricsService.GetActiveAlertsAsync();
+                if (alerts.Count > 0)
+                {
+                    foreach (var alert in alerts)
+                    {
+                        _logger.LogWarning("ALERT [{Severity}] {Message}", alert.Severity, alert.Message);
+                    }
+                }
+
+                // Get resource metrics
+                var resources = await _metricsService.GetResourceMetricsAsync();
+                _logger.LogInformation("Resource Usage: CPU {Cpu}% | Memory {Memory}% | Connections {Connections}",
+                    resources.CpuUsagePercent, resources.MemoryUsagePercent, resources.ActiveConnections);
+
+                // Get Prometheus metrics for scraping
+                var prometheusMetrics = await _metricsService.GetPrometheusMetricsAsync();
+                // Store or expose these metrics for Prometheus scraping
+
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to collect metrics");
+                await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+            }
+        }
+    }
+}
+```
+
 ## IdempotencyKeyGenerator
 
 The `IdempotencyKeyGenerator` class provides deterministic methods for generating idempotency keys across various message types and scenarios. Idempotency keys ensure exactly-once message processing by creating consistent, unique identifiers that prevent duplicate processing of the same logical operation. This is critical for distributed systems where message delivery may be unreliable or retries may occur.
