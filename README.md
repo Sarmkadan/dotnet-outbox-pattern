@@ -232,4 +232,70 @@ class Program
 }
 ```
 
-// existing content ...
+## OutboxServiceTests
+
+The `OutboxServiceTests` class provides comprehensive unit tests for the `OutboxService` class, which manages outbox message processing, event publishing, retry mechanisms, and message retrieval operations. These tests verify proper parameter validation, idempotency handling, state transitions, and repository delegation for all service operations.
+
+### Example Usage
+
+```csharp
+using System;
+using System.Threading.Tasks;
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Services;
+using DotnetOutboxPattern.Tests;
+using Microsoft.Extensions.Logging;
+using Moq;
+
+class Program
+{
+static async Task Main()
+{
+// Setup mocks
+var repositoryMock = new Mock<IOutboxRepository>();
+var loggerMock = new Mock<ILogger<OutboxService>>();
+var serializerMock = new Mock<IOutboxSerializer>();
+
+// Create service instance
+var service = new OutboxService(repositoryMock.Object, loggerMock.Object, serializerMock.Object);
+
+// Guard clause tests
+service.Constructor_WithNullRepository_ThrowsArgumentNullException();
+service.Constructor_WithNullLogger_ThrowsArgumentNullException();
+
+// Event publishing scenarios
+var domainEvent = new EntityCreatedEvent { EntityId = "order-123", EntityType = "Order" };
+var publishable = new PublishableEvent
+{
+    Event = domainEvent,
+    Topic = "orders.created",
+    DeliveryGuarantee = DeliveryGuarantee.AtLeastOnce,
+    MaxAttempts = 3
+};
+
+var publishedMessage = await service.PublishEventAsync(publishable);
+
+// Message retrieval
+var messageId = publishedMessage.Id;
+var retrievedMessage = await service.GetMessageAsync(messageId);
+
+// Statistics
+var statistics = await service.GetStatisticsAsync();
+
+// Retrieval by various criteria
+var allMessages = await service.GetAllMessagesAsync();
+var topicMessages = await service.GetMessagesByTopicAsync("orders.created");
+var aggregateMessages = await service.GetMessagesByAggregateAsync("order-123");
+var stateMessages = await service.GetMessagesByStateAsync(OutboxMessageState.Pending);
+
+// Retry failed message
+var retryResult = await service.RetryFailedMessageAsync(messageId);
+
+// Retrieval by date range
+var dateRangeMessages = await service.GetMessagesByDateRangeAsync(
+    DateTime.UtcNow.AddDays(-7),
+    DateTime.UtcNow
+);
+}
+}
+```
