@@ -1,16 +1,16 @@
 # dotnet-outbox-pattern
 
-Transactional outbox pattern for .NET: persist domain changes and outgoing messages in the
-same SQL Server transaction, then let a background processor deliver them with retries,
+Transactional outbox pattern for .NET: persist domain changes and outgoing messages in the 
+same SQL Server transaction, then let a background processor deliver them with retries, 
 idempotency keys and a dead-letter queue.
 
 ## Architecture
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture: component breakdown,
-write/read pipeline, locking and retry semantics, design decisions with their trade-offs,
-extension points and known limitations. Short version: `IOutboxService` writes messages to
-the outbox table, the `OutboxProcessor` background service polls in batches (with optional
-idle backoff), pushes them through your `IMessagePublisher` implementation, and parks
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture: component breakdown, 
+write/read pipeline, locking and retry semantics, design decisions with their trade-offs, 
+extension points and known limitations. Short version: `IOutboxService` writes messages to 
+the outbox table, the `OutboxProcessor` background service polls in batches (with optional 
+idle backoff), pushes them through your `IMessagePublisher` implementation, and parks 
 exhausted messages in a dead-letter table with a review/requeue API.
 
 ## OutboxMessageTests
@@ -49,7 +49,7 @@ message.MarkAsPublished();
 
 ## StringHelperTests
 
-The `StringHelperTests` class provides a set of unit tests for the string helper methods, including hash computation, email validation, string truncation, and string formatting. These tests verify the correctness of various string operations, ensuring that the helper methods behave as expected. 
+The `StringHelperTests` class provides a set of unit tests for the string helper methods, including hash computation, email validation, string truncation, and string formatting. These tests verify the correctness of various string operations, ensuring that the helper methods behave as expected.
 
 ### Example Usage
 
@@ -167,26 +167,121 @@ class Program
         // Setup mocks
         var publishingServiceMock = new Mock<IMessagePublishingService>();
         var loggerMock = new Mock<ILogger<BatchProcessingService>>();
-        
+
         // Create test instance with default options
         var test = new BatchProcessingServiceTests();
-        
+
         // Guard clause tests
         test.Constructor_WithNullPublishingService_ThrowsArgumentNullException();
         test.Constructor_WithNullOptions_ThrowsArgumentNullException();
-        
+
         // Basic batch processing scenarios
         await test.ProcessInChunksAsync_WithDefaultSize_DividesIntoChunks();
         await test.ProcessInChunksAsync_WithCustomTotal_RespectsCustomSize();
         await test.ProcessInChunksAsync_WithSingleMessage_CreatesOneChunk();
-        
+
         // Error handling and metrics
         await test.ProcessInChunksAsync_WhenServiceThrows_CatchesAndReturnsFailure();
         await test.ProcessInChunksAsync_TracksCumulativeMetrics();
         await test.ProcessInChunksAsync_SetsDurationCorrectly();
-        
+
         // Scheduled message processing
         await test.ProcessScheduledInChunksAsync_DelegatesToPublishingService();
+    }
+}
+```
+
+## BatchProcessingModelsTests
+
+The `BatchProcessingModelsTests` class provides comprehensive unit tests for the batch processing models and DTOs used throughout the outbox pattern implementation. These tests verify the default values, property initialization, and calculation logic for `BatchProcessingOptions`, `BatchChunkResult`, and `BatchProcessingSummary` classes, ensuring reliable batch processing configuration and metrics tracking.
+
+### Example Usage
+
+```csharp
+using System;
+using DotnetOutboxPattern.Domain;
+
+class Program
+{
+    static void Main()
+    {
+        // Configure batch processing options with default values
+        var defaultOptions = new BatchProcessingOptions();
+        Console.WriteLine($"Default batch size: {defaultOptions.TotalBatchSize}");
+        Console.WriteLine($"Default chunk size: {defaultOptions.ChunkSize}");
+        Console.WriteLine($"Default parallel chunks: {defaultOptions.MaxParallelChunks}");
+
+        // Configure custom batch processing options
+        var customOptions = new BatchProcessingOptions
+        {
+            TotalBatchSize = 5000,
+            ChunkSize = 200,
+            MaxParallelChunks = 4,
+            EnableParallelChunks = true,
+            DelayBetweenChunksMs = 100,
+            StopOnChunkFailure = true
+        };
+
+        // Create batch chunk result with default constructor
+        var chunkResult = new BatchChunkResult();
+        Console.WriteLine($"Chunk {chunkResult.ChunkIndex} processed: {chunkResult.Success}");
+
+        // Create batch chunk result with custom values
+        var startTime = DateTime.UtcNow;
+        var completedTime = startTime.AddSeconds(2);
+        var result = new BatchChunkResult
+        {
+            ChunkIndex = 5,
+            Success = true,
+            ProcessedCount = 25,
+            FailedCount = 2,
+            ErrorMessage = "Some messages failed",
+            StartedAt = startTime,
+            CompletedAt = completedTime
+        };
+        Console.WriteLine($"Chunk {result.ChunkIndex} duration: {result.Duration.TotalSeconds:F2}s");
+
+        // Create batch processing summary with default constructor
+        var summary = new BatchProcessingSummary();
+        Console.WriteLine($"Total chunks: {summary.TotalChunks}");
+
+        // Create batch processing summary with accumulated results
+        var processingSummary = new BatchProcessingSummary
+        {
+            Success = false,
+            TotalProcessed = 80,
+            TotalFailed = 5,
+            TotalChunks = 2,
+            SuccessfulChunks = 1,
+            FailedChunks = 1,
+            StartedAt = DateTime.UtcNow,
+            CompletedAt = DateTime.UtcNow.AddSeconds(5)
+        };
+        
+        // Accumulate chunk results
+        processingSummary.Accumulate(new BatchChunkResult
+        {
+            ChunkIndex = 1,
+            Success = true,
+            ProcessedCount = 50,
+            FailedCount = 0,
+            StartedAt = DateTime.UtcNow,
+            CompletedAt = DateTime.UtcNow.AddSeconds(1)
+        });
+        
+        processingSummary.Accumulate(new BatchChunkResult
+        {
+            ChunkIndex = 2,
+            Success = false,
+            ProcessedCount = 30,
+            FailedCount = 5,
+            ErrorMessage = "Connection timeout",
+            StartedAt = DateTime.UtcNow.AddSeconds(2),
+            CompletedAt = DateTime.UtcNow.AddSeconds(4)
+        });
+        
+        Console.WriteLine($"Processing completed in {processingSummary.Duration.TotalSeconds:F2}s");
+        Console.WriteLine($"Total: {processingSummary.TotalProcessed}, Failed: {processingSummary.TotalFailed}");
     }
 }
 ```
@@ -249,54 +344,54 @@ using Moq;
 
 class Program
 {
-static async Task Main()
-{
-// Setup mocks
-var repositoryMock = new Mock<IOutboxRepository>();
-var loggerMock = new Mock<ILogger<OutboxService>>();
-var serializerMock = new Mock<IOutboxSerializer>();
+    static async Task Main()
+    {
+        // Setup mocks
+        var repositoryMock = new Mock<IOutboxRepository>();
+        var loggerMock = new Mock<ILogger<OutboxService>>();
+        var serializerMock = new Mock<IOutboxSerializer>();
 
-// Create service instance
-var service = new OutboxService(repositoryMock.Object, loggerMock.Object, serializerMock.Object);
+        // Create service instance
+        var service = new OutboxService(repositoryMock.Object, loggerMock.Object, serializerMock.Object);
 
-// Guard clause tests
-service.Constructor_WithNullRepository_ThrowsArgumentNullException();
-service.Constructor_WithNullLogger_ThrowsArgumentNullException();
+        // Guard clause tests
+        service.Constructor_WithNullRepository_ThrowsArgumentNullException();
+        service.Constructor_WithNullLogger_ThrowsArgumentNullException();
 
-// Event publishing scenarios
-var domainEvent = new EntityCreatedEvent { EntityId = "order-123", EntityType = "Order" };
-var publishable = new PublishableEvent
-{
-    Event = domainEvent,
-    Topic = "orders.created",
-    DeliveryGuarantee = DeliveryGuarantee.AtLeastOnce,
-    MaxAttempts = 3
-};
+        // Event publishing scenarios
+        var domainEvent = new EntityCreatedEvent { EntityId = "order-123", EntityType = "Order" };
+        var publishable = new PublishableEvent
+        {
+            Event = domainEvent,
+            Topic = "orders.created",
+            DeliveryGuarantee = DeliveryGuarantee.AtLeastOnce,
+            MaxAttempts = 3
+        };
 
-var publishedMessage = await service.PublishEventAsync(publishable);
+        var publishedMessage = await service.PublishEventAsync(publishable);
 
-// Message retrieval
-var messageId = publishedMessage.Id;
-var retrievedMessage = await service.GetMessageAsync(messageId);
+        // Message retrieval
+        var messageId = publishedMessage.Id;
+        var retrievedMessage = await service.GetMessageAsync(messageId);
 
-// Statistics
-var statistics = await service.GetStatisticsAsync();
+        // Statistics
+        var statistics = await service.GetStatisticsAsync();
 
-// Retrieval by various criteria
-var allMessages = await service.GetAllMessagesAsync();
-var topicMessages = await service.GetMessagesByTopicAsync("orders.created");
-var aggregateMessages = await service.GetMessagesByAggregateAsync("order-123");
-var stateMessages = await service.GetMessagesByStateAsync(OutboxMessageState.Pending);
+        // Retrieval by various criteria
+        var allMessages = await service.GetAllMessagesAsync();
+        var topicMessages = await service.GetMessagesByTopicAsync("orders.created");
+        var aggregateMessages = await service.GetMessagesByAggregateAsync("order-123");
+        var stateMessages = await service.GetMessagesByStateAsync(OutboxMessageState.Pending);
 
-// Retry failed message
-var retryResult = await service.RetryFailedMessageAsync(messageId);
+        // Retry failed message
+        var retryResult = await service.RetryFailedMessageAsync(messageId);
 
-// Retrieval by date range
-var dateRangeMessages = await service.GetMessagesByDateRangeAsync(
-    DateTime.UtcNow.AddDays(-7),
-    DateTime.UtcNow
-);
-}
+        // Retrieval by date range
+        var dateRangeMessages = await service.GetMessagesByDateRangeAsync(
+            DateTime.UtcNow.AddDays(-7),
+            DateTime.UtcNow
+        );
+    }
 }
 ```
 
