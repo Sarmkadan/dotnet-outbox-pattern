@@ -259,6 +259,84 @@ alertingService.Thresholds.MaxDlqMessages = 200;
 alertingService.Thresholds.MaxFailureRate = 0.10; // 10% failure rate allowed
 ```
 
+## RabbitMqMessagePublisher
+
+The `RabbitMqMessagePublisher` class implements the `IMessagePublisher` interface to publish outbox messages to RabbitMQ. It provides reliable message delivery with configurable exchange and routing key strategies, supporting at-least-once delivery semantics through persistent message properties. The publisher integrates with the .NET dependency injection system and can be configured for production use with RabbitMQ.Client connections.
+
+### Example Usage
+
+```csharp
+// Register RabbitMQ publisher in Program.cs
+builder.Services.AddMessagePublisher<RabbitMqMessagePublisher>();
+builder.Services.AddSingleton(sp => new ConnectionFactory { HostName = "localhost" });
+
+// In a background service or application component
+public class OrderEventProcessor
+{
+    private readonly IMessagePublisher _publisher;
+    private readonly ILogger<OrderEventProcessor> _logger;
+
+    public OrderEventProcessor(IMessagePublisher publisher, ILogger<OrderEventProcessor> logger)
+    {
+        _publisher = publisher;
+        _logger = logger;
+    }
+
+    public async Task ProcessOrderEventAsync(OrderCreatedEvent orderEvent, CancellationToken cancellationToken)
+    {
+        var outboxMessage = new OutboxMessage
+        {
+            IdempotencyKey = $"order-created-{orderEvent.OrderId}",
+            AggregateId = orderEvent.OrderId,
+            AggregateType = "Order",
+            EventType = EventType.OrderCreated,
+            EventData = JsonSerializer.Serialize(orderEvent),
+            EventTypeName = typeof(OrderCreatedEvent).FullName,
+            Topic = "orders-exchange",
+            PartitionKey = orderEvent.OrderId,
+            DeliveryGuarantee = DeliveryGuarantee.AtLeastOnce,
+            CorrelationId = orderEvent.CorrelationId,
+            CausationId = orderEvent.EventId.ToString()
+        };
+
+        await _publisher.PublishAsync(outboxMessage, cancellationToken);
+        _logger.LogInformation("Order event published to RabbitMQ: {OrderId}", orderEvent.OrderId);
+    }
+}
+
+// Simple console application example
+public static class RabbitMqPublisherExample
+{
+    public static async Task Main()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(configure => configure.AddConsole());
+        services.AddMessagePublisher<RabbitMqMessagePublisher>();
+        services.AddSingleton(sp => new ConnectionFactory { HostName = "localhost", DispatchConsumersAsync = true });
+
+        var serviceProvider = services.BuildServiceProvider();
+        var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
+        var logger = serviceProvider.GetRequiredService<ILogger<RabbitMqPublisherExample>>();
+
+        var message = new OutboxMessage
+        {
+            IdempotencyKey = "test-message-123",
+            AggregateId = "test-aggregate",
+            AggregateType = "Test",
+            EventType = EventType.Generic,
+            EventData = JsonSerializer.Serialize(new { Test = "data", Timestamp = DateTime.UtcNow }),
+            EventTypeName = "TestEvent",
+            Topic = "test-exchange",
+            PartitionKey = "test-key",
+            DeliveryGuarantee = DeliveryGuarantee.AtLeastOnce
+        };
+
+        await publisher.PublishAsync(message, CancellationToken.None);
+        logger.LogInformation("Message published successfully");
+    }
+}
+```
+
 ## OutboxProcessingResult
 
 The `OutboxProcessingResult` class provides a comprehensive result object for outbox message processing operations. It encapsulates key information about the processing outcome, including success status, processed message count, failed message count, dead letter count, error message, stack trace, start and completion timestamps, processed message IDs, failed message IDs, batch size, lock duration, delay between batches, messages before break, break duration, and whether parallel processing is enabled.
