@@ -5,6 +5,45 @@
 
 // ... other utility docs ...
 
+// ## StringHelper
+// The `StringHelper` utility provides a set of static methods for common string operations used throughout the outbox pattern,
+// including validation, hashing, formatting, and transformation. This utility helps ensure consistent handling
+// of string data across the application.
+
+/// <summary>
+/// String helper utilities
+/// </summary>
+
+// Example Usage
+```csharp
+// Generate a secure hash of a string
+var passwordHash = StringHelper.ComputeSha256Hash("my-secret-password");
+Console.WriteLine(passwordHash); // Outputs a base64-encoded SHA256 hash
+
+// Validate different string formats
+var isValidEmail = StringHelper.IsValidEmail("user@example.com"); // true
+var isValidGuid = StringHelper.IsValidGuid("550e8400-e29b-41d4-a716-446655440000"); // true
+var isValidFormat = StringHelper.IsValidFormat("ABC123", "^[A-Z]{3}\d{3}$"); // true
+
+// Truncate and sanitize strings
+var longText = "This is a very long text that needs to be shortened";
+var truncated = StringHelper.Truncate(longText, 20); // "This is a very lon..."
+var jsonSafe = StringHelper.SanitizeForJson("Line 1\nLine 2\tTabbed"); // Escapes special chars
+
+// Convert to URL-friendly formats
+var slug = StringHelper.ToSlug("Hello World! This is a Test"); // "hello-world-this-is-a-test"
+var kebab = StringHelper.ToKebabCase("PascalCaseString"); // "pascal-case-string"
+
+// Generate random strings and check emptiness
+var randomToken = StringHelper.GenerateRandomString(16); // 16-character random string
+var isEmpty = StringHelper.IsEmpty("   "); // true
+var isEmpty2 = StringHelper.IsEmpty(null); // true
+
+// Join non-empty strings and extract substrings
+var joined = StringHelper.JoinNonEmpty("-", "prefix", null, "middle", "", "suffix"); // "prefix-middle-suffix"
+var extracted = StringHelper.ExtractBetween("Hello [world] from [C#]", "[", "]"); // "world"
+```
+
 // ## DateTimeHelper
 // The `DateTimeHelper` utility provides a set of static methods for common date/time operations used throughout the outbox pattern,
 // including parsing timestamps, calculating time deltas, and formatting durations. This utility helps ensure consistent handling
@@ -162,3 +201,42 @@ Console.WriteLine($"Current: {metadata.CurrentPage}, Total: {metadata.TotalPages
 ```
 
 // ... other utility docs ...
+
+// ## StringHelper
+// The `StringHelper` utility provides a set of static methods for common string operations used throughout the outbox pattern,
+// including validation, hashing, formatting, and transformation. This utility helps ensure consistent handling
+// of string data across the application.
+
+/// <summary>
+/// String helper utilities
+/// </summary>
+
+// Example Usage
+```csharp
+// Generate a secure hash of a string
+var passwordHash = StringHelper.ComputeSha256Hash("my-secret-password");
+Console.WriteLine(passwordHash); // Outputs a base64-encoded SHA256 hash
+
+// Validate different string formats
+var isValidEmail = StringHelper.IsValidEmail("user@example.com"); // true
+var isValidGuid = StringHelper.IsValidGuid("550e8400-e29b-41d4-a716-446655440000"); // true
+var isValidFormat = StringHelper.IsValidFormat("ABC123", "^[A-Z]{3}\d{3}$"); // true
+
+// Truncate and sanitize strings
+var longText = "This is a very long text that needs to be shortened";
+var truncated = StringHelper.Truncate(longText, 20); // "This is a very lon..."
+var jsonSafe = StringHelper.SanitizeForJson("Line 1\nLine 2\tTabbed"); // Escapes special chars
+
+// Convert to URL-friendly formats
+var slug = StringHelper.ToSlug("Hello World! This is a Test"); // "hello-world-this-is-a-test"
+var kebab = StringHelper.ToKebabCase("PascalCaseString"); // "pascal-case-string"
+
+// Generate random strings and check emptiness
+var randomToken = StringHelper.GenerateRandomString(16); // 16-character random string
+var isEmpty = StringHelper.IsEmpty("   "); // true
+var isEmpty2 = StringHelper.IsEmpty(null); // true
+
+// Join non-empty strings and extract substrings
+var joined = StringHelper.JoinNonEmpty("-", "prefix", null, "middle", "", "suffix"); // "prefix-middle-suffix"
+var extracted = StringHelper.ExtractBetween("Hello [world] from [C#]", "[", "]"); // "world"
+```
