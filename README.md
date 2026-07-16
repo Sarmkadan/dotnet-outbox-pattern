@@ -242,6 +242,63 @@ var products = new List<Product>
 ValidationHelper.ValidateAll(products, p => p.Price > 0, "All product prices must be positive");
 ```
 
+// ## ErrorResponse
+// The `ErrorResponse` class represents a standardized error response structure used throughout the API to communicate
+// error conditions to clients. It includes essential fields like error message, error code, timestamp, and optional
+// request tracing information for debugging and monitoring purposes.
+
+/// <summary>
+/// Standard API error response
+/// </summary>
+
+// Example Usage
+```csharp
+// Create a basic error response
+var errorResponse = new ErrorResponse
+{
+    Message = "Resource not found",
+    Code = "NOT_FOUND",
+    TraceId = "abc123-def456"
+};
+
+// Create a complete error response with all properties
+var detailedError = new ErrorResponse
+{
+    Message = "Database connection timeout occurred",
+    Code = "DB_TIMEOUT",
+    Timestamp = DateTime.UtcNow,
+    TraceId = Guid.NewGuid().ToString()
+};
+
+// Log the error response
+Console.WriteLine($"Error: {errorResponse.Message} (Code: {errorResponse.Code}) at {errorResponse.Timestamp:o}");
+
+// Use in exception handling
+try
+{
+    // Some operation that might fail
+}
+catch (Exception ex)
+{
+    var error = new ErrorResponse
+    {
+        Message = ex.Message,
+        Code = "INTERNAL_ERROR",
+        TraceId = Activity.Current?.TraceId.ToString()
+    };
+    
+    // Return error to client
+    return Results.Problem(
+        detail: error.Message,
+        extensions: new Dictionary<string, object?> 
+        {
+            ["code"] = error.Code,
+            ["traceId"] = error.TraceId
+        }
+    );
+}
+```
+
 // ## PaginationHelper
 // The `PaginationHelper` utility provides utilities for working with paginated collections, including validation of pagination
 // parameters, calculating skip values for offset-based pagination, and creating pagination metadata. It simplifies the
