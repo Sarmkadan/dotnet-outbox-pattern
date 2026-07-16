@@ -135,6 +135,49 @@ class Program
 }
 ```
 
+## BatchProcessingServiceTests
+
+The `BatchProcessingServiceTests` class provides comprehensive unit tests for the `BatchProcessingService` that verify batch processing behavior, chunking logic, error handling, and metrics tracking. These tests ensure reliable processing of outbox messages in configurable batch sizes with proper guard clauses and cancellation support.
+
+### Example Usage
+
+```csharp
+using System.Threading.Tasks;
+using DotnetOutboxPattern.Tests;
+using Microsoft.Extensions.Logging;
+using Moq;
+
+class Program
+{
+    static async Task Main()
+    {
+        // Setup mocks
+        var publishingServiceMock = new Mock<IMessagePublishingService>();
+        var loggerMock = new Mock<ILogger<BatchProcessingService>>();
+        
+        // Create test instance with default options
+        var test = new BatchProcessingServiceTests();
+        
+        // Guard clause tests
+        test.Constructor_WithNullPublishingService_ThrowsArgumentNullException();
+        test.Constructor_WithNullOptions_ThrowsArgumentNullException();
+        
+        // Basic batch processing scenarios
+        await test.ProcessInChunksAsync_WithDefaultSize_DividesIntoChunks();
+        await test.ProcessInChunksAsync_WithCustomTotal_RespectsCustomSize();
+        await test.ProcessInChunksAsync_WithSingleMessage_CreatesOneChunk();
+        
+        // Error handling and metrics
+        await test.ProcessInChunksAsync_WhenServiceThrows_CatchesAndReturnsFailure();
+        await test.ProcessInChunksAsync_TracksCumulativeMetrics();
+        await test.ProcessInChunksAsync_SetsDurationCorrectly();
+        
+        // Scheduled message processing
+        await test.ProcessScheduledInChunksAsync_DelegatesToPublishingService();
+    }
+}
+```
+
 ## DefaultMessagePublisherTests
 
 The `DefaultMessagePublisherTests` class contains unit tests that verify the behavior of the `DefaultMessagePublisher` implementation. It checks constructor guard clauses, successful publishing, logging of message details and event types, cancellation handling, and publishing of multiple messages. The class also validates the `MessagePublisherFactory`'s ability to create a functional logging publisher.
