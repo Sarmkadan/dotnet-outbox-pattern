@@ -5,6 +5,97 @@
 
 // ... other utility docs ...
 
+// ## RetryHelper
+// The `RetryHelper` utility provides reusable retry logic for handling transient failures with configurable retry strategies.
+// It supports exponential backoff, fixed delay, linear backoff, and jittered backoff patterns to handle network timeouts,
+// database deadlocks, and other temporary failures in distributed systems.
+
+/// <summary>
+/// Retry helper utilities for transient error handling
+/// </summary>
+
+// Example Usage
+```csharp
+// Example transient operation that might fail
+async Task<string> FetchDataFromApi()
+{
+    // Simulate API call that might fail
+    return await Task.FromResult("API Response Data");
+}
+
+// Example transient operation that might fail
+async Task<string> SaveToDatabase()
+{
+    // Simulate database operation that might fail
+    return await Task.FromResult("Database Save Successful");
+}
+
+// Use exponential backoff retry for API calls
+var apiResult = await RetryHelper.ExecuteWithExponentialBackoffAsync(
+    async () => await FetchDataFromApi(),
+    maxRetries: 5,
+    initialDelayMs: 200,
+    backoffMultiplier: 2.0
+);
+Console.WriteLine(apiResult);
+
+// Use fixed delay retry for database operations
+var dbResult = await RetryHelper.ExecuteWithFixedDelayAsync(
+    async () => await SaveToDatabase(),
+    maxRetries: 3,
+    delayMs: 1000
+);
+Console.WriteLine(dbResult);
+
+// Use linear backoff retry
+var linearResult = await RetryHelper.ExecuteWithLinearBackoffAsync(
+    async () => await FetchDataFromApi(),
+    maxRetries: 4,
+    initialDelayMs: 100,
+    delayIncrementMs: 150
+);
+Console.WriteLine(linearResult);
+
+// Use jittered backoff retry to prevent thundering herd
+var jitteredResult = await RetryHelper.ExecuteWithJitteredBackoffAsync(
+    async () => await FetchDataFromApi(),
+    maxRetries: 5,
+    initialDelayMs: 100
+);
+Console.WriteLine(jitteredResult);
+
+// Check if an exception is transient
+try
+{
+    await FetchDataFromApi();
+}
+catch (Exception ex)
+{
+    if (RetryHelper.IsTransientError(ex))
+    {
+        Console.WriteLine("Transient error detected, safe to retry");
+    }
+}
+
+// Create a reusable retry policy
+var policy = RetryHelper.CreatePolicy(
+    maxRetries: 5,
+    strategy: RetryStrategy.ExponentialBackoff,
+    initialDelayMs: 200
+);
+
+// Execute with the policy
+var policyResult = await policy.ExecuteAsync(async () => await FetchDataFromApi());
+Console.WriteLine(policyResult);
+
+// Access policy properties
+Console.WriteLine($"Max retries: {policy.MaxRetries}");
+Console.WriteLine($"Strategy: {policy.Strategy}");
+Console.WriteLine($"Initial delay: {policy.InitialDelayMs}ms");
+Console.WriteLine($"Max delay: {policy.MaxDelayMs}ms");
+Console.WriteLine($"Backoff multiplier: {policy.BackoffMultiplier}");
+```
+
 // ## StringHelper
 // The `StringHelper` utility provides a set of static methods for common string operations used throughout the outbox pattern,
 // including validation, hashing, formatting, and transformation. This utility helps ensure consistent handling
@@ -201,42 +292,3 @@ Console.WriteLine($"Current: {metadata.CurrentPage}, Total: {metadata.TotalPages
 ```
 
 // ... other utility docs ...
-
-// ## StringHelper
-// The `StringHelper` utility provides a set of static methods for common string operations used throughout the outbox pattern,
-// including validation, hashing, formatting, and transformation. This utility helps ensure consistent handling
-// of string data across the application.
-
-/// <summary>
-/// String helper utilities
-/// </summary>
-
-// Example Usage
-```csharp
-// Generate a secure hash of a string
-var passwordHash = StringHelper.ComputeSha256Hash("my-secret-password");
-Console.WriteLine(passwordHash); // Outputs a base64-encoded SHA256 hash
-
-// Validate different string formats
-var isValidEmail = StringHelper.IsValidEmail("user@example.com"); // true
-var isValidGuid = StringHelper.IsValidGuid("550e8400-e29b-41d4-a716-446655440000"); // true
-var isValidFormat = StringHelper.IsValidFormat("ABC123", "^[A-Z]{3}\d{3}$"); // true
-
-// Truncate and sanitize strings
-var longText = "This is a very long text that needs to be shortened";
-var truncated = StringHelper.Truncate(longText, 20); // "This is a very lon..."
-var jsonSafe = StringHelper.SanitizeForJson("Line 1\nLine 2\tTabbed"); // Escapes special chars
-
-// Convert to URL-friendly formats
-var slug = StringHelper.ToSlug("Hello World! This is a Test"); // "hello-world-this-is-a-test"
-var kebab = StringHelper.ToKebabCase("PascalCaseString"); // "pascal-case-string"
-
-// Generate random strings and check emptiness
-var randomToken = StringHelper.GenerateRandomString(16); // 16-character random string
-var isEmpty = StringHelper.IsEmpty("   "); // true
-var isEmpty2 = StringHelper.IsEmpty(null); // true
-
-// Join non-empty strings and extract substrings
-var joined = StringHelper.JoinNonEmpty("-", "prefix", null, "middle", "", "suffix"); // "prefix-middle-suffix"
-var extracted = StringHelper.ExtractBetween("Hello [world] from [C#]", "[", "]"); // "world"
-```
