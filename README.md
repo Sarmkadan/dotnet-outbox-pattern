@@ -619,6 +619,99 @@ Console.WriteLine($"API key: {apiKey}");
 // Output: api key: api-stripe-req_1234567890
 ```
 
+## CliCommandParser
+
+The `CliCommandParser` class provides structured parsing and validation of command-line arguments, enabling robust CLI applications with typed command registration and option handling. It supports registering commands with their options, parsing arguments into a structured context, and retrieving option values with type conversion. The parser ensures type-safe access to command-line parameters and provides comprehensive error handling for invalid inputs.
+
+### Example Usage
+
+```csharp
+// Create and configure the command parser
+var parser = new CliCommandParser();
+
+// Register commands with their handlers and options
+parser.RegisterCommand(new CliCommand
+{
+    Name = "process",
+    Description = "Process outbox messages from the database",
+    Options = new List<CliOption>
+    {
+        new CliOption
+        {
+            Name = "batch-size",
+            Description = "Number of messages to process in each batch",
+            IsRequired = false,
+            DefaultValue = "100"
+        },
+        new CliOption
+        {
+            Name = "parallel",
+            Description = "Enable parallel processing of message batches",
+            IsRequired = false
+        },
+        new CliOption
+        {
+            Name = "delay-ms",
+            Description = "Delay in milliseconds between batches",
+            IsRequired = false,
+            DefaultValue = "100"
+        }
+    },
+    Handler = async (context) =>
+    {
+        var batchSize = context.GetOptionAsInt("batch-size", 100);
+        var enableParallel = context.GetOptionAsBoolean("parallel");
+        var delayMs = context.GetOptionAsInt("delay-ms", 100);
+        
+        Console.WriteLine($"Processing messages with batch size: {batchSize}");
+        Console.WriteLine($"Parallel processing: {enableParallel}");
+        Console.WriteLine($"Delay between batches: {delayMs}ms");
+        
+        // Process messages...
+        await Task.CompletedTask;
+    }
+});
+
+parser.RegisterCommand(new CliCommand
+{
+    Name = "health-check",
+    Description = "Check system health status",
+    Handler = async (context) =>
+    {
+        Console.WriteLine("Running health check...");
+        await Task.CompletedTask;
+    }
+});
+
+parser.RegisterCommand(new CliCommand
+{
+    Name = "help",
+    Description = "Show help text",
+    Handler = async (context) =>
+    {
+        Console.WriteLine(parser.GetHelpText());
+        await Task.CompletedTask;
+    }
+});
+
+// Parse command-line arguments
+var args = new[] { "process", "--batch-size", "200", "--parallel" };
+var parsedContext = parser.Parse(args);
+
+if (parsedContext.IsValid)
+{
+    Console.WriteLine($"Executing command: {parsedContext.CommandName}");
+    await parsedContext.Command!.Handler!(parsedContext);
+}
+else
+{
+    Console.WriteLine($"Error: {parsedContext.ErrorMessage}");
+}
+
+// Display help text
+Console.WriteLine(parser.GetHelpText());
+```
+
 ## DeadLetterHandlingExample
 
 The `DeadLetterHandlingExample` class demonstrates comprehensive dead letter queue (DLQ) management for handling failed message processing in distributed systems. It provides tools for monitoring unreviewed dead letters, investigating failed messages, implementing manual review workflows, and automated recovery strategies for transient errors. This example is essential for maintaining system reliability when messages repeatedly fail processing.
