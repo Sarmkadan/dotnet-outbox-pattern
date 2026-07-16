@@ -1,9 +1,6 @@
-// ... existing content ...
 // =============================================================================
 // Utilities
 // =============================================================================
-
-// ... other utility docs ...
 
 // ## RetryHelper
 // The `RetryHelper` utility provides reusable retry logic for handling transient failures with configurable retry strategies.
@@ -127,7 +124,7 @@ var kebab = StringHelper.ToKebabCase("PascalCaseString"); // "pascal-case-string
 
 // Generate random strings and check emptiness
 var randomToken = StringHelper.GenerateRandomString(16); // 16-character random string
-var isEmpty = StringHelper.IsEmpty("   "); // true
+var isEmpty = StringHelper.IsEmpty(" "); // true
 var isEmpty2 = StringHelper.IsEmpty(null); // true
 
 // Join non-empty strings and extract substrings
@@ -286,11 +283,11 @@ catch (Exception ex)
         Code = "INTERNAL_ERROR",
         TraceId = Activity.Current?.TraceId.ToString()
     };
-    
+
     // Return error to client
     return Results.Problem(
         detail: error.Message,
-        extensions: new Dictionary<string, object?> 
+        extensions: new Dictionary<string, object?>
         {
             ["code"] = error.Code,
             ["traceId"] = error.TraceId
@@ -344,8 +341,68 @@ var page3 = items.GetPage(3, 25); // List<int> with items 51-75
 
 // Create pagination metadata
 var metadata = PaginationHelper.CreateMetadata(3, 25, 150);
-Console.WriteLine($"Current: {metadata.CurrentPage}, Total: {metadata.TotalPages}, " +
-                $"HasNext: {metadata.HasNextPage}, HasPrev: {metadata.HasPreviousPage}");
+Console.WriteLine($"Current: {metadata.CurrentPage}, Total: {metadata.TotalPages}, " + 
+    $"HasNext: {metadata.HasNextPage}, HasPrev: {metadata.HasPreviousPage}");
 ```
 
-// ... other utility docs ...
+// ## PublishEventRequest
+// The `PublishEventRequest` class represents a request to publish events to message brokers or event streams. It contains
+// all necessary metadata for event routing, including aggregate information, event data, and optional headers for
+// correlation and idempotency.
+
+/// <summary>
+/// Request to publish events with routing metadata
+/// </summary>
+
+// Example Usage
+```csharp
+// Create a basic event publish request
+var publishRequest = new PublishEventRequest
+{
+    AggregateId = "order-12345",
+    AggregateType = "Order",
+    EventType = "OrderCreated",
+    EventData = new Dictionary<string, object>
+    {
+        ["OrderId"] = "order-12345",
+        ["CustomerId"] = "customer-67890",
+        ["TotalAmount"] = 99.99,
+        ["Items"] = new List<object>
+        {
+            new { ProductId = "prod-001", Quantity = 2, Price = 49.99 },
+            new { ProductId = "prod-002", Quantity = 1, Price = 1.99 }
+        }
+    },
+    Topic = "orders.events",
+    PartitionKey = "order-12345",
+    CorrelationId = Guid.NewGuid().ToString(),
+    IdempotencyKey = "idempotency-key-123"
+};
+
+// Create a request with optional properties
+var requestWithOptions = new PublishEventRequest
+{
+    AggregateId = "user-98765",
+    AggregateType = "User",
+    EventType = "UserRegistered",
+    EventData = new Dictionary<string, object>
+    {
+        ["UserId"] = "user-98765",
+        ["Email"] = "user@example.com",
+        ["RegistrationDate"] = DateTime.UtcNow
+    },
+    Topic = "users.events",
+    PartitionKey = "user-98765",
+    CorrelationId = Guid.NewGuid().ToString(),
+    IdempotencyKey = Guid.NewGuid().ToString()
+};
+
+// Create a minimal publish request
+var minimalRequest = new PublishEventRequest
+{
+    AggregateId = "product-789",
+    AggregateType = "Product",
+    EventType = "ProductCreated",
+    Topic = "products.events"
+};
+```
