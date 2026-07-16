@@ -57,10 +57,16 @@ try
     Log.Information("Initializing database");
     await app.Services.InitializeDatabaseAsync();
 
-    // Configure middleware
+    // Configure middleware. Error handling / request logging / rate limiting / perf
+    // monitoring were registered in DI but never applied to the pipeline before.
+    app.UseOutboxPatternMiddleware();
     app.UseHttpsRedirection();
     app.UseAuthorization();
     app.MapControllers();
+
+    // Expose the Prometheus scrape endpoint (/metrics) - the OpenTelemetry exporter is
+    // registered in AddOutboxPatternPhase2 but has no effect without this mapping.
+    app.MapPrometheusScrapingEndpoint();
 
     // Health check endpoint
     app.MapGet("/health", async (IOutboxService outboxService) =>
