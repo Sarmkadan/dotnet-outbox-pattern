@@ -1075,6 +1075,38 @@ var isDeleted = await webhookService.DeleteWebhookAsync(webhook.Id);
 Console.WriteLine("Webhook deleted: {isDeleted}");
 ```
 
+## QueryBuilder
+
+The `QueryBuilder` class provides a fluent, type-safe API for constructing complex filter conditions and sorting criteria programmatically. It eliminates the need for raw SQL strings or string concatenation, preventing SQL injection vulnerabilities while maintaining readability. The builder supports common comparison operators, text matching, set operations, null checks, and flexible ordering, making it ideal for building dynamic queries in repository patterns, API endpoints, or data access layers.
+
+### Example Usage
+
+```csharp
+// Create a query builder for filtering orders
+var queryBuilder = new QueryBuilder()
+    .Where("Status", "Completed")
+    .WhereGreaterThan("TotalAmount", 100.00m)
+    .WhereLessThan("TotalAmount", 1000.00m)
+    .WhereContains("CustomerName", "John")
+    .WhereIn("Region", "North", "South", "East")
+    .WhereBetween("OrderDate", new DateTime(2024, 1, 1), DateTime.UtcNow)
+    .WhereIsNotNull("ShippingAddress")
+    .OrderBy("TotalAmount", descending: true);
+
+// Get all conditions as a list
+var conditions = queryBuilder.GetConditions();
+
+// Get a human-readable filter string
+var filterString = queryBuilder.ToFilterString();
+Console.WriteLine(filterString);
+// Output: Status = Completed AND TotalAmount > 100.00 AND TotalAmount < 1000.00 AND CustomerName CONTAINS John 
+//         AND Region IN (North,South,East) AND OrderDate BETWEEN 1/1/2024 12:00:00 AM AND 7/17/2026 12:00:00 AM 
+//         AND ShippingAddress IS NOT NULL AND TotalAmount DESC
+
+// Get a summary of applied filters
+var filterSummary = queryBuilder.GetFilterSummary();
+```
+
 ## CollectionExtensions
 
 The `CollectionExtensions` class provides a comprehensive set of extension methods for working with collections, lists, and enumerables in .NET. It includes utilities for batch processing, safe element access, navigation between elements, duplicate detection, pagination, and merging collections. These methods simplify common collection operations and provide safer alternatives to built-in collection APIs.
