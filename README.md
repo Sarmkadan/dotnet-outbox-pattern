@@ -446,6 +446,66 @@ var healthCheckOptions = new HealthCheckOptions
 builder.Services.AddSingleton(healthCheckOptions);
 ```
 
+## RateLimitingMiddleware
+
+The `RateLimitingMiddleware` class implements a sliding window token bucket rate limiting algorithm to protect your API from abuse and ensure fair resource allocation across clients. It tracks request rates per client identifier (IP address or API key) and rejects requests that exceed configured limits, returning appropriate HTTP 429 responses with retry-after headers.
+
+The middleware uses a concurrent dictionary to track rate limits per client with automatic cleanup of expired entries to prevent memory leaks. Rate limiting headers (`X-RateLimit-Limit` and `X-RateLimit-Remaining`) are added to responses to enable client-side monitoring and retry logic.
+
+### Example Usage
+
+```csharp
+// Configure rate limiting in Program.cs with custom options
+builder.Services.AddRateLimiting(options =>
+{
+    options.RequestsPerWindow = 500;  // Allow 500 requests per window
+    options.WindowSeconds = 30;        // 30-second sliding window
+});
+
+// Register the middleware in the pipeline
+app.UseRateLimiting();
+
+// Example: Register with default options (1000 requests per 60 seconds)
+app.UseRateLimiting();
+
+// Example: Custom configuration for a specific endpoint
+app.Map("/api/orders", orderApp =>
+{
+    orderApp.UseRateLimiting(new RateLimitingOptions
+    {
+        RequestsPerWindow = 100,   // More restrictive for order endpoints
+        WindowSeconds = 60
+    });
+    
+    orderApp.MapGet("/", () => "Order API");
+});
+
+// Example: Using API key authentication with rate limiting
+app.Use(async (context, next) =>
+{
+    if (context.Request.Headers.TryGetValue("X-Api-Key", out var apiKey))
+    {
+        // Validate API key
+        if (IsValidApiKey(apiKey))
+        {
+            await next();
+        }
+        else
+        {
+            context.Response.StatusCode = 401;
+            await context.Response.WriteAsync("Invalid API key");
+        }
+    }
+    else
+    {
+        context.Response.StatusCode = 400;
+        await context.Response.WriteAsync("API key required");
+    }
+});
+
+app.UseRateLimiting();
+```
+
 ## IdempotencyKeyGenerator
 
 The `IdempotencyKeyGenerator` class provides deterministic methods for generating idempotency keys across various message types and scenarios. Idempotency keys ensure exactly-once message processing by creating consistent, unique identifiers that prevent duplicate processing of the same logical operation. This is critical for distributed systems where message delivery may be unreliable or retries may occur.
