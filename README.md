@@ -259,6 +259,202 @@ alertingService.Thresholds.MaxDlqMessages = 200;
 alertingService.Thresholds.MaxFailureRate = 0.10; // 10% failure rate allowed
 ```
 
+## IMessagePublisher
+
+The `IMessagePublisher` interface defines the contract for publishing outbox messages to external message brokers or services. It is the primary abstraction for reliable message delivery in the transactional outbox pattern implementation, enabling at-least-once or exactly-once delivery semantics depending on the concrete implementation.
+
+This interface is consumed by `MessagePublishingService` which handles batching, retries, dead letter routing, and lock management. Implementations can target various message brokers (RabbitMQ, Azure Service Bus, Kafka, etc.) or even HTTP endpoints.
+
+### Key Features
+- Single-message publishing with cancellation support
+- Integration with dependency injection for testability and flexibility
+- Support for at-least-once delivery semantics
+- Composable with the outbox pattern infrastructure
+
+### Example Usage
+
+```csharp
+// Custom implementation of IMessagePublisher for a webhook service
+public class WebhookMessagePublisher : IMessagePublisher
+{
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<WebhookMessagePublisher> _logger;
+    private readonly WebhookOptions _options;
+
+    public WebhookMessagePublisher(
+        HttpClient httpClient,
+        ILogger<WebhookMessagePublisher> logger,
+        IOptions<WebhookOptions> options)
+    {
+        _httpClient = httpClient;
+        _logger = logger;
+        _options = options.Value;
+    }
+
+    public async Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Extract webhook URL from message metadata or use default
+            var webhookUrl = message.Metadata?.GetValueOrDefault("WebhookUrl")
+                ?? _options.DefaultWebhookUrl;
+
+            if (string.IsNullOrEmpty(webhookUrl))
+            {
+                _logger.LogWarning("No webhook URL configured for message {MessageId}", message.Id);
+                return;
+            }
+
+            // Prepare request with exponential backoff
+            var request = new HttpRequestMessage(HttpMethod.Post, webhookUrl)
+            {
+                Content = new StringContent(message.EventData, Encoding.UTF8, "application/json")
+            };
+
+            // Add headers from message metadata
+            if (message.Metadata != null)
+            {
+                foreach (var kvp in message.Metadata)
+                {
+                    request.Headers.Add(kvp.Key, kvp.Value);
+                }
+            }
+
+            // Add correlation and causation headers for tracing
+            if (!string.IsNullOrEmpty(message.CorrelationId))
+            {
+                request.Headers.Add("X-Correlation-Id", message.CorrelationId);
+            }
+
+            if (!string.IsNullOrEmpty(message.CausationId))
+            {
+                request.Headers.Add("X-Causation-Id", message.CausationId);
+            }
+
+            // Send with timeout
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(_options.RequestTimeoutSeconds));
+
+            var response = await _httpClient.SendAsync(request, cts.Token);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Webhook delivery failed for message {MessageId}: {StatusCode} - {Error}",
+                    message.Id, response.StatusCode, errorContent);
+                throw new HttpRequestException($"Webhook returned status code: {response.StatusCode}");
+            }
+
+            _logger.LogInformation("Webhook published successfully for message {MessageId} to {Url}",
+                message.Id, webhookUrl);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Webhook delivery timed out for message {MessageId}", message.Id);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error publishing webhook for message {MessageId}", message.Id);
+            throw;
+        }
+    }
+}
+
+// Register in Program.cs
+builder.Services.AddHttpClient<WebhookMessagePublisher>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
+builder.Services.AddScoped<IMessagePublisher, WebhookMessagePublisher>();
+builder.Services.Configure<WebhookOptions>(options =>
+{
+    options.DefaultWebhookUrl = "https://api.example.com/webhooks/events";
+    options.RequestTimeoutSeconds = 10;
+});
+
+// Usage in application code
+public class OrderEventHandler
+{
+    private readonly IMessagePublisher _publisher;
+
+    public OrderEventHandler(IMessagePublisher publisher)
+    {
+        _publisher = publisher;
+    }
+
+    public async Task HandleOrderCreatedAsync(OrderCreatedEvent orderEvent, CancellationToken cancellationToken)
+    {
+        var outboxMessage = new OutboxMessage
+        {
+            IdempotencyKey = IdempotencyKeyGenerator.ForEntityCreation("order", orderEvent.OrderId),
+            AggregateId = orderEvent.OrderId,
+            AggregateType = "Order",
+            EventType = EventType.OrderCreated,
+            EventData = JsonSerializer.Serialize(orderEvent),
+            EventTypeName = typeof(OrderCreatedEvent).FullName,
+            Topic = "orders",
+            PartitionKey = orderEvent.OrderId,
+            DeliveryGuarantee = DeliveryGuarantee.AtLeastOnce,
+            CorrelationId = orderEvent.CorrelationId,
+            CausationId = orderEvent.EventId.ToString(),
+            Metadata = new Dictionary<string, string>
+            {
+                ["WebhookUrl"] = "https://webhook.site/unique-id",
+                ["ContentType"] = "application/json"
+            }
+        };
+
+        await _publisher.PublishAsync(outboxMessage, cancellationToken);
+    }
+}
+
+// Simple console application example
+public static class WebhookPublisherExample
+{
+    public static async Task Main()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(configure => configure.AddConsole());
+        services.AddHttpClient<WebhookMessagePublisher>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        services.AddScoped<IMessagePublisher, WebhookMessagePublisher>();
+        services.Configure<WebhookOptions>(options =>
+        {
+            options.DefaultWebhookUrl = "https://webhook.site/unique-id";
+            options.RequestTimeoutSeconds = 10;
+        });
+
+        var serviceProvider = services.BuildServiceProvider();
+        var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
+        var logger = serviceProvider.GetRequiredService<ILogger<WebhookPublisherExample>>();
+
+        var message = new OutboxMessage
+        {
+            IdempotencyKey = "order-created-12345",
+            AggregateId = "order-12345",
+            AggregateType = "Order",
+            EventType = EventType.OrderCreated,
+            EventData = JsonSerializer.Serialize(new { OrderId = "order-12345", Amount = 99.99m }),
+            EventTypeName = typeof(OrderCreatedEvent).FullName,
+            Topic = "orders",
+            PartitionKey = "order-12345",
+            DeliveryGuarantee = DeliveryGuarantee.AtLeastOnce,
+            Metadata = new Dictionary<string, string>
+            {
+                ["WebhookUrl"] = "https://webhook.site/unique-id"
+            }
+        };
+
+        await publisher.PublishAsync(message, CancellationToken.None);
+        logger.LogInformation("Message published successfully");
+    }
+}
+```
+
 ## RabbitMqMessagePublisher
 
 The `RabbitMqMessagePublisher` class implements the `IMessagePublisher` interface to publish outbox messages to RabbitMQ. It provides reliable message delivery with configurable exchange and routing key strategies, supporting at-least-once delivery semantics through persistent message properties. The publisher integrates with the .NET dependency injection system and can be configured for production use with RabbitMQ.Client connections.
