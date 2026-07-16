@@ -956,6 +956,97 @@ var isDeleted = await webhookService.DeleteWebhookAsync(webhook.Id);
 Console.WriteLine("Webhook deleted: {isDeleted}");
 ```
 
+## DependencyInjectionExtensions
+
+The `DependencyInjectionExtensions` class provides extension methods for configuring the transactional outbox pattern's Phase 2 features in the .NET dependency injection container. It simplifies the registration of middleware, services, formatters, and utilities needed for production-grade outbox pattern implementations with monitoring, caching, webhooks, and OpenTelemetry integration.
+
+This class includes methods for registering core services like metrics collection, webhook infrastructure, caching, message search, notifications, and HTTP clients, as well as configuration options for rate limiting, message archival, and health checks.
+
+### Key Features
+- Register Phase 2 services including metrics, webhooks, caching, and search capabilities
+- Configure OpenTelemetry metrics exporter for observability
+- Add middleware pipeline with error handling, logging, rate limiting, and performance monitoring
+- Register custom data formatters (JSON, CSV, XML) for message export
+- Configure rate limiting, message archival, and health check thresholds
+- Register HTTP clients for external integrations with resilience patterns
+
+### Example Usage
+
+```csharp
+// Configure services in Program.cs
+var builder = WebApplication.CreateBuilder(args);
+
+// Add core outbox pattern services
+builder.Services.AddOutboxPattern("your-connection-string");
+
+// Add Phase 2 services
+builder.Services.AddOutboxPatternPhase2();
+
+// Configure OpenTelemetry for metrics
+builder.Services.AddOutboxOpenTelemetry();
+
+// Configure formatters for message export
+builder.Services.AddDataFormatter<JsonFormatter>();
+builder.Services.AddDataFormatter<CsvFormatter>();
+builder.Services.AddDataFormatter<XmlFormatter>();
+
+// Configure rate limiting
+builder.Services.ConfigureRateLimiting(requestsPerWindow: 500, windowSeconds: 30);
+
+// Configure message archival
+builder.Services.ConfigureMessageArchival(
+    archiveDaysThreshold: 30,
+    archivalIntervalHours: 6,
+    batchSize: 5000
+);
+
+// Configure health check thresholds
+builder.Services.ConfigureHealthCheck(
+    failureRateThreshold: 0.15,  // 15% failure rate
+    stuckMessageThreshold: 200,   // 200 stuck messages
+    deadLetterThreshold: 100      // 100 dead letters
+);
+
+// Register external HTTP clients for resilience
+builder.Services.AddExternalHttpClients(
+    ("payment-gateway", new HttpClientConfig
+    {
+        BaseAddress = "https://api.payment-provider.com",
+        Timeout = TimeSpan.FromSeconds(30),
+        RetryPolicy = new RetryPolicy
+        {
+            MaxRetries = 3,
+            BackoffStrategy = BackoffStrategy.Exponential,
+            Delay = TimeSpan.FromSeconds(2)
+        }
+    }),
+    ("notification-service", new HttpClientConfig
+    {
+        BaseAddress = "https://api.notification-service.com",
+        Timeout = TimeSpan.FromSeconds(15)
+    })
+);
+
+var app = builder.Build();
+
+// Configure middleware pipeline
+app.UseOutboxPatternMiddleware(new RateLimitingOptions
+{
+    RequestsPerWindow = 500,
+    WindowSeconds = 30
+});
+
+// Map endpoints
+app.MapGet("/health", () => "Healthy");
+app.MapGet("/metrics", async (IMetricsService metricsService) =>
+{
+    var metrics = await metricsService.GetSystemHealthAsync();
+    return Results.Ok(metrics);
+});
+
+app.Run();
+```
+
 ## IMetricsService
 
 The `IMetricsService` interface provides comprehensive observability and monitoring capabilities for the transactional outbox pattern implementation. It enables real-time insights into system health, performance metrics, error analytics, throughput, latency, resource consumption, and active alerts. This service is essential for monitoring message processing pipelines, identifying bottlenecks, and maintaining system reliability.
