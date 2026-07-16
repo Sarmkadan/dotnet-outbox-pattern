@@ -1196,6 +1196,73 @@ var supportedFormats = exportService.GetSupportedFormats();
 Console.WriteLine("Supported formats: " + string.Join(", ", supportedFormats));
 ```
 
+## OutboxConfigurationBuilder
+
+The `OutboxConfigurationBuilder` class provides a fluent interface for configuring outbox message publishing behavior with comprehensive retry strategies, delivery guarantees, and timeout settings. It enables developers to customize message delivery semantics through a builder pattern that supports exponential backoff, linear backoff, fixed intervals, and various delivery guarantees. The builder validates all configuration options and provides predefined presets for common scenarios like production, development, testing, high-reliability, and fast-fail configurations.
+
+### Key Features
+- Fluent configuration API for building `PublishingOptions`
+- Multiple retry strategies (exponential, linear, fixed interval)
+- Configurable delivery guarantees (at-least-once, exactly-once)
+- Adjustable retry delays with maximum limits
+- Jitter support for avoiding thundering herd problems
+- Predefined configuration presets for common environments
+- Comprehensive validation of all configuration values
+
+### Example Usage
+
+```csharp
+// Configure outbox publishing with custom settings using the builder pattern
+var publishingOptions = new OutboxConfigurationBuilder()
+    .WithMaxRetries(5)
+    .UseExponentialBackoff(
+        initialDelay: TimeSpan.FromSeconds(2),
+        maxDelay: TimeSpan.FromMinutes(5),
+        multiplier: 2.0)
+    .WithDeliveryGuarantee(DeliveryGuarantee.AtLeastOnce)
+    .WithJitter(true)
+    .WithPublishTimeout(TimeSpan.FromSeconds(30))
+    .Build();
+
+// Use the configured options with IOutboxService
+builder.Services.AddOutboxPattern("your-connection-string");
+builder.Services.Configure<PublishingOptions>(options =>
+{
+    options.MaxRetries = publishingOptions.MaxRetries;
+    options.RetryPolicy = publishingOptions.RetryPolicy;
+    options.InitialRetryDelay = publishingOptions.InitialRetryDelay;
+    options.MaxRetryDelay = publishingOptions.MaxRetryDelay;
+    options.BackoffMultiplier = publishingOptions.BackoffMultiplier;
+    options.DeliveryGuarantee = publishingOptions.DeliveryGuarantee;
+    options.UseJitter = publishingOptions.UseJitter;
+    options.PublishTimeout = publishingOptions.PublishTimeout;
+});
+
+// Or use predefined presets for common scenarios
+var productionOptions = OutboxConfigurationPresets.Production();
+var developmentOptions = OutboxConfigurationPresets.Development();
+var testingOptions = OutboxConfigurationPresets.Testing();
+var highReliabilityOptions = OutboxConfigurationPresets.HighReliability();
+var fastFailOptions = OutboxConfigurationPresets.FastFail();
+
+// Example: Configure with linear backoff for predictable delays
+var linearOptions = new OutboxConfigurationBuilder()
+    .WithMaxRetries(3)
+    .UseLinearBackoff(
+        interval: TimeSpan.FromSeconds(5),
+        maxDelay: TimeSpan.FromMinutes(2))
+    .WithDeliveryGuarantee(DeliveryGuarantee.AtLeastOnce)
+    .Build();
+
+// Example: Configure with fixed interval for simple retry logic
+var fixedIntervalOptions = new OutboxConfigurationBuilder()
+    .WithMaxRetries(10)
+    .UseFixedInterval(TimeSpan.FromSeconds(10))
+    .WithDeliveryGuarantee(DeliveryGuarantee.AtLeastOnce)
+    .WithJitter(true)
+    .Build();
+```
+
 ## IOutboxService
 
 The `IOutboxService` interface provides the core contract for managing outbox message publishing in the transactional outbox pattern. It handles reliable message delivery with transactional consistency, deduplication, and comprehensive querying capabilities for monitoring and debugging message flow.
