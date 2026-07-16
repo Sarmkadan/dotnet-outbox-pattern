@@ -382,3 +382,95 @@ class Program
     }
 }
 ```
+
+## Outbox lifecycle
+
+The transactional outbox turns "update my database and tell the outside world"
+into a single atomic step. The message row is written in the **same** transaction
+as the business change, so it can never be lost even if the process dies before
+the broker is contacted. A separate dispatcher then relays the row to the broker
+and marks it published.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant App as Application
+    participant DB as Database (business + outbox)
+    participant Proc as OutboxProcessor
+    participant Pub as MessagePublisher
+    participant Broker as Message Broker
+    participant DLQ as Dead-letter store
+
+    Note over App,DB: One transaction - business change + outbox row commit together
+    App->>DB: BEGIN TX
+    App->>DB: write business entity
+    App->>DB: INSERT OutboxMessage (state = Pending)
+    App->>DB: COMMIT
+
+    loop dispatcher tick (poll + backoff)
+        Proc->>DB: fetch Pending batch (BatchSize)
+        Proc->>DB: lock row (state = Processing, LockExpiresAt)
+        Proc->>Pub: PublishAsync(message)
+        Pub->>Broker: deliver
+        alt broker acks
+            Broker-->>Pub: ok
+            Proc->>DB: MarkAsPublished (state = Published)
+        else broker rejects / times out
+            Broker-->>Pub: error
+            Proc->>DB: RecordFailure (PublishAttempts++)
+            alt attempts >= MaxPublishAttempts
+                Proc->>DLQ: INSERT DeadLetter
+                Proc->>DB: state = Failed
+            else attempts remain
+                Note over Proc,DB: message retried on a later tick
+            end
+        end
+    end
+
+    Note over Proc,DB: crash after publish, before MarkAsPublished ->
+    Note over Proc,DB: row stays Processing, lock expires, row is recovered and redelivered
+```
+
+Key guarantees this implies:
+
+- **At-least-once delivery.** A crash in the window between a successful broker
+  publish and the local `MarkAsPublished` commit causes the row to be redelivered
+  on restart. Consumers must deduplicate on `IdempotencyKey`.
+- **No lost messages.** Because the outbox row is committed in the business
+  transaction, a message is never lost even if the dispatcher never got a turn.
+- **Bounded retries.** A message that keeps failing is retried up to
+  `MaxPublishAttempts` and then moved to the dead-letter store instead of looping
+  forever.
+
+These are exercised end-to-end in `OutboxEndToEndTests` (crash-before-dispatch,
+crash-after-publish redelivery, steady-state dedup) and
+`PoisonMessageDeadLetterTests` (retry exhaustion to dead-letter).
+
+## When NOT to use this pattern
+
+The outbox is not free - it adds a table, a polling dispatcher, and end-to-end
+latency. Reach for something else when:
+
+- **You need low, predictable latency.** Polling adds delay between commit and
+  delivery. If you need sub-100ms fan-out, a direct broker publish (accepting the
+  dual-write risk, or using broker transactions / CDC) fits better.
+- **Your datastore has no transactions spanning the business write and the outbox
+  write.** The whole guarantee rests on that single atomic commit. If the business
+  data and the outbox table cannot share a transaction, the pattern buys you
+  nothing.
+- **You already have change-data-capture (CDC).** Tailing the transaction log
+  (Debezium, SQL Server CDC, Postgres logical replication) gives the same
+  at-least-once guarantee without a hand-rolled dispatcher or the extra write.
+- **The side effect is not a message.** The outbox reliably emits *events*. It
+  does not make an arbitrary external call (charge a card, call a REST API)
+  transactional - wrap those in their own idempotency / saga handling.
+- **You cannot make consumers idempotent.** At-least-once means duplicates are
+  expected. If downstream consumers cannot dedupe (no idempotency key, non-
+  idempotent side effects), the duplicates will cause real damage.
+- **Throughput dwarfs a single relational table.** At very high sustained event
+  rates the outbox table and its polling become the bottleneck; a purpose-built
+  streaming platform (Kafka with transactions) is the better tool.
+
+Rule of thumb: use the outbox when you own a transactional database, you are
+emitting domain events, and correctness (never losing an event) matters more than
+shaving the last few milliseconds of latency.
