@@ -1386,6 +1386,85 @@ Console.WriteLine($"API key: {apiKey}");
 // Output: api key: api-stripe-req_1234567890
 ```
 
+## IDeadLetterRepository
+
+The `IDeadLetterRepository` interface provides data access operations for managing dead letter queue (DLQ) messages in the database. It serves as the primary abstraction for persisting, retrieving, updating, and deleting dead letter records that have failed processing. This repository is consumed by `IDeadLetterService` and other components to implement DLQ workflows including monitoring, review, and reprocessing.
+
+The repository supports comprehensive querying capabilities for investigating failed messages, including filtering by topic, aggregate ID, review status, and provides statistics for monitoring DLQ health.
+
+### Example Usage
+
+```csharp
+// Register the repository in Program.cs
+builder.Services.AddScoped<IDeadLetterRepository, DeadLetterRepository>();
+
+// Example: Add a new dead letter when message processing fails repeatedly
+var deadLetterRepository = serviceProvider.GetRequiredService<IDeadLetterRepository>();
+
+var deadLetter = new DeadLetter
+{
+    OutboxMessageId = Guid.Parse("3fa85f64-5717-4562-b3fc-2c963f66afa"),
+    IdempotencyKey = "order-created-12345",
+    AggregateId = "order-12345",
+    AggregateType = "Order",
+    EventType = EventType.OrderCreated,
+    EventData = JsonSerializer.Serialize(new { OrderId = "order-12345", Amount = 99.99m }),
+    EventTypeName = typeof(OrderCreatedEvent).FullName,
+    Topic = "orders",
+    PartitionKey = "order-12345",
+    TotalAttempts = 5,
+    ErrorMessage = "Failed to process order: inventory check timeout",
+    ErrorStackTrace = "at OrderService.ProcessOrder() in OrderService.cs:line 42\n...",
+    OriginalCreatedAt = DateTime.UtcNow.AddMinutes(-30),
+    MovedToDlqAt = DateTime.UtcNow,
+    LastAttemptAt = DateTime.UtcNow.AddSeconds(-10),
+    CorrelationId = "corr-8675309",
+    CausationId = "command-98765",
+    Metadata = JsonSerializer.Serialize(new { Priority = "high", Source = "api-gateway" })
+};
+
+// Add the dead letter to the repository
+await deadLetterRepository.AddAsync(deadLetter, cancellationToken);
+Console.WriteLine($"Dead letter added: {deadLetter.Id}");
+
+// Example: Retrieve a dead letter by ID
+var retrievedDeadLetter = await deadLetterRepository.GetByIdAsync(deadLetter.Id, cancellationToken);
+if (retrievedDeadLetter != null)
+{
+    Console.WriteLine($"Found dead letter: {retrievedDeadLetter.ErrorMessage}");
+}
+
+// Example: Get unreviewed dead letters requiring operator attention
+var unreviewedLetters = await deadLetterRepository.GetUnreviewedAsync(limit: 50, cancellationToken);
+Console.WriteLine($"Found {unreviewedLetters.Count} unreviewed dead letters");
+
+// Example: Get dead letters by topic for investigation
+var orderDeadLetters = await deadLetterRepository.GetByTopicAsync("orders", cancellationToken);
+Console.WriteLine($"Found {orderDeadLetters.Count} dead letters for orders topic");
+
+// Example: Get dead letters by aggregate ID
+var customerDeadLetters = await deadLetterRepository.GetByAggregateIdAsync("customer-67890", cancellationToken);
+Console.WriteLine($"Found {customerDeadLetters.Count} dead letters for customer-67890");
+
+// Example: Update a dead letter after review
+retrievedDeadLetter.IsReviewed = true;
+retrievedDeadLetter.ReviewedAt = DateTime.UtcNow;
+retrievedDeadLetter.ReviewNotes = "Investigated - transient network timeout, safe to requeue";
+await deadLetterRepository.UpdateAsync(retrievedDeadLetter, cancellationToken);
+Console.WriteLine("Dead letter updated after review");
+
+// Example: Get DLQ statistics
+var totalCount = await deadLetterRepository.GetCountAsync(cancellationToken);
+var unreviewedCount = await deadLetterRepository.GetUnreviewedCountAsync(cancellationToken);
+var requeuedCount = await deadLetterRepository.GetRequeuedCountAsync(cancellationToken);
+
+Console.WriteLine($"DLQ Statistics - Total: {totalCount}, Unreviewed: {unreviewedCount}, Requeued: {requeuedCount}");
+
+// Example: Delete a resolved dead letter after investigation
+await deadLetterRepository.DeleteAsync(deadLetter.Id, cancellationToken);
+Console.WriteLine("Dead letter deleted after resolution");
+```
+
 ## IDeadLetterService
 
 The `IDeadLetterService` interface provides operations for managing dead letter queue (DLQ) messages that have failed processing. It enables operators to move failed messages to the DLQ, review them, requeue them for retry, and monitor system health. The interface supports critical workflows for maintaining system reliability when messages repeatedly fail processing.
