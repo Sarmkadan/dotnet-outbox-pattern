@@ -51,6 +51,67 @@ var formattedDuration = DateTimeHelper.FormatDuration(3600000);
 var relativeTimeString = DateTimeHelper.GetRelativeTimeString(DateTime.UtcNow.AddHours(-2));
 ```
 
+// ## ValidationHelper
+// The `ValidationHelper` utility provides a set of static methods and a fluent validation context for validating method parameters and business rules.
+// It supports both simple validation with immediate exceptions and fluent validation with chained conditions that can collect multiple errors before throwing.
+
+/// <summary>
+/// Validation helper utilities
+/// </summary>
+
+// Example Usage
+```csharp
+// Basic validation methods
+ValidationHelper.ValidateNotEmpty(userInput, nameof(userInput));
+ValidationHelper.ValidateNotNull(customer, nameof(customer));
+ValidationHelper.ValidatePositive(orderQuantity, nameof(orderQuantity));
+ValidationHelper.ValidateRange(age, 18, 120, nameof(age));
+ValidationHelper.ValidateLength(productName, 3, 100, nameof(productName));
+ValidationHelper.ValidateAny(items, item => item.IsActive, "No active items found");
+ValidationHelper.ValidateAll(emails, email => email.Contains("@"), "All emails must be valid");
+ValidationHelper.ValidateEqual(expectedId, actualId, nameof(actualId));
+ValidationHelper.ValidateCondition(hasPermission, "User does not have required permission");
+
+// Fluent validation with ValidationContext
+var user = new User
+{
+    Name = "John Doe",
+    Email = "john@example.com",
+    Age = 25
+};
+
+var validationContext = ValidationHelper.Validate(user)
+    .NotNull(u => u.Name, nameof(user.Name))
+    .NotEmpty(u => u.Name, nameof(user.Name))
+    .MinLength(u => u.Name, 2, nameof(user.Name))
+    .MaxLength(u => u.Email, 100, nameof(user.Email))
+    .Condition(u => u.Age >= 18, "User must be at least 18 years old");
+
+if (!validationContext.IsValid)
+{
+    Console.WriteLine("Validation failed:");
+    foreach (var error in validationContext.Errors)
+    {
+        Console.WriteLine($"- {error}");
+    }
+}
+
+// Or throw immediately if any validation fails
+ValidationHelper.Validate(user)
+    .NotNull(u => u.Name, nameof(user.Name))
+    .NotEmpty(u => u.Email, nameof(user.Email))
+    .ThrowIfInvalid();
+
+// Validate a collection of items
+var products = new List<Product>
+{
+    new Product { Id = 1, Name = "Widget", Price = 9.99m },
+    new Product { Id = 2, Name = "Gadget", Price = 19.99m }
+};
+
+ValidationHelper.ValidateAll(products, p => p.Price > 0, "All product prices must be positive");
+```
+
 // ## PaginationHelper
 // The `PaginationHelper` utility provides utilities for working with paginated collections, including validation of pagination
 // parameters, calculating skip values for offset-based pagination, and creating pagination metadata. It simplifies the
