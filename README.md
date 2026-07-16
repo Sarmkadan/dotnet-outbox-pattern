@@ -198,7 +198,6 @@ class Program
         Console.WriteLine($"Export result: {result.MessageCount}");
     }
 }
-```
 
 ## IExternalApiClient
 
@@ -220,10 +219,9 @@ class Program
     {
         // Create a mock logger
         var loggerMock = new Mock<ILogger<ExternalApiClient>>();
-        var httpClientMock = new Mock<ResilientHttpClient>(loggerMock.Object);
         
         // Create the external API client
-        var apiClient = new ExternalApiClient(httpClientMock.Object, loggerMock.Object);
+        var apiClient = new ExternalApiClient(null!, loggerMock.Object);
         
         // Create a sample payload
         var orderCreatedPayload = new {
@@ -395,6 +393,49 @@ public class PaymentProcessedEvent : DomainEvent
 }
 
 public enum PaymentStatus { Pending, Completed, Failed }
+```
+
+## IHttpClientFactory
+
+The `IHttpClientFactory` interface is used to create instances of `HttpClient` with specific configurations. It allows for the creation of named clients, each with its own settings such as timeout, max retries, and default headers. The `IHttpClientFactory` interface provides methods to create a new client or retrieve an existing one by name.
+
+### Example Usage
+
+```csharp
+using System;
+using DotnetOutboxPattern.Integration;
+
+class Program
+{
+    static void Main()
+    {
+        var factory = new CustomHttpClientFactory(null);
+        var config = new HttpClientConfig
+        {
+            Timeout = TimeSpan.FromSeconds(10),
+            MaxRetries = 2,
+            UserAgent = "MyClient",
+            DefaultHeaders = new Dictionary<string, string>
+            {
+                {"Accept", "application/json"}
+            },
+            FollowRedirects = true,
+            MaxRedirects = 3,
+            ProxyConfig = new ProxyConfig
+            {
+                ProxyUrl = "http://myproxy:8080",
+                Username = "user",
+                Password = "password",
+                BypassList = new List<string> { "localhost" }
+            }
+        };
+
+        var client = factory.CreateClient("myclient", config);
+        var resilientClient = new ResilientHttpClient(client, null);
+        var response = resilientClient.GetAsync("https://example.com").Result;
+        Console.WriteLine($"Status code: {response.StatusCode}");
+    }
+}
 ```
 
 ## NotificationServiceTests
