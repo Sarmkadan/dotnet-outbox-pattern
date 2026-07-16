@@ -200,6 +200,88 @@ class Program
 }
 ```
 
+## IExternalApiClient
+
+The `IExternalApiClient` interface defines a contract for making external API calls as part of the outbox message publishing process. It's used when outbox events need to trigger actions in external systems that aren't handled by the message broker. The interface provides two methods: one for generic API calls returning an `ApiCallResult` object, and a generic version that deserializes the response into a specified type.
+
+### Example Usage
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using DotnetOutboxPattern.Integration;
+using Microsoft.Extensions.Logging;
+using Moq;
+
+class Program
+{
+    static async Task Main()
+    {
+        // Create a mock logger
+        var loggerMock = new Mock<ILogger<ExternalApiClient>>();
+        var httpClientMock = new Mock<ResilientHttpClient>(loggerMock.Object);
+        
+        // Create the external API client
+        var apiClient = new ExternalApiClient(httpClientMock.Object, loggerMock.Object);
+        
+        // Create a sample payload
+        var orderCreatedPayload = new {
+            OrderId = "12345",
+            CustomerId = "cust-67890",
+            Amount = 99.99m,
+            Items = new[] {
+                new { ProductId = "prod-1", Quantity = 2, Price = 49.99m },
+                new { ProductId = "prod-2", Quantity = 1, Price = 0.00m }
+            }
+        };
+        
+        // Make a generic API call
+        var result = await apiClient.CallAsync(
+            "https://api.example.com/orders",
+            orderCreatedPayload,
+            new Dictionary<string, string> { { "Authorization", "Bearer token123" } }
+        );
+        
+        Console.WriteLine($"API Call Success: {result.IsSuccess}");
+        Console.WriteLine($"Status Code: {result.StatusCode}");
+        Console.WriteLine($"Duration: {result.DurationMs}ms");
+        Console.WriteLine($"Response: {result.ResponseBody}");
+        
+        // Make a typed API call (deserialize response to OrderResponse)
+        var orderResponse = await apiClient.CallAsync<OrderResponse>(
+            "https://api.example.com/orders/12345",
+            new { } // empty payload for GET request
+        );
+        
+        if (orderResponse != null)
+        {
+            Console.WriteLine($"Order ID: {orderResponse.OrderId}");
+            Console.WriteLine($"Order Amount: {orderResponse.Amount}");
+        }
+        
+        // Handle API errors
+        var errorResult = await apiClient.CallAsync(
+            "https://api.example.com/invalid-endpoint",
+            new { }
+        );
+        
+        if (!errorResult.IsSuccess)
+        {
+            Console.WriteLine($"API Error: {errorResult.ErrorMessage}");
+        }
+    }
+}
+
+public class OrderResponse
+{
+    public string OrderId { get; set; }
+    public string CustomerId { get; set; }
+    public decimal Amount { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+```
+
 ## NotificationServiceTests
 
 The `NotificationServiceTests` class provides comprehensive unit tests for the `NotificationService` class, validating functionality related to notification sending, channel management, error handling, and notification retrieval. These tests ensure robust handling of notifications throughout their lifecycle, including proper validation of required parameters, channel routing, error logging, and recent notification tracking.
