@@ -31,4 +31,39 @@ class Program
 }
 ```
 
+## EnumsTests
+
+The `EnumsTests` class verifies that the enum types used throughout the library have the correct numeric values, string representations, and expected behaviours. It ensures that any changes to the enums are caught early by checking their underlying values and `ToString()` output.
+
+### Example Usage
+
+```csharp
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Tests;
+
+class Program
+{
+    static void Main()
+    {
+        var tests = new EnumsTests();
+
+        // Verify enum numeric values
+        tests.OutboxMessageState_Values_MatchExpected();
+        tests.EventType_Values_MatchExpected();
+        tests.DeliveryGuarantee_Values_MatchExpected();
+        tests.RetryPolicyType_Values_MatchExpected();
+
+        // Verify ToString() representations
+        tests.OutboxMessageState_ToString_ReturnsCorrectString(OutboxMessageState.Pending, "Pending");
+        tests.EventType_ToString_ReturnsCorrectString(EventType.Created, "Created");
+        tests.DeliveryGuarantee_ToString_ReturnsCorrectString(DeliveryGuarantee.AtLeastOnce, "AtLeastOnce");
+        tests.RetryPolicyType_ToString_ReturnsCorrectString(RetryPolicyType.NoRetry, "NoRetry");
+
+        // Additional enum behaviour checks
+        tests.OutboxMessageState_HasExpectedDescriptionAttributes();
+        tests.EventType_HasExpectedValues();
+    }
+}
+```
+
 // existing content ...
