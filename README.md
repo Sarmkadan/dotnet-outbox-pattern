@@ -873,6 +873,78 @@ var recentMessages = await searchService.GetByTimeRangeAsync(
 );
 ```
 
+## DotnetOutboxPatternOptions
+
+The `DotnetOutboxPatternOptions` class provides comprehensive configuration for the transactional outbox pattern implementation in .NET applications. It enables developers to customize message processing behavior, retry strategies, delivery guarantees, and resource management through a strongly-typed configuration object. This class supports validation and provides sensible defaults for production-ready message publishing pipelines.
+
+### Key Features
+- Configure batch processing parameters (size, delays, parallel processing)
+- Define retry policies with exponential backoff, linear, or fixed intervals
+- Set delivery guarantees (at-least-once or exactly-once)
+- Configure timeouts, TTL, and deduplication settings
+- Validate configuration with comprehensive validation rules
+- Support for dependency injection and configuration files
+
+### Example Usage
+
+```csharp
+// Configure options in Program.cs with appsettings.json
+builder.Services.Configure<DotnetOutboxPatternOptions>(builder.Configuration.GetSection(DotnetOutboxPatternOptions.SectionName));
+
+// Or configure programmatically with custom settings
+var options = new DotnetOutboxPatternOptions
+{
+    ProcessorEnabled = true,
+    BatchSize = 250,
+    DelayBetweenBatches = 10000, // 10 seconds
+    MaxRetries = 10,
+    RetryPolicy = RetryPolicyType.ExponentialBackoff,
+    InitialRetryDelaySeconds = 2,
+    MaxRetryDelaySeconds = 300, // 5 minutes max
+    BackoffMultiplier = 2.5,
+    DeliveryGuarantee = DeliveryGuarantee.AtLeastOnce,
+    UseJitter = true,
+    PublishTimeoutSeconds = 45,
+    MessageTtlDays = 180,
+    PreservePartitionOrdering = true,
+    LockDurationSeconds = 600, // 10 minutes
+    ClockSkewToleranceSeconds = 120 // 2 minutes
+};
+
+// Register with dependency injection
+builder.Services.AddSingleton(options);
+
+// Use with IOutboxService
+builder.Services.AddOutboxPattern("your-connection-string");
+
+// Configure message publisher
+builder.Services.AddMessagePublisher<RabbitMqMessagePublisher>();
+```
+
+### Configuration File Example
+
+```json
+{
+  "Outbox": {
+    "ProcessorEnabled": true,
+    "BatchSize": 250,
+    "DelayBetweenBatches": 10000,
+    "MaxRetries": 10,
+    "RetryPolicy": "ExponentialBackoff",
+    "InitialRetryDelaySeconds": 2,
+    "MaxRetryDelaySeconds": 300,
+    "BackoffMultiplier": 2.5,
+    "DeliveryGuarantee": "AtLeastOnce",
+    "UseJitter": true,
+    "PublishTimeoutSeconds": 45,
+    "MessageTtlDays": 180,
+    "PreservePartitionOrdering": true,
+    "LockDurationSeconds": 600,
+    "ClockSkewToleranceSeconds": 120
+  }
+}
+```
+
 ## INotificationService
 
 The `INotificationService` interface provides a unified API for sending notifications through multiple channels including console, file, and in-memory storage. It supports structured notification data with severity levels, metadata, and multiple delivery channels, making it suitable for application alerts, system notifications, and audit logging.
