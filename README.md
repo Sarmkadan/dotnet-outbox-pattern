@@ -49,6 +49,51 @@ var createdEvent = new EntityCreatedEvent
 };
 ```
 
+## GuidGenerator
+
+The `GuidGenerator` utility class provides comprehensive methods for generating and working with GUIDs in .NET applications. It offers deterministic GUID generation, validation, parsing, and specialized formats for correlation IDs, request IDs, and idempotency keys. This utility is particularly useful for distributed systems requiring consistent identifiers, message tracing, and idempotent operations.
+
+
+### Example Usage
+
+```csharp
+// Generate a new random GUID
+var randomGuid = GuidGenerator.NewGuid();
+Console.WriteLine($"Random GUID: {randomGuid}");
+
+// Generate a deterministic GUID from a string (useful for idempotency keys)
+var deterministicGuid = GuidGenerator.FromString("user-order-12345");
+Console.WriteLine($"Deterministic GUID: {deterministicGuid}");
+
+// Generate a GUID from multiple components (composite identifiers)
+var compositeGuid = GuidGenerator.FromComponents("order", "-", "12345", "-", "customer", "-", "67890");
+Console.WriteLine($"Composite GUID: {compositeGuid}");
+
+// Check if a string is a valid GUID
+var isValid = GuidGenerator.IsValid("3fa85f64-5717-4562-b3fc-2c963f66afa");
+Console.WriteLine($"Is valid GUID: {isValid}");
+
+// Parse a string to GUID with default fallback
+var parsedGuid = GuidGenerator.Parse("invalid-guid-string", Guid.Empty);
+Console.WriteLine($"Parsed GUID: {parsedGuid}");
+
+// Create a sequential GUID for better database index performance
+var sequentialGuid = GuidGenerator.NewSequentialId();
+Console.WriteLine($"Sequential GUID: {sequentialGuid}");
+
+// Generate a correlation ID for tracing related messages
+var correlationId = GuidGenerator.GenerateCorrelationId();
+Console.WriteLine($"Correlation ID: {correlationId}");
+
+// Generate a short request ID for API requests
+var requestId = GuidGenerator.GenerateRequestId();
+Console.WriteLine($"Request ID: {requestId}");
+
+// Generate an idempotency key for ensuring exactly-once message processing
+var idempotencyKey = GuidGenerator.GenerateIdempotencyKey("order-create");
+Console.WriteLine($"Idempotency Key: {idempotencyKey}");
+```
+
 ## BatchProcessingExtensions
 
 The `BatchProcessingExtensions` class provides extension methods for configuring batch processing services in the .NET dependency injection container. It enables developers to register and customize the `IBatchProcessingService` with various options including chunk sizes, parallel processing, delays between chunks, and failure handling strategies. This extension simplifies the setup of batch processing pipelines for reliable message publishing with configurable throughput and resource utilization.
