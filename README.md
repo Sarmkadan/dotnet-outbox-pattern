@@ -49,6 +49,36 @@ var createdEvent = new EntityCreatedEvent
 };
 ```
 
+## BatchProcessingOptions
+
+The `BatchProcessingOptions` class provides configuration for batch processing operations with configurable chunk sizes and parallel execution. It allows fine-tuning of memory usage, throughput, and fault tolerance when processing large volumes of outbox messages. Key features include adjustable chunk sizes for memory management, configurable parallel chunk processing for throughput optimization, and sequential chunk processing with delay options for controlled downstream impact.
+
+### Example Usage
+
+```csharp
+// Configure batch processing for high-throughput scenario with parallel chunks
+var batchOptions = new BatchProcessingOptions
+{
+    TotalBatchSize = 5000,
+    ChunkSize = 250,
+    MaxParallelChunks = 4,
+    EnableParallelChunks = true,
+    DelayBetweenChunksMs = 100,
+    StopOnChunkFailure = false
+};
+
+// Configure batch processing for memory-sensitive scenario with sequential chunks
+var memorySensitiveOptions = new BatchProcessingOptions
+{
+    TotalBatchSize = 1000,
+    ChunkSize = 50,
+    MaxParallelChunks = 1,
+    EnableParallelChunks = false,
+    DelayBetweenChunksMs = 500,
+    StopOnChunkFailure = true
+};
+```
+
 ## OutboxProcessingResult
 
 The `OutboxProcessingResult` class provides a comprehensive result object for outbox message processing operations. It encapsulates key information about the processing outcome, including success status, processed message count, failed message count, dead letter count, error message, stack trace, start and completion timestamps, processed message IDs, failed message IDs, batch size, lock duration, delay between batches, messages before break, break duration, and whether parallel processing is enabled.
