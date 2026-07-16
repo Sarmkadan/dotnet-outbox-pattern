@@ -573,6 +573,63 @@ var recentMetrics = monitor.GetRecentMetrics(minutes: 30);
 var performanceStats = monitor.GetStats(minutes: 60);
 ```
 
+## IMessageSearchService
+
+The `IMessageSearchService` interface provides advanced search and filtering capabilities for outbox messages, enabling operators to efficiently locate and analyze messages based on various criteria. It supports complex queries with pagination, filtering by aggregate, topic, state, time ranges, error patterns, and more. This service is essential for debugging, monitoring, and auditing message flow in distributed systems.
+
+### Key Features
+- Paginated search with complex filters (aggregate ID/type, topic, state, creation time ranges, publish attempts)
+- Specialized queries for error analysis (`FindErrorsAsync`, `FindByErrorPatternAsync`, `FindStuckMessagesAsync`)
+- Time-based queries (`GetByTimeRangeAsync`)
+- Topic and aggregate-based lookups (`GetByTopicAsync`, `GetByAggregateAsync`)
+
+### Example Usage
+
+```csharp
+// Register the service in Program.cs
+builder.Services.AddScoped<IMessageSearchService, MessageSearchService>();
+
+// Example: Search for messages with complex filters
+var searchService = serviceProvider.GetRequiredService<IMessageSearchService>();
+
+// Search with pagination
+var paginatedResults = await searchService.SearchAsync(new MessageSearchRequest
+{
+    AggregateId = "order-12345",
+    Topic = "orders",
+    State = "Processing",
+    Page = 1,
+    PageSize = 50
+});
+
+// Get messages by topic
+var orderMessages = await searchService.GetByTopicAsync("orders", limit: 200);
+
+// Get messages by aggregate
+var customerEvents = await searchService.GetByAggregateAsync(
+    aggregateId: "customer-67890",
+    aggregateType: "Customer",
+    state: OutboxMessageState.Published,
+    limit: 100
+);
+
+// Find messages with errors
+var errorMessages = await searchService.FindErrorsAsync(limit: 50);
+
+// Find messages by error pattern
+var timeoutErrors = await searchService.FindByErrorPatternAsync("timeout", limit: 20);
+
+// Find stuck messages (processing for too long)
+var stuckMessages = await searchService.FindStuckMessagesAsync(olderThanMinutes: 60);
+
+// Get messages by time range
+var recentMessages = await searchService.GetByTimeRangeAsync(
+    startTime: DateTime.UtcNow.AddHours(-24),
+    endTime: DateTime.UtcNow,
+    limit: 1000
+);
+```
+
 ## IdempotencyKeyGenerator
 
 The `IdempotencyKeyGenerator` class provides deterministic methods for generating idempotency keys across various message types and scenarios. Idempotency keys ensure exactly-once message processing by creating consistent, unique identifiers that prevent duplicate processing of the same logical operation. This is critical for distributed systems where message delivery may be unreliable or retries may occur.
