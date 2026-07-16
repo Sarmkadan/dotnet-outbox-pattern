@@ -1,4 +1,17 @@
-// existing content ...
+# dotnet-outbox-pattern
+
+Transactional outbox pattern for .NET: persist domain changes and outgoing messages in the
+same SQL Server transaction, then let a background processor deliver them with retries,
+idempotency keys and a dead-letter queue.
+
+## Architecture
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture: component breakdown,
+write/read pipeline, locking and retry semantics, design decisions with their trade-offs,
+extension points and known limitations. Short version: `IOutboxService` writes messages to
+the outbox table, the `OutboxProcessor` background service polls in batches (with optional
+idle backoff), pushes them through your `IMessagePublisher` implementation, and parks
+exhausted messages in a dead-letter table with a review/requeue API.
 
 ## OutboxMessageTests
 
