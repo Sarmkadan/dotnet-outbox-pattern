@@ -299,3 +299,81 @@ var dateRangeMessages = await service.GetMessagesByDateRangeAsync(
 }
 }
 ```
+
+## DeadLetterServiceTests
+
+The `DeadLetterServiceTests` class provides comprehensive unit tests for the `DeadLetterService` that verify dead-letter queue management, message review workflows, health checks, and requeue operations. These tests ensure proper handling of messages that cannot be delivered, including validation of constructor parameters, error conditions, and state transitions between dead-letter and pending states.
+
+### Example Usage
+
+```csharp
+using System;
+using System.Threading.Tasks;
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Tests;
+using Microsoft.Extensions.Logging;
+using Moq;
+
+class Program
+{
+    static async Task Main()
+    {
+        // Setup mocks
+        var dlRepositoryMock = new Mock<IDeadLetterRepository>();
+        var outboxRepositoryMock = new Mock<IOutboxRepository>();
+        var loggerMock = new Mock<ILogger<DeadLetterServiceTests>>();
+
+        // Create test instance
+        var deadLetterTests = new DeadLetterServiceTests(
+            dlRepositoryMock.Object,
+            outboxRepositoryMock.Object,
+            loggerMock.Object
+        );
+
+        // Guard clause tests
+        deadLetterTests.Constructor_WithNullDlRepository_ThrowsArgumentNullException();
+        deadLetterTests.Constructor_WithNullOutboxRepository_ThrowsArgumentNullException();
+        deadLetterTests.Constructor_WithNullLogger_ThrowsArgumentNullException();
+
+        // Dead letter operations
+        var message = new OutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            IdempotencyKey = "dlq-key-001",
+            AggregateId = "order-456",
+            AggregateType = "Order",
+            EventType = EventType.Created,
+            EventData = "{\"orderId\":\"456\"}",
+            EventTypeName = "OrderCreatedEvent",
+            Topic = "orders.created",
+            State = OutboxMessageState.Failed,
+            FailedAttempts = 5,
+            MaxAttempts = 3
+        };
+
+        // Move message to dead letter queue
+        var dlqMessage = await deadLetterTests.MoveToDlqAsync_WithValidMessage_AddsDeadLetterAndReturnsIt(message);
+
+        // Review dead letter message
+        await deadLetterTests.ReviewAsync_WhenFound_MarksAsReviewedAndPersistsUpdate(dlqMessage.Id);
+
+        // Check health status
+        var health = await deadLetterTests.GetHealthAsync_WithUnreviewedMessages_ReturnsUnhealthyWithCount();
+        Console.WriteLine($"Health status: {health.Status}, Unreviewed count: {health.UnreviewedCount}");
+
+        // Requeue reviewed message
+        var requeued = await deadLetterTests.RequeueAsync_WhenOriginalMessageExists_ResetsToPendingAndMarksRequeued(dlqMessage.Id);
+
+        // Get unreviewed messages
+        var unreviewed = await deadLetterTests.GetUnreviewedAsync();
+        Console.WriteLine($"Found {unreviewed.Count} unreviewed messages");
+
+        // Get by topic
+        var topicMessages = await deadLetterTests.GetByTopicAsync("orders.created");
+        Console.WriteLine($"Found {topicMessages.Count} messages for topic");
+
+        // Delete dead letter
+        await deadLetterTests.DeleteAsync(dlqMessage.Id);
+    }
+}
+```
