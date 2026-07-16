@@ -100,6 +100,41 @@ class Program
 }
 ```
 
+## ConstantsTests
+
+The `ConstantsTests` class provides unit tests for the various constant values and configuration parameters used throughout the outbox pattern implementation. It verifies that default values are sensible, standard topics are correctly defined, log property names are consistent, error codes are comprehensive, and HTTP headers follow conventions. These tests ensure that the library's constants remain stable and predictable.
+
+### Example Usage
+
+```csharp
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Tests;
+
+class Program
+{
+    static void Main()
+    {
+        var tests = new ConstantsTests();
+
+        // Verify default constant values
+        tests.OutboxConstants_DefaultValues_MatchExpected();
+        tests.OutboxConstants_ValidationConstants_AreReasonable();
+
+        // Verify standard topics
+        tests.StandardTopics_ContainsExpectedTopicNames();
+
+        // Verify log property names
+        tests.LogProperties_ContainsExpectedPropertyNames();
+
+        // Verify error codes
+        tests.ErrorCodes_ContainsExpectedErrorCodes();
+
+        // Verify HTTP headers
+        tests.HttpHeaders_ContainsExpectedHeaderNames();
+    }
+}
+```
+
 ## DefaultMessagePublisherTests
 
 The `DefaultMessagePublisherTests` class contains unit tests that verify the behavior of the `DefaultMessagePublisher` implementation. It checks constructor guard clauses, successful publishing, logging of message details and event types, cancellation handling, and publishing of multiple messages. The class also validates the `MessagePublisherFactory`'s ability to create a functional logging publisher.
