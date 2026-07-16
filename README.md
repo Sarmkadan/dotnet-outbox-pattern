@@ -365,6 +365,87 @@ await userService.RegisterUserAsync(
 // and will be published to RabbitMQ by the background processor
 ```
 
+## HealthCheckService
+
+The `HealthCheckService` is a background service that continuously monitors the health of the outbox pattern system. It periodically checks message processing rates, failure patterns, and resource usage to detect issues like high failure rates, stuck messages, or dead letter accumulation. When issues are detected, it raises alerts that can be retrieved via `GetActiveAlerts()` for monitoring and alerting purposes.
+
+The service runs in the background and caches health status for quick access by other components or health check endpoints.
+
+### Example Usage
+
+```csharp
+// Register the health check service in Program.cs
+builder.Services.AddHostedService<HealthCheckService>();
+builder.Services.AddSingleton<HealthCheckOptions>(options => new HealthCheckOptions
+{
+    CheckIntervalMs = 300000, // 5 minutes
+    HighFailureRateThreshold = 0.15, // 15% failure rate
+    StuckMessageThreshold = 200, // 200 stuck messages
+    DeadLetterThreshold = 100 // 100 dead letters
+});
+
+// In a background service or application component
+public class MonitoringService : BackgroundService
+{
+    private readonly HealthCheckService _healthCheckService;
+    private readonly ILogger<MonitoringService> _logger;
+
+    public MonitoringService(HealthCheckService healthCheckService, ILogger<MonitoringService> logger)
+    {
+        _healthCheckService = healthCheckService;
+        _logger = logger;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            // Check for active alerts
+            var alerts = _healthCheckService.GetActiveAlerts();
+            
+            if (alerts.Count > 0)
+            {
+                _logger.LogWarning("System has {AlertCount} active alerts:", alerts.Count);
+                foreach (var alert in alerts)
+                {
+                    _logger.LogWarning("- [{Type}] {Message} (Raised: {RaisedAt})", 
+                        alert.Type, alert.Message, alert.RaisedAt);
+                }
+            }
+            else
+            {
+                _logger.LogInformation("System is healthy - no active alerts");
+            }
+
+            await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+        }
+    }
+}
+
+// Example: Configure alert thresholds based on environment
+var healthCheckOptions = new HealthCheckOptions
+{
+    CheckIntervalMs = Environment.GetEnvironmentVariable("HEALTH_CHECK_INTERVAL_MINUTES") switch
+    {
+        var interval when int.TryParse(interval, out var minutes) => minutes * 60 * 1000,
+        _ => 300000 // 5 minutes default
+    },
+    HighFailureRateThreshold = Environment.GetEnvironmentVariable("FAILURE_RATE_THRESHOLD") switch
+    {
+        var rate when double.TryParse(rate, out var threshold) => threshold,
+        _ => 0.10 // 10% default
+    },
+    StuckMessageThreshold = int.TryParse(Environment.GetEnvironmentVariable("STUCK_MESSAGE_THRESHOLD"), out var stuckThreshold) 
+        ? stuckThreshold
+        : 100, // 100 messages default
+    DeadLetterThreshold = int.TryParse(Environment.GetEnvironmentVariable("DEAD_LETTER_THRESHOLD"), out var dlqThreshold)
+        ? dlqThreshold
+        : 50 // 50 messages default
+};
+
+builder.Services.AddSingleton(healthCheckOptions);
+```
+
 ## IdempotencyKeyGenerator
 
 The `IdempotencyKeyGenerator` class provides deterministic methods for generating idempotency keys across various message types and scenarios. Idempotency keys ensure exactly-once message processing by creating consistent, unique identifiers that prevent duplicate processing of the same logical operation. This is critical for distributed systems where message delivery may be unreliable or retries may occur.
