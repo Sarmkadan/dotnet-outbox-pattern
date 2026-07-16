@@ -630,6 +630,81 @@ var recentMessages = await searchService.GetByTimeRangeAsync(
 );
 ```
 
+## INotificationService
+
+The `INotificationService` interface provides a unified API for sending notifications through multiple channels including console, file, and in-memory storage. It supports structured notification data with severity levels, metadata, and multiple delivery channels, making it suitable for application alerts, system notifications, and audit logging.
+
+Notifications can be sent synchronously or asynchronously to specific channels, and recent notifications can be retrieved for monitoring and debugging purposes.
+
+### Example Usage
+
+```csharp
+// Register notification services in Program.cs
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IInMemoryNotificationChannel, InMemoryNotificationChannel>();
+builder.Services.AddScoped<IConsoleNotificationChannel, ConsoleNotificationChannel>();
+builder.Services.AddScoped<IFileNotificationChannel, FileNotificationChannel>();
+
+// Create and send a notification
+var notificationService = serviceProvider.GetRequiredService<INotificationService>();
+
+// Create a notification
+var notification = new Notification
+{
+    Title = "Order Processed",
+    Message = "Order #12345 has been successfully processed and shipped.",
+    Severity = NotificationSeverity.Information,
+    Metadata = new Dictionary<string, string>
+    {
+        ["OrderId"] = "12345",
+        ["CustomerId"] = "CUST-789",
+        ["Amount"] = "$99.99"
+    },
+    Channels = new List<string> { "console", "email" }
+};
+
+// Send the notification asynchronously
+await notificationService.SendAsync(notification);
+
+// Send to specific channels
+await notificationService.SendToChannelAsync(notification, "console");
+await notificationService.SendToChannelAsync(notification, "file");
+
+// Get recent notifications for monitoring
+var recentNotifications = notificationService.GetRecentNotifications(limit: 50);
+
+// Example with different severity levels
+var notifications = new List<Notification>
+{
+    new Notification
+    {
+        Title = "System Alert",
+        Message = "High CPU usage detected on server-01",
+        Severity = NotificationSeverity.Warning,
+        Channels = new List<string> { "console", "email" }
+    },
+    new Notification
+    {
+        Title = "Critical Error",
+        Message = "Database connection lost",
+        Severity = NotificationSeverity.Error,
+        Channels = new List<string> { "console", "file" }
+    },
+    new Notification
+    {
+        Title = "System Status",
+        Message = "All systems operational",
+        Severity = NotificationSeverity.Information,
+        Channels = new List<string> { "console" }
+    }
+};
+
+foreach (var notification in notifications)
+{
+    await notificationService.SendAsync(notification);
+}
+```
+
 ## IdempotencyKeyGenerator
 
 The `IdempotencyKeyGenerator` class provides deterministic methods for generating idempotency keys across various message types and scenarios. Idempotency keys ensure exactly-once message processing by creating consistent, unique identifiers that prevent duplicate processing of the same logical operation. This is critical for distributed systems where message delivery may be unreliable or retries may occur.
