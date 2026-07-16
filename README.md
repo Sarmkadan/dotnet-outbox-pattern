@@ -198,3 +198,72 @@ class Program
         Console.WriteLine($"Export result: {result.MessageCount}");
     }
 }
+```
+
+## NotificationServiceTests
+
+The `NotificationServiceTests` class provides comprehensive unit tests for the `NotificationService` class, validating functionality related to notification sending, channel management, error handling, and notification retrieval. These tests ensure robust handling of notifications throughout their lifecycle, including proper validation of required parameters, channel routing, error logging, and recent notification tracking.
+
+### Example Usage
+
+```csharp
+using System;
+using System.Collections.Generic;
+using DotnetOutboxPattern.Services;
+using DotnetOutboxPattern.Tests;
+using Microsoft.Extensions.Logging;
+using Moq;
+
+class Program
+{
+    static void Main()
+    {
+        // Create a mock logger
+        var loggerMock = new Mock<ILogger<NotificationService>>();
+        var notificationService = new NotificationService(loggerMock.Object);
+
+        // Test constructor with null logger
+        try
+        {
+            var invalidService = new NotificationService(null!);
+        }
+        catch (ArgumentNullException ex)
+        {
+            Console.WriteLine($"Constructor validation: {ex.Message}");
+        }
+
+        // Create a valid notification
+        var notification = new Notification
+        {
+            Title = "System Alert",
+            Message = "Database connection established",
+            Severity = NotificationSeverity.Info,
+            Channels = new List<string> { "in-memory", "console" }
+        };
+
+        // Send notification to all channels
+        notificationService.SendAsync_WithValidNotification_SendsToAllChannels();
+        Console.WriteLine("Notification sent successfully");
+
+        // Test sending to specific known channel
+        notificationService.SendToChannelAsync_WithKnownChannel_DelegatesToHandler();
+        Console.WriteLine("Channel delegation tested");
+
+        // Test sending to unknown channel (should log warning)
+        notificationService.SendToChannelAsync_WithUnknownChannel_LogsWarningAndReturns();
+        Console.WriteLine("Unknown channel handling tested");
+
+        // Test error handling when channel throws
+        notificationService.SendToChannelAsync_WhenHandlerThrows_LogsErrorAndContinues();
+        Console.WriteLine("Error handling tested");
+
+        // Get recent notifications
+        var recentNotifications = notificationService.GetRecentNotifications(10);
+        Console.WriteLine($"Recent notifications count: {recentNotifications.Count}");
+
+        // Get default recent notifications (last 100)
+        var defaultRecent = notificationService.GetRecentNotifications_WithDefaultCount_ReturnsLast100();
+        Console.WriteLine($"Default recent notifications count: {defaultRecent.Count}");
+    }
+}
+```
