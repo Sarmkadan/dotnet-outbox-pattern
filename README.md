@@ -49,6 +49,53 @@ var createdEvent = new EntityCreatedEvent
 };
 ```
 
+## BatchProcessingExtensions
+
+The `BatchProcessingExtensions` class provides extension methods for configuring batch processing services in the .NET dependency injection container. It enables developers to register and customize the `IBatchProcessingService` with various options including chunk sizes, parallel processing, delays between chunks, and failure handling strategies. This extension simplifies the setup of batch processing pipelines for reliable message publishing with configurable throughput and resource utilization.
+
+### Key Features
+- Register `IBatchProcessingService` with default or custom configuration
+- Configure chunk sizes for memory management and processing granularity
+- Enable parallel chunk processing for improved throughput
+- Add delays between sequential chunks to control downstream impact
+- Configure batch failure handling strategies
+
+### Example Usage
+
+```csharp
+// Register batch processing service with default configuration
+builder.Services.AddBatchProcessing();
+
+// Register with custom options via configuration delegate
+builder.Services.AddBatchProcessing(options =>
+{
+    options.ChunkSize = 250;
+    options.EnableParallelChunks = true;
+    options.MaxParallelChunks = 4;
+    options.DelayBetweenChunksMs = 100;
+    options.StopOnChunkFailure = false;
+});
+
+// Register with pre-configured BatchProcessingOptions instance
+var batchOptions = new BatchProcessingOptions
+{
+    ChunkSize = 200,
+    EnableParallelChunks = true,
+    MaxParallelChunks = 2,
+    DelayBetweenChunksMs = 50,
+    StopOnChunkFailure = true
+};
+builder.Services.AddBatchProcessing(batchOptions);
+
+// Configure additional options fluently after registration
+builder.Services
+    .AddBatchProcessing()
+    .WithChunkSize(300)
+    .WithParallelChunks(maxConcurrency: 3)
+    .WithDelayBetweenChunks(milliseconds: 75)
+    .StopBatchOnChunkFailure();
+```
+
 ## BatchProcessingOptions
 
 The `BatchProcessingOptions` class provides configuration for batch processing operations with configurable chunk sizes and parallel execution. It allows fine-tuning of memory usage, throughput, and fault tolerance when processing large volumes of outbox messages. Key features include adjustable chunk sizes for memory management, configurable parallel chunk processing for throughput optimization, and sequential chunk processing with delay options for controlled downstream impact.
