@@ -505,3 +505,97 @@ class Program
     }
 }
 ```
+
+## StructuredLoggingExtensions
+
+The `StructuredLoggingExtensions` class provides extension methods for structured logging with custom contexts. It offers semantic logging capabilities specifically designed for outbox operations, enabling detailed and type-safe logging with structured data that can be easily consumed by log aggregation systems.
+
+
+### Key Features
+- Log outbox operations with contextual information
+- Track message publishing attempts and outcomes
+- Monitor system health and performance metrics
+- Handle retry logic and dead letter queue scenarios
+- Provide structured logging for better observability
+
+### Example Usage
+
+```csharp
+using System;
+using System.Collections.Generic;
+using DotnetOutboxPattern.Logging;
+using Microsoft.Extensions.Logging;
+using Moq;
+
+class Program
+{
+    static void Main()
+    {
+        // Create a logger (in real apps, use dependency injection)
+        var loggerMock = new Mock<ILogger<Program>>();
+        var logger = loggerMock.Object;
+
+        // Log a generic outbox operation
+        logger.LogOutboxOperation(
+            LogLevel.Information,
+            "ProcessOutboxMessages",
+            "order-123",
+            "msg-456",
+            new Dictionary<string, object> { { "BatchSize", 10 }, { "WorkerId", "worker-1" } }
+        );
+
+        // Log message publishing with attempt tracking
+        logger.LogMessagePublishing(
+            Guid.NewGuid(),
+            "order-123",
+            "orders.created",
+            publishAttempt: 1,
+            maxAttempts: 5
+        );
+
+        // Log successful message publishing with performance metrics
+        logger.LogMessagePublishSuccess(
+            Guid.NewGuid(),
+            durationMs: 150,
+            publishAttempts: 1
+        );
+
+        // Log message publishing failure (warning level for retries, error for final attempt)
+        logger.LogMessagePublishFailure(
+            Guid.NewGuid(),
+            "Connection timeout to message broker",
+            publishAttempt: 2,
+            maxAttempts: 5
+        );
+
+        // Log message moved to dead letter queue
+        logger.LogMessageMovedToDeadLetter(
+            Guid.NewGuid(),
+            "order-123",
+            "Max publish attempts exceeded"
+        );
+
+        // Log message retry with delay
+        logger.LogMessageRetry(
+            Guid.NewGuid(),
+            retryCount: 2,
+            delayMs: 2000
+        );
+
+        // Log system health status
+        logger.LogHealthStatus(
+            "Healthy",
+            pendingMessages: 5,
+            processingMessages: 2,
+            failedMessages: 1
+        );
+
+        // Log performance metrics
+        logger.LogPerformanceMetric(
+            "MessageProcessingTime",
+            value: 45.25,
+            unit: "ms"
+        );
+    }
+}
+```
