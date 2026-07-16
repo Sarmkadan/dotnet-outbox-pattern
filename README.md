@@ -1,5 +1,5 @@
-
-## OutboxMessageAdditionalTests
+// README.md
+# OutboxMessageAdditionalTests
 
 The `OutboxMessageAdditionalTests` class provides comprehensive unit tests for the `OutboxMessage` domain model, extending the basic validation and state management tests with additional scenarios for message validation, state transitions, locking behavior, retry logic, and failure handling. These tests ensure robust handling of outbox messages throughout their lifecycle, including proper validation of required fields, state transitions during publishing, error recording, and lock management.
 
@@ -114,4 +114,87 @@ class Program
         Console.WriteLine($"Scheduled for: {scheduledMessage.ScheduledFor}");
     }
 }
-```
+
+## ExportServiceTests
+
+The `ExportServiceTests` class provides comprehensive unit tests for the `ExportService` class, validating functionality related to data export operations, format support, and error handling. These tests ensure robust handling of export operations throughout their lifecycle, including proper validation of required fields, state transitions during publishing, error recording, and lock management.
+
+### Example Usage
+
+```csharp
+using System;
+using DotnetOutboxPattern.Dtos;
+using DotnetOutboxPattern.Services;
+using DotnetOutboxPattern.Tests;
+
+class Program
+{
+    static void Main()
+    {
+        // Create a valid export request
+        var request = new ExportRequest { Format = "json" };
+
+        // Test constructor with null outbox service
+        var exportService = new ExportServiceTests();
+        exportService.Constructor_WithNullOutboxService_ThrowsArgumentNullException();
+
+        // Test constructor with null formatters
+        exportService.Constructor_WithNullFormatters_ThrowsArgumentNullException();
+
+        // Test get supported formats
+        var formats = exportService.GetSupportedFormats_ReturnsRegisteredFormats();
+        Console.WriteLine($"Supported formats: {string.Join(", ", formats)}");
+
+        // Test export with JSON format
+        var result = exportService.ExportAsync_WithJsonFormat_UsesJsonFormatter(request);
+        Console.WriteLine($"Export result: {result.Format}, {result.ContentType}");
+
+        // Test export with CSV format
+        result = exportService.ExportAsync_WithCsvFormat_UsesCsvFormatter(request);
+        Console.WriteLine($"Export result: {result.Format}, {result.ContentType}");
+
+        // Test export with unsupported format
+        try
+        {
+            result = exportService.ExportAsync_WithUnsupportedFormat_ThrowsInvalidOperationException(request);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Console.WriteLine($"Export error: {ex.Message}");
+        }
+
+        // Test export with lowercase format
+        result = exportService.ExportAsync_WithLowercaseFormat_IsFormatCaseInsensitive(request);
+        Console.WriteLine($"Export result: {result.Format}, {result.ContentType}");
+
+        // Test export with content size
+        result = exportService.ExportAsync_SetsContentSizeCorrectly(request);
+        Console.WriteLine($"Export result: {result.ContentLength}");
+
+        // Test export with exported at timestamp
+        result = exportService.ExportAsync_SetsExportedAtTimestamp(request);
+        Console.WriteLine($"Export result: {result.ExportedAt}");
+
+        // Test export with formatter exception
+        try
+        {
+            result = exportService.ExportAsync_WhenFormatterThrows_PropagatesException(request);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Export error: {ex.Message}");
+        }
+
+        // Test export to file
+        var filePath = exportService.ExportToFileAsync_CreatesExportDirectory(request);
+        Console.WriteLine($"Export file path: {filePath}");
+
+        // Test get supported formats with no formatters
+        var emptyFormats = exportService.GetSupportedFormats_ReturnsEmptyList_WhenNoFormatters();
+        Console.WriteLine($"Supported formats: {string.Join(", ", emptyFormats)}");
+
+        // Test export with empty message list
+        result = exportService.ExportAsync_WithEmptyMessageList_ReturnsValidResult(request);
+        Console.WriteLine($"Export result: {result.MessageCount}");
+    }
+}
