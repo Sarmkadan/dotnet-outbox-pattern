@@ -506,6 +506,73 @@ app.Use(async (context, next) =>
 app.UseRateLimiting();
 ```
 
+## PerformanceMonitoringMiddleware
+
+The `PerformanceMonitoringMiddleware` class captures request/response performance metrics for monitoring and alerting. It tracks latency, throughput, and identifies performance bottlenecks by recording key metrics for every HTTP request processed by the application. The middleware provides aggregated statistics including request counts, average/min/max/p50/p95/p99 durations, error rates, and detailed request-level metrics that can be used for diagnostics and performance analysis.
+
+### Example Usage
+
+```csharp
+// Register services in Program.cs
+builder.Services.AddSingleton<PerformanceMonitor>();
+
+// Use the middleware in the pipeline
+app.UsePerformanceMonitoring();
+
+// In a controller or service
+public class MonitoringController : ControllerBase
+{
+    private readonly PerformanceMonitor _monitor;
+    
+    public MonitoringController(PerformanceMonitor monitor)
+    {
+        _monitor = monitor;
+    }
+    
+    [HttpGet("metrics")]
+    public IActionResult GetMetrics()
+    {
+        var stats = _monitor.GetStats(minutes: 60);
+        
+        return Ok(new {
+            RequestCount = stats.RequestCount,
+            AverageDurationMs = stats.AverageDurationMs,
+            MinDurationMs = stats.MinDurationMs,
+            MaxDurationMs = stats.MaxDurationMs,
+            P50DurationMs = stats.P50DurationMs,
+            P95DurationMs = stats.P95DurationMs,
+            P99DurationMs = stats.P99DurationMs,
+            ErrorCount = stats.ErrorCount,
+            ErrorRate = stats.ErrorRate
+        });
+    }
+    
+    [HttpGet("slow-requests")]
+    public IActionResult GetSlowRequests()
+    {
+        var slowRequests = _monitor.GetRecentMetrics(minutes: 60)
+            .Where(m => m.DurationMs > 5000)
+            .OrderByDescending(m => m.DurationMs)
+            .Take(10)
+            .ToList();
+        
+        return Ok(slowRequests);
+    }
+}
+
+// Example: Using the extension methods on middleware instance
+app.Use(async (context, next) =>
+{
+    await next();
+});
+
+app.UsePerformanceMonitoring();
+
+var monitor = app.ApplicationServices.GetRequiredService<PerformanceMonitor>();
+var recentMetrics = monitor.GetRecentMetrics(minutes: 30);
+var performanceStats = monitor.GetStats(minutes: 60);
+```
+
 ## IdempotencyKeyGenerator
 
 The `IdempotencyKeyGenerator` class provides deterministic methods for generating idempotency keys across various message types and scenarios. Idempotency keys ensure exactly-once message processing by creating consistent, unique identifiers that prevent duplicate processing of the same logical operation. This is critical for distributed systems where message delivery may be unreliable or retries may occur.
