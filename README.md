@@ -1138,6 +1138,64 @@ var objectData = serializer.Deserialize<object>(json);
 Console.WriteLine($"Type: {objectData?.GetType().Name}");
 ```
 
+## IExportService
+
+The `IExportService` interface provides functionality for exporting outbox messages to various formats including JSON, CSV, and XML. It enables operators to extract message data for auditing, analysis, and integration with external systems. The service supports both in-memory export and file-based export with automatic timestamped file naming.
+
+### Key Features
+- Export messages with configurable filters (date ranges, status)
+- Multiple format support (JSON, CSV, XML) via registered formatters
+- In-memory export with detailed result tracking
+- File export with automatic directory creation and timestamped filenames
+- Content size tracking and message count reporting
+
+### Example Usage
+
+```csharp
+// Register the export service in Program.cs
+builder.Services.AddScoped<IExportService, ExportService>();
+builder.Services.AddScoped<IDataFormatter, JsonDataFormatter>();
+builder.Services.AddScoped<IDataFormatter, CsvDataFormatter>();
+builder.Services.AddScoped<IDataFormatter, XmlDataFormatter>();
+
+// Example: Export messages to JSON format
+var exportService = serviceProvider.GetRequiredService<IExportService>();
+
+var jsonExportRequest = new ExportRequest
+{
+    Format = "json",
+    StartDate = DateTime.UtcNow.AddHours(-24),
+    EndDate = DateTime.UtcNow,
+    Status = "Published"
+};
+
+var jsonResult = await exportService.ExportAsync(jsonExportRequest);
+
+Console.WriteLine($"Exported {jsonResult.MessageCount} messages in {jsonResult.Format} format");
+Console.WriteLine($"Content size: {jsonResult.ContentSizeBytes} bytes");
+Console.WriteLine($"Content type: {jsonResult.ContentType}");
+Console.WriteLine($"Exported at: {jsonResult.ExportedAt}");
+
+// Example: Export messages to CSV format with custom filters
+var csvExportRequest = new ExportRequest
+{
+    Format = "csv",
+    StartDate = DateTime.UtcNow.AddDays(-7),
+    EndDate = DateTime.UtcNow,
+    Status = "Failed"
+};
+
+var csvResult = await exportService.ExportAsync(csvExportRequest);
+
+// Example: Export to file (automatically creates exports directory)
+var filePath = await exportService.ExportToFileAsync(jsonExportRequest);
+Console.WriteLine($"Messages exported to file: {filePath}");
+
+// Example: Get supported export formats
+var supportedFormats = exportService.GetSupportedFormats();
+Console.WriteLine("Supported formats: " + string.Join(", ", supportedFormats));
+```
+
 ## IOutboxService
 
 The `IOutboxService` interface provides the core contract for managing outbox message publishing in the transactional outbox pattern. It handles reliable message delivery with transactional consistency, deduplication, and comprehensive querying capabilities for monitoring and debugging message flow.
