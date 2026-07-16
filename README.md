@@ -411,6 +411,78 @@ Console.WriteLine($"API key: {apiKey}");
 // Output: api key: api-stripe-req_1234567890
 ```
 
+## DeadLetterHandlingExample
+
+The `DeadLetterHandlingExample` class demonstrates comprehensive dead letter queue (DLQ) management for handling failed message processing in distributed systems. It provides tools for monitoring unreviewed dead letters, investigating failed messages, implementing manual review workflows, and automated recovery strategies for transient errors. This example is essential for maintaining system reliability when messages repeatedly fail processing.
+
+
+The example includes:
+- **DeadLetterMonitor**: Periodically checks for unreviewed dead letters and logs them
+- **AutomatedDeadLetterRecovery**: Implements recovery strategies for transient errors like timeouts and connection issues
+- **DeadLetterHealthCheck**: Health check for monitoring/alerting on DLQ state
+
+### Example Usage
+
+```csharp
+// Setup services in Program.cs
+var services = new ServiceCollection();
+services.AddLogging();
+services.AddOutboxPattern(connectionString);
+services.AddScoped<DeadLetterMonitor>();
+services.AddScoped<AutomatedDeadLetterRecovery>();
+services.AddScoped<DeadLetterHealthCheck>();
+
+// Register health checks
+services.AddHealthChecks()
+    .AddCheck<DeadLetterHealthCheck>("dead_letter_queue");
+
+// Example: Monitor dead letters from a background service
+public class DeadLetterMonitoringService : BackgroundService
+{
+    private readonly DeadLetterMonitor _monitor;
+    private readonly ILogger<DeadLetterMonitoringService> _logger;
+
+    public DeadLetterMonitoringService(DeadLetterMonitor monitor, ILogger<DeadLetterMonitoringService> logger)
+    {
+        _monitor = monitor;
+        _logger = logger;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            _logger.LogInformation("Checking for unreviewed dead letters...");
+            await _monitor.MonitorDeadLettersAsync();
+            await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+        }
+    }
+}
+
+// Example: Investigate and manually review a dead letter
+var monitor = new DeadLetterMonitor(deadLetterService, logger);
+var investigationResult = await monitor.InvestigateDeadLetterAsync(deadLetterId);
+Console.WriteLine(investigationResult);
+
+await monitor.ReviewDeadLetterAsync(deadLetterId, "Investigated - issue appears to be transient");
+
+// Example: Requeue a dead letter after fixing the underlying issue
+await monitor.RequeueDeadLetterAsync(deadLetterId, "Fixed database connection timeout issue");
+
+// Example: Run automated recovery periodically
+await new AutomatedDeadLetterRecovery(deadLetterService, logger)
+    .AttemptAutomaticRecoveryAsync();
+
+// Example: Check DLQ health status
+var (isHealthy, message) = await new DeadLetterHealthCheck(deadLetterService)
+    .CheckHealthAsync();
+
+if (!isHealthy)
+{
+    _logger.LogWarning("DLQ health check failed: {Message}", message);
+}
+```
+
 ## OutboxProcessingResult
 
 The `OutboxProcessingResult` class provides a comprehensive result object for outbox message processing operations. It encapsulates key information about the processing outcome, including success status, processed message count, failed message count, dead letter count, error message, stack trace, start and completion timestamps, processed message IDs, failed message IDs, batch size, lock duration, delay between batches, messages before break, break duration, and whether parallel processing is enabled.
