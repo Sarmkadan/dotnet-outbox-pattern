@@ -100,4 +100,45 @@ class Program
 }
 ```
 
+## DefaultMessagePublisherTests
+
+The `DefaultMessagePublisherTests` class contains unit tests that verify the behavior of the `DefaultMessagePublisher` implementation. It checks constructor guard clauses, successful publishing, logging of message details and event types, cancellation handling, and publishing of multiple messages. The class also validates the `MessagePublisherFactory`'s ability to create a functional logging publisher.
+
+### Example Usage
+
+```csharp
+using System;
+using System.Threading.Tasks;
+using DotnetOutboxPattern.Tests;
+using Microsoft.Extensions.Logging;
+using Moq;
+
+class Program
+{
+    static async Task Main()
+    {
+        // Instantiate the test class (its constructor sets up a mock logger and the SUT)
+        var publisherTests = new DefaultMessagePublisherTests();
+
+        // Guard‑clause test for the constructor
+        publisherTests.Constructor_WithNullLogger_ThrowsArgumentNullException();
+
+        // Basic publishing scenarios
+        await publisherTests.PublishAsync_WithValidMessage_CompletesSuccessfully();
+        await publisherTests.PublishAsync_WithValidMessage_LogsMessageDetails();
+        await publisherTests.PublishAsync_WithNullMessage_DoesNotThrow();
+        await publisherTests.PublishAsync_RespectsCancellationToken();
+
+        // Multiple messages and event‑type logging
+        await publisherTests.PublishAsync_MultipleMessages_PublishesEach();
+        await publisherTests.PublishAsync_LogsEventType();
+
+        // Factory tests for a logging publisher
+        var factoryTests = new MessagePublisherFactoryTests();
+        factoryTests.CreateLoggingPublisher_ReturnsValidPublisher();
+        await factoryTests.LoggingPublisher_PublishesMessage();
+    }
+}
+```
+
 // existing content ...
