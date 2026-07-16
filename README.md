@@ -447,6 +447,118 @@ class Program
 }
 ```
 
+## EventsTests
+
+The `EventsTests` class provides comprehensive unit tests for the domain event hierarchy and related event models in the outbox pattern implementation. These tests verify proper initialization, property setting, and validation of various event types including domain events, entity lifecycle events, custom events, notification events, and publishable events. The test suite ensures that all event models correctly handle optional properties like correlation IDs, causation IDs, user IDs, and payload data structures.
+
+### Example Usage
+
+```csharp
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Tests;
+
+class Program
+{
+  static void Main()
+  {
+    // Test default constructor initializes required properties
+    var domainEvent = new TestDomainEvent();
+    Console.WriteLine($"Event ID: {domainEvent.EventId}");
+    Console.WriteLine($"Occurred At: {domainEvent.OccurredAt}");
+
+    // Test setting optional properties
+    var domainEventWithProps = new TestDomainEvent
+    {
+      CorrelationId = "corr-123",
+      CausationId = "caus-456",
+      UserId = "user-789"
+    };
+    Console.WriteLine($"Correlation ID: {domainEventWithProps.CorrelationId}");
+    Console.WriteLine($"Causation ID: {domainEventWithProps.CausationId}");
+    Console.WriteLine($"User ID: {domainEventWithProps.UserId}");
+
+    // Test entity lifecycle events
+    var createdEvent = new EntityCreatedEvent
+    {
+      EntityId = "order-123",
+      EntityType = "Order",
+      EntityData = new Dictionary<string, object>
+      {
+        { "id", "order-123" },
+        { "amount", 100.50 },
+        { "customerId", "cust-456" }
+      }
+    };
+    Console.WriteLine($"Created Event - Entity: {createdEvent.EntityType} {createdEvent.EntityId}");
+
+    var updatedEvent = new EntityUpdatedEvent
+    {
+      EntityId = "order-123",
+      EntityType = "Order",
+      OldData = new Dictionary<string, object> { { "status", "pending" } },
+      NewData = new Dictionary<string, object> { { "status", "completed" } },
+      ChangedProperties = new List<string> { "status" }
+    };
+    Console.WriteLine($"Updated Event - Changes: {string.Join(", ", updatedEvent.ChangedProperties)}");
+
+    var deletedEvent = new EntityDeletedEvent
+    {
+      EntityId = "order-123",
+      EntityType = "Order",
+      DeletedData = new Dictionary<string, object>
+      {
+        { "id", "order-123" },
+        { "amount", 100.50 },
+        { "status", "completed" }
+      }
+    };
+    Console.WriteLine($"Deleted Event - Data preserved: {deletedEvent.DeletedData.Count} items");
+
+    // Test custom domain event
+    var customEvent = new CustomDomainEvent
+    {
+      EventName = "OrderStatusChanged",
+      AggregateId = "order-123",
+      AggregateType = "Order",
+      Payload = new Dictionary<string, object>
+      {
+        { "oldStatus", "pending" },
+        { "newStatus", "completed" },
+        { "orderId", "order-123" }
+      }
+    };
+    Console.WriteLine($"Custom Event - {customEvent.EventName}: {customEvent.AggregateId}");
+
+    // Test notification event
+    var notificationEvent = new NotificationEvent
+    {
+      NotificationType = "Email",
+      RecipientId = "user-789",
+      Subject = "Order Confirmation",
+      Body = "Your order has been confirmed",
+      IsCritical = true,
+      ActionUrl = "https://example.com/orders/123"
+    };
+    Console.WriteLine($"Notification - {notificationEvent.NotificationType}: {notificationEvent.Subject}");
+
+    // Test publishable event for outbox integration
+    var publishableEvent = new PublishableEvent
+    {
+      Event = new TestDomainEvent(),
+      Topic = "orders.created",
+      PartitionKey = "order-123",
+      MaxAttempts = 3,
+      DeliveryGuarantee = DeliveryGuarantee.ExactlyOnce
+    };
+    Console.WriteLine($"Publishable Event - Topic: {publishableEvent.Topic}, Max Attempts: {publishableEvent.MaxAttempts}");
+
+    // Test default constructor for publishable event
+    var defaultPublishable = new PublishableEvent();
+    Console.WriteLine($"Default Publishable - Max Attempts: {defaultPublishable.MaxAttempts}, Delivery: {defaultPublishable.DeliveryGuarantee}");
+  }
+}
+```
+
 ## MessagePublishingServiceTests
 
 The `MessagePublishingServiceTests` class provides comprehensive unit tests for the `MessagePublishingService` that verify message publishing behavior, batch processing, retry mechanisms, locking semantics, and dead-letter queue handling. These tests ensure reliable message delivery with proper error handling, idempotency checks, and state management for outbox messages.
