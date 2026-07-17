@@ -1676,6 +1676,52 @@ if (!healthCheckOptions.IsValid())
 }
 ```
 
+// ## OutboxMetrics
+// The `OutboxMetrics` class provides OpenTelemetry metrics for monitoring the outbox pattern system.
+// It tracks failed message publications, dead-lettered messages, and processing durations to provide
+// observability into the outbox processor's performance and reliability.
+
+/// <summary>
+/// Provides OpenTelemetry metrics for the outbox pattern
+/// </summary>
+
+// Example Usage
+```csharp
+using DotnetOutboxPattern.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+// Setup dependency injection
+var services = new ServiceCollection();
+services.AddLogging(configure => configure.AddConsole());
+services.AddSingleton<OutboxMetrics>(); // Or use proper DI registration
+
+var serviceProvider = services.BuildServiceProvider();
+
+// Resolve the metrics instance
+var metrics = serviceProvider.GetRequiredService<OutboxMetrics>();
+
+// Track a failed message publication
+metrics.PublishErrorsTotal.Add(1, new KeyValuePair<string, object?>("topic", "orders.events"));
+
+// Track a message moved to dead letter queue
+metrics.DeadLettersTotal.Add(1, new KeyValuePair<string, object?>("reason", "max_attempts_exceeded"));
+
+// Track processing duration for a batch of messages
+using var timer = metrics.ProcessingDurationSeconds.StartTimer();
+
+// Simulate message processing
+await Task.Delay(TimeSpan.FromMilliseconds(150));
+
+// Timer automatically records the duration when disposed
+
+// The metrics are automatically collected by OpenTelemetry and can be exported
+// to Prometheus, Grafana, or other monitoring systems
+
+// Cleanup when application shuts down
+metrics.Dispose();
+```
+
 // ## OutboxEndToEndTests
 // The `OutboxEndToEndTests` class provides end-to-end tests that exercise the outbox pattern against a real SQLite database through actual repositories and services. These tests verify the core guarantees of the outbox pattern: durability through process crashes and at-least-once delivery with consumer-side deduplication.
 
