@@ -633,6 +633,88 @@ if (xmlExportResponse.IsSuccessStatusCode)
 }
 ```
 
+// ## WebhookController
+// The `WebhookController` manages webhook subscriptions and handles incoming webhook deliveries.
+// External systems can subscribe to outbox events via webhooks to receive real-time notifications
+// when messages are published to specific topics or aggregates.
+
+/// <summary>
+/// Controller for managing webhook subscriptions and handling webhook deliveries
+/// </summary>
+
+// Example Usage
+```csharp
+// Initialize HttpClient for API calls
+var httpClient = new HttpClient();
+httpClient.BaseAddress = new Uri("https://localhost:5001");
+
+// 1. Register a new webhook subscription to receive "OrderCreated" events
+var registerRequest = new RegisterWebhookRequest
+{
+    Url = "https://external-service.com/webhooks/order-events",
+    Events = new List<string> { "OrderCreated", "OrderUpdated", "PaymentProcessed" }
+};
+
+var subscribeResponse = await httpClient.PostAsJsonAsync("/api/webhooks/subscriptions", registerRequest);
+if (subscribeResponse.IsSuccessStatusCode)
+{
+    var subscription = await subscribeResponse.Content.ReadFromJsonAsync<WebhookSubscriptionDto>();
+    Console.WriteLine($"Webhook registered with ID: {subscription.Id}");
+    Console.WriteLine($"Events subscribed to: {string.Join(", ", subscription.Events)}");
+}
+
+// 2. List all active webhook subscriptions
+var subscriptionsResponse = await httpClient.GetAsync("/api/webhooks/subscriptions?active=true");
+if (subscribeResponse.IsSuccessStatusCode)
+{
+    var subscriptions = await subscriptionsResponse.Content.ReadFromJsonAsync<List<WebhookSubscriptionDto>>();
+    Console.WriteLine($"Found {subscriptions.Count} active webhook subscriptions");
+}
+
+// 3. Get details of a specific webhook subscription
+var subscriptionDetailsResponse = await httpClient.GetAsync($"/api/webhooks/subscriptions/{subscription.Id}");
+if (subscriptionDetailsResponse.IsSuccessStatusCode)
+{
+    var details = await subscriptionDetailsResponse.Content.ReadFromJsonAsync<WebhookSubscriptionDto>();
+    Console.WriteLine($"Webhook URL: {details.Url}");
+    Console.WriteLine($"Status: {details.Status}");
+    Console.WriteLine($"Created: {details.CreatedAt}");
+}
+
+// 4. Test the webhook to verify it's working
+var testResponse = await httpClient.PostAsync($"/api/webhooks/subscriptions/{subscription.Id}/test", null);
+if (testResponse.IsSuccessStatusCode)
+{
+    var testResult = await testResponse.Content.ReadFromJsonAsync<WebhookTestResult>();
+    Console.WriteLine($"Test result: {testResult.Status}");
+    Console.WriteLine($"Delivery attempts: {testResult.DeliveryAttempts}");
+}
+
+// 5. Get delivery history for a webhook
+var deliveriesResponse = await httpClient.GetAsync($"/api/webhooks/subscriptions/{subscription.Id}/deliveries?limit=50");
+if (deliveriesResponse.IsSuccessStatusCode)
+{
+    var deliveries = await deliveriesResponse.Content.ReadFromJsonAsync<List<WebhookDeliveryDto>>();
+    Console.WriteLine($"Found {deliveries.Count} delivery attempts");
+    foreach (var delivery in deliveries.OrderByDescending(d => d.Timestamp))
+    {
+        Console.WriteLine($"- {delivery.Timestamp:yyyy-MM-dd HH:mm:ss}: Status={delivery.Status}, Response={delivery.ResponseStatus}");
+    }
+}
+
+// 6. Delete a webhook subscription when no longer needed
+var deleteResponse = await httpClient.DeleteAsync($"/api/webhooks/subscriptions/{subscription.Id}");
+if (deleteResponse.IsSuccessStatusCode)
+{
+    Console.WriteLine("Webhook subscription deleted successfully");
+}
+
+// External systems receive webhook deliveries at the configured URL with signature verification
+// POST https://external-service.com/webhooks/order-events
+// Headers: X-Webhook-Signature: <HMAC-SHA256-signature>
+// Body: {"eventType":"OrderCreated","aggregateId":"order-12345","data":{...}}
+```
+
 // ## DeadLetterController
 // The `DeadLetterController` provides API endpoints for managing failed messages in the dead letter queue (DLQ).
 // It enables operators to review, analyze, requeue, or permanently delete messages that failed to process,
