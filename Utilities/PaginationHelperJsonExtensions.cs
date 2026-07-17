@@ -2,7 +2,7 @@
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
-// =====================================================================
+// ===================================================================
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -44,15 +44,15 @@ public static class PaginationHelperJsonExtensions
     /// </summary>
     /// <param name="json">The JSON string to deserialize</param>
     /// <returns>A deserialized <see cref="PaginationMetadata"/> instance, or null if JSON is empty or whitespace</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is null</exception>
     /// <exception cref="JsonException">Thrown when the JSON is invalid or cannot be deserialized</exception>
-    public static PaginationMetadata? FromJson(string json)
+    public static PaginationMetadata? FromJson(string? json)
     {
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return null;
-        }
+        ArgumentNullException.ThrowIfNull(json);
 
-        return JsonSerializer.Deserialize<PaginationMetadata>(json, _jsonOptions);
+        return string.IsNullOrWhiteSpace(json)
+            ? null
+            : JsonSerializer.Deserialize<PaginationMetadata>(json, _jsonOptions);
     }
 
     /// <summary>
@@ -61,7 +61,8 @@ public static class PaginationHelperJsonExtensions
     /// <param name="json">The JSON string to deserialize</param>
     /// <param name="value">Receives the deserialized value if successful</param>
     /// <returns>True if deserialization succeeded; otherwise, false</returns>
-    public static bool TryFromJson(string json, out PaginationMetadata? value)
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is null</exception>
+    public static bool TryFromJson(string? json, out PaginationMetadata? value)
     {
         value = null;
 
