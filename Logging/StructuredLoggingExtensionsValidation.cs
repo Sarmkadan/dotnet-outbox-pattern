@@ -29,7 +29,6 @@ public static class StructuredLoggingExtensionsValidation
         return problems.AsReadOnly();
     }
 
-
     /// <summary>
     /// Validates parameters for LogOutboxOperation
     /// </summary>
@@ -301,22 +300,11 @@ public static class StructuredLoggingExtensionsValidation
     }
 
     /// <summary>
-    /// Checks if the logger parameter is valid for StructuredLoggingExtensions
+    /// Checks if the logger parameter is not null
     /// </summary>
     /// <param name="logger">The logger instance to check</param>
-    /// <returns>True if valid, false otherwise</returns>
-    public static bool IsValid(this ILogger logger)
-    {
-        try
-        {
-            _ = logger ?? throw new ArgumentNullException(nameof(logger));
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+    /// <returns>True if logger is not null, false otherwise</returns>
+    public static bool IsValid(this ILogger? logger) => logger is not null;
 
     /// <summary>
     /// Ensures the logger parameter is valid for StructuredLoggingExtensions
