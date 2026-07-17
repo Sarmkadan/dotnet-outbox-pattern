@@ -18,11 +18,13 @@ public static class OutboxProcessorOptionsValidation
     /// <param name="value">The options to validate</param>
     /// <returns>True if valid, otherwise false</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is null</exception>
-    public static bool IsValid(this OutboxProcessorOptions value)
+    public static bool IsValid(this OutboxProcessorOptions? value)
     {
-        ArgumentNullException.ThrowIfNull(value);
+        if (value is null)
+        {
+            return false;
+        }
 
-        // Delegate to the existing extension method's validation logic
         try
         {
             value.Validate();
@@ -38,9 +40,10 @@ public static class OutboxProcessorOptionsValidation
     /// Validates the configuration options and throws an exception if invalid.
     /// </summary>
     /// <param name="value">The options to validate</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is null</exception>
-    /// <exception cref="ArgumentException">Thrown when validation fails</exception>
-    public static void EnsureValid(this OutboxProcessorOptions value)
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null</exception>
+    /// <exception cref="ArgumentException">Thrown when validation fails due to invalid property values</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when validation fails due to out-of-range property values</exception>
+    public static void EnsureValid(this OutboxProcessorOptions? value)
     {
         ArgumentNullException.ThrowIfNull(value);
         value.Validate();
