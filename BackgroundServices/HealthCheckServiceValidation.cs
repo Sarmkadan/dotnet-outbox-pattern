@@ -42,6 +42,10 @@ public static class HealthCheckServiceValidation
         {
             errors.Add("HealthAlert.RaisedAt cannot be default(DateTime)");
         }
+        else if (value.RaisedAt > DateTime.UtcNow.AddMinutes(1))
+        {
+            errors.Add("HealthAlert.RaisedAt cannot be in the future");
+        }
 
         return errors.AsReadOnly();
     }
@@ -59,11 +63,11 @@ public static class HealthCheckServiceValidation
     }
 
     /// <summary>
-    /// Ensures a HealthAlert instance is valid, throwing ArgumentException if not
+    /// Ensures a <see cref="HealthAlert"/> instance is valid, throwing <see cref="ArgumentException"/> if not
     /// </summary>
-    /// <param name="value">The HealthAlert to validate</param>
-    /// <exception cref="ArgumentNullException">Thrown if value is null</exception>
-    /// <exception cref="ArgumentException">Thrown if value is not valid</exception>
+    /// <param name="value">The <see cref="HealthAlert"/> to validate</param>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null</exception>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="value"/> is not valid</exception>
     public static void EnsureValid(this HealthAlert value)
     {
         ArgumentNullException.ThrowIfNull(value);
@@ -77,11 +81,11 @@ public static class HealthCheckServiceValidation
     }
 
     /// <summary>
-    /// Validates a HealthCheckOptions instance
+    /// Validates a <see cref="HealthCheckOptions"/> instance
     /// </summary>
-    /// <param name="value">The HealthCheckOptions to validate</param>
+    /// <param name="value">The <see cref="HealthCheckOptions"/> to validate</param>
     /// <returns>List of validation problems; empty list if valid</returns>
-    /// <exception cref="ArgumentNullException">Thrown if value is null</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null</exception>
     public static IReadOnlyList<string> Validate(this HealthCheckOptions value)
     {
         ArgumentNullException.ThrowIfNull(value);
@@ -92,8 +96,12 @@ public static class HealthCheckServiceValidation
         {
             errors.Add("HealthCheckOptions.CheckIntervalMs must be positive");
         }
+        else if (value.CheckIntervalMs > TimeSpan.FromHours(1).TotalMilliseconds)
+        {
+            errors.Add("HealthCheckOptions.CheckIntervalMs cannot exceed 1 hour");
+        }
 
-        if (value.HighFailureRateThreshold < 0 || value.HighFailureRateThreshold > 1.0)
+        if (value.HighFailureRateThreshold is < 0 or > 1.0)
         {
             errors.Add("HealthCheckOptions.HighFailureRateThreshold must be between 0 and 1.0");
         }
@@ -112,11 +120,11 @@ public static class HealthCheckServiceValidation
     }
 
     /// <summary>
-    /// Validates a HealthCheckOptions instance
+    /// Validates a <see cref="HealthCheckOptions"/> instance
     /// </summary>
-    /// <param name="value">The HealthCheckOptions to validate</param>
+    /// <param name="value">The <see cref="HealthCheckOptions"/> to validate</param>
     /// <returns>True if valid; false otherwise</returns>
-    /// <exception cref="ArgumentNullException">Thrown if value is null</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null</exception>
     public static bool IsValid(this HealthCheckOptions value)
     {
         ArgumentNullException.ThrowIfNull(value);
@@ -124,11 +132,11 @@ public static class HealthCheckServiceValidation
     }
 
     /// <summary>
-    /// Ensures a HealthCheckOptions instance is valid, throwing ArgumentException if not
+    /// Ensures a <see cref="HealthCheckOptions"/> instance is valid, throwing <see cref="ArgumentException"/> if not
     /// </summary>
-    /// <param name="value">The HealthCheckOptions to validate</param>
-    /// <exception cref="ArgumentNullException">Thrown if value is null</exception>
-    /// <exception cref="ArgumentException">Thrown if value is not valid</exception>
+    /// <param name="value">The <see cref="HealthCheckOptions"/> to validate</param>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null</exception>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="value"/> is not valid</exception>
     public static void EnsureValid(this HealthCheckOptions value)
     {
         ArgumentNullException.ThrowIfNull(value);
