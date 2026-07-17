@@ -96,8 +96,9 @@ namespace DotnetOutboxPattern.Tests
             ArgumentNullException.ThrowIfNull(fixture);
 
             using var scope = fixture.CreateScope();
-            var service = scope.ServiceProvider.GetService<T>();
-            return service ?? throw new InvalidOperationException($"Service of type {typeof(T)} is not registered.");
+            var service = scope.ServiceProvider.GetService<T>()
+                ?? throw new InvalidOperationException($"Service of type {typeof(T)} is not registered.");
+            return service;
         }
     }
 }
