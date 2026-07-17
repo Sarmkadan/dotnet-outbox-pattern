@@ -111,12 +111,12 @@ Console.WriteLine(passwordHash); // Outputs a base64-encoded SHA256 hash
 // Validate different string formats
 var isValidEmail = StringHelper.IsValidEmail("user@example.com"); // true
 var isValidGuid = StringHelper.IsValidGuid("550e8400-e29b-41d4-a716-446655440000"); // true
-var isValidFormat = StringHelper.IsValidFormat("ABC123", "^[A-Z]{3}\d{3}$"); // true
+var isValidFormat = StringHelper.IsValidFormat("ABC123", "^[A-Z]{3}\\d{3}$"); // true
 
 // Truncate and sanitize strings
 var longText = "This is a very long text that needs to be shortened";
 var truncated = StringHelper.Truncate(longText, 20); // "This is a very lon..."
-var jsonSafe = StringHelper.SanitizeForJson("Line 1\nLine 2\tTabbed"); // Escapes special chars
+var jsonSafe = StringHelper.SanitizeForJson("Line 1\\nLine 2\\tTabbed"); // Escapes special chars
 
 // Convert to URL-friendly formats
 var slug = StringHelper.ToSlug("Hello World! This is a Test"); // "hello-world-this-is-a-test"
@@ -887,4 +887,45 @@ if (exportResponse.IsSuccessStatusCode)
     var csvContent = await exportResponse.Content.ReadAsStringAsync();
     Console.WriteLine(csvContent);
 }
+```
+
+// ## DefaultMessagePublisherExtensions
+// Extension methods that enhance `DefaultMessagePublisher` with logging, batch publishing, and retry capabilities.
+// They simplify common publishing scenarios such as bulk operations, parallel publishing with throttling, and resilient retries for transient failures.
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using DotnetOutboxPattern.Infrastructure;
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Services;
+
+var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+ILogger<DefaultMessagePublisher> logger = loggerFactory.CreateLogger<DefaultMessagePublisher>();
+
+// Create a publisher instance with a logger
+var publisher = logger.WithLogger();
+
+// Prepare some outbox messages
+var messages = new List<OutboxMessage>
+{
+    new OutboxMessage(),
+    new OutboxMessage()
+};
+
+// Publish the batch sequentially
+await publisher.PublishBatchAsync(messages);
+
+// Publish the batch in parallel with a max degree of parallelism
+await publisher.PublishBatchAsync(messages, maxDegreeOfParallelism: 4);
+
+// Publish a single message with retry logic
+await publisher.PublishWithRetryAsync(messages[0], maxRetries: 5, retryDelay: TimeSpan.FromMilliseconds(200));
+
+// Wrap the publisher with a logging decorator
+IMessagePublisher loggingPublisher = publisher.WithLoggingDecorator(logger);
+await loggingPublisher.PublishAsync(messages[0], CancellationToken.None);
 ```
