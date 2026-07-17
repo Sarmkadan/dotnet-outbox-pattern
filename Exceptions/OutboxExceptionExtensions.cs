@@ -54,9 +54,9 @@ public static class OutboxExceptionExtensions
             message += $" | Resource: " + exception.ResourceId;
         }
 
-        if (exception is Exception ex && ex.InnerException != null)
+        if (exception.InnerException != null)
         {
-            message += $" | Inner: " + ex.InnerException.Message;
+            message += $" | Inner: " + exception.InnerException.Message;
         }
 
         return message;
@@ -72,76 +72,71 @@ public static class OutboxExceptionExtensions
     {
         ArgumentNullException.ThrowIfNull(exception);
 
-        var diagnostics = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["ErrorCode"] = exception.ErrorCode,
-            ["Message"] = exception.Message,
-            ["ExceptionType"] = exception.GetType().FullName ?? "Unknown"
-        };
+        var diagnostics = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        diagnostics.Add("ErrorCode", exception.ErrorCode);
+        diagnostics.Add("Message", exception.Message);
+        diagnostics.Add("ExceptionType", exception.GetType().FullName ?? typeof(OutboxException).FullName);
 
         if (!string.IsNullOrEmpty(exception.ResourceId))
         {
-            diagnostics["ResourceId"] = exception.ResourceId!;
+            diagnostics.Add("ResourceId", exception.ResourceId);
         }
 
         switch (exception)
         {
             case MessagePublishingException msgEx:
-                diagnostics["MessageId"] = msgEx.MessageId.ToString("D", CultureInfo.InvariantCulture);
-                diagnostics["AttemptNumber"] = msgEx.AttemptNumber.ToString(CultureInfo.InvariantCulture);
+                diagnostics.Add("MessageId", msgEx.MessageId.ToString("D", CultureInfo.InvariantCulture));
+                diagnostics.Add("AttemptNumber", msgEx.AttemptNumber.ToString(CultureInfo.InvariantCulture));
                 break;
 
             case DeadLetterException dlEx:
-                diagnostics["MessageId"] = dlEx.MessageId.ToString("D", CultureInfo.InvariantCulture);
+                diagnostics.Add("MessageId", dlEx.MessageId.ToString("D", CultureInfo.InvariantCulture));
                 break;
 
             case MessageLockingException mlEx:
-                diagnostics["MessageId"] = mlEx.MessageId.ToString("D", CultureInfo.InvariantCulture);
+                diagnostics.Add("MessageId", mlEx.MessageId.ToString("D", CultureInfo.InvariantCulture));
                 break;
 
             case OutboxMessageNotFoundException notFoundEx:
-                diagnostics["MessageId"] = notFoundEx.MessageId.ToString("D", CultureInfo.InvariantCulture);
+                diagnostics.Add("MessageId", notFoundEx.MessageId.ToString("D", CultureInfo.InvariantCulture));
                 break;
 
             case MessageProcessingLockedException lockedEx:
-                diagnostics["MessageId"] = lockedEx.MessageId.ToString("D", CultureInfo.InvariantCulture);
+                diagnostics.Add("MessageId", lockedEx.MessageId.ToString("D", CultureInfo.InvariantCulture));
                 break;
 
             case OutboxRepositoryException repoEx:
-                diagnostics["Operation"] = repoEx.Operation;
+                diagnostics.Add("Operation", repoEx.Operation);
                 break;
 
             case SerializationException serEx:
                 if (!string.IsNullOrEmpty(serEx.TargetType))
                 {
-                    diagnostics["TargetType"] = serEx.TargetType!;
+                    diagnostics.Add("TargetType", serEx.TargetType);
                 }
                 break;
 
             case InvalidConfigurationException configEx:
                 if (!string.IsNullOrEmpty(configEx.ConfigurationProperty))
                 {
-                    diagnostics["ConfigurationProperty"] = configEx.ConfigurationProperty!;
+                    diagnostics.Add("ConfigurationProperty", configEx.ConfigurationProperty);
                 }
                 break;
 
             case ServiceUnavailableException svcEx:
-                diagnostics["ServiceName"] = svcEx.ServiceName;
+                diagnostics.Add("ServiceName", svcEx.ServiceName);
                 break;
 
             case ProcessingTimeoutException timeoutEx:
-                diagnostics["Timeout"] = timeoutEx.Timeout.ToString();
+                diagnostics.Add("Timeout", timeoutEx.Timeout.ToString());
                 break;
 
             case ValidationException valEx:
-                diagnostics["ValidationErrors"] = string.Join("; ", valEx.Errors.Count);
+                diagnostics.Add("ValidationErrors", string.Join("; ", valEx.Errors.SelectMany(static kvp => kvp.Value)));
                 break;
         }
 
-        if (exception.InnerException != null)
-        {
-            diagnostics["InnerExceptionType"] = exception.InnerException.GetType().FullName ?? "Unknown";
-        }
+        diagnostics.TryAdd("InnerExceptionType", exception.InnerException?.GetType().FullName ?? "None");
 
         return diagnostics.AsReadOnly();
     }
