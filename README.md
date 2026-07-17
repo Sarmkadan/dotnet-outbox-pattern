@@ -957,6 +957,59 @@ processor.Start();
 processor.Stop();
 ```
 
+// ## OutboxExceptionExtensions
+// The `OutboxExceptionExtensions` class provides extension methods for `OutboxException` and its derived types.
+// It offers utilities for determining retryability, formatting error messages, extracting diagnostic information,
+// adding context to exceptions, and identifying critical failures that should not be retried.
+
+/// <summary>
+/// Extension methods for <see cref="OutboxException"/> and its derived types
+/// </summary>
+
+// Example Usage
+```csharp
+using System;
+using DotnetOutboxPattern.Exceptions;
+
+// Create a sample exception
+var exception = new MessagePublishingException(
+    "Failed to publish message to broker",
+    Guid.NewGuid(),
+    attemptNumber: 1
+);
+
+// Check if the exception is retryable
+bool isRetryable = exception.IsRetryable();
+Console.WriteLine($"Is retryable: {isRetryable}"); // true
+
+// Get a formatted error message with error code and resource ID
+var formattedMessage = exception.GetFormattedErrorMessage();
+Console.WriteLine(formattedMessage);
+// Output: [MSG_PUBLISH_FAIL] Failed to publish message to broker | Resource: <message-guid>
+
+// Get diagnostic information about the exception
+var diagnostics = exception.GetDiagnosticInfo();
+foreach (var kvp in diagnostics)
+{
+    Console.WriteLine($"{kvp.Key}: {kvp.Value}");
+}
+// Output includes: ErrorCode, Message, ExceptionType, ResourceId, MessageId, AttemptNumber, etc.
+
+// Add additional context to an exception
+var contextualException = exception.WithContext("Additional context about the failure");
+Console.WriteLine(contextualException.Message);
+// Output: "Failed to publish message to broker | Additional context about the failure"
+
+// Check if the exception is critical (should not be retried)
+bool isCritical = exception.IsCritical();
+Console.WriteLine($"Is critical: {isCritical}"); // false
+
+// Example with a critical exception
+var criticalException = new ValidationException("Invalid message format");
+isCritical = criticalException.IsCritical();
+Console.WriteLine($"Is critical: {isCritical}"); // true
+```
+
 // ## DefaultMessagePublisherExtensions
 // Extension methods that enhance `DefaultMessagePublisher` with logging, batch publishing, and retry capabilities.
 // They simplify common publishing scenarios such as bulk operations, parallel publishing with throttling, and resilient retries for transient failures.
