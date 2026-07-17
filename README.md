@@ -406,3 +406,100 @@ var minimalRequest = new PublishEventRequest
     Topic = "products.events"
 };
 ```
+
+// ## MetricsController
+// The `MetricsController` provides operational metrics and health monitoring for the outbox pattern system. It exposes
+// comprehensive monitoring endpoints for system health, performance metrics, error analytics, throughput, latency, and
+// resource consumption. This controller is essential for observability and alerting in distributed systems.
+
+/// <summary>
+/// Controller for operational metrics and health monitoring
+/// </summary>
+
+// Example Usage
+```csharp
+// Example: Monitoring system health
+var healthResponse = await new HttpClient().GetAsync("https://localhost:5001/api/metrics/health");
+if (healthResponse.IsSuccessStatusCode)
+{
+    var healthData = await healthResponse.Content.ReadFromJsonAsync<SystemHealthDto>();
+    Console.WriteLine($"System Health: {healthData.Status}");
+    Console.WriteLine($"Outbox Status: {healthData.OutboxStatus}");
+    Console.WriteLine($"Database Status: {healthData.DatabaseStatus}");
+}
+
+// Example: Retrieving performance metrics for the last 24 hours
+var performanceResponse = await new HttpClient().GetAsync("https://localhost:5001/api/metrics/performance?period=24h");
+if (performanceResponse.IsSuccessStatusCode)
+{
+    var performanceData = await performanceResponse.Content.ReadFromJsonAsync<PerformanceMetricsDto>();
+    Console.WriteLine($"Throughput: {performanceData.ThroughputPerSecond} msg/s");
+    Console.WriteLine($"Success Rate: {performanceData.SuccessRate:P}");
+    Console.WriteLine($"Error Rate: {performanceData.ErrorRate:P}");
+}
+
+// Example: Getting error analytics
+var errorsResponse = await new HttpClient().GetAsync("https://localhost:5001/api/metrics/errors?limit=50");
+if (errorsResponse.IsSuccessStatusCode)
+{
+    var errorData = await errorsResponse.Content.ReadFromJsonAsync<ErrorAnalyticsDto>();
+    Console.WriteLine($"Total Errors: {errorData.TotalErrors}");
+    Console.WriteLine($"Dead Letters: {errorData.DeadLetterCount}");
+    foreach (var error in errorData.TopErrors)
+    {
+        Console.WriteLine($"- {error.ErrorType}: {error.Count} occurrences");
+    }
+}
+
+// Example: Monitoring throughput by hour
+var throughputResponse = await new HttpClient().GetAsync("https://localhost:5001/api/metrics/throughput?granularity=hour");
+if (throughputResponse.IsSuccessStatusCode)
+{
+    var throughputData = await throughputResponse.Content.ReadFromJsonAsync<ThroughputMetricsDto>();
+    foreach (var metric in throughputData.Metrics)
+    {
+        Console.WriteLine($"{metric.Timestamp:yyyy-MM-dd HH:mm}: {metric.Count} messages");
+    }
+}
+
+// Example: Checking latency percentiles
+var latencyResponse = await new HttpClient().GetAsync("https://localhost:5001/api/metrics/latency");
+if (latencyResponse.IsSuccessStatusCode)
+{
+    var latencyData = await latencyResponse.Content.ReadFromJsonAsync<LatencyMetricsDto>();
+    Console.WriteLine($"P50 Latency: {latencyData.P50Ms}ms");
+    Console.WriteLine($"P95 Latency: {latencyData.P95Ms}ms");
+    Console.WriteLine($"P99 Latency: {latencyData.P99Ms}ms");
+}
+
+// Example: Getting Prometheus-compatible metrics for monitoring integration
+var prometheusResponse = await new HttpClient().GetAsync("https://localhost:5001/api/metrics/prometheus");
+if (prometheusResponse.IsSuccessStatusCode)
+{
+    var prometheusMetrics = await prometheusResponse.Content.ReadAsStringAsync();
+    Console.WriteLine(prometheusMetrics);
+}
+
+// Example: Retrieving active alerts
+var alertsResponse = await new HttpClient().GetAsync("https://localhost:5001/api/metrics/alerts");
+if (alertsResponse.IsSuccessStatusCode)
+{
+    var alerts = await alertsResponse.Content.ReadFromJsonAsync<List<AlertDto>>();
+    foreach (var alert in alerts)
+    {
+        Console.WriteLine($"ALERT [{alert.Severity}]: {alert.Message}");
+        Console.WriteLine($"  - Type: {alert.Type}");
+        Console.WriteLine($"  - Timestamp: {alert.Timestamp}");
+    }
+}
+
+// Example: Monitoring resource consumption
+var resourcesResponse = await new HttpClient().GetAsync("https://localhost:5001/api/metrics/resources");
+if (resourcesResponse.IsSuccessStatusCode)
+{
+    var resourceData = await resourcesResponse.Content.ReadFromJsonAsync<ResourceMetricsDto>();
+    Console.WriteLine($"CPU Usage: {resourceData.CpuUsage:P}");
+    Console.WriteLine($"Memory Usage: {resourceData.MemoryUsedMb} MB / {resourceData.MemoryTotalMb} MB");
+    Console.WriteLine($"Database Connections: {resourceData.DatabaseConnections}");
+}
+```
