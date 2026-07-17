@@ -889,6 +889,74 @@ if (exportResponse.IsSuccessStatusCode)
 }
 ```
 
+// ## OutboxBackoffExtensions
+// The `OutboxBackoffExtensions` class provides fluent configuration and pure delay calculation for the outbox processor's batch size and idle backoff strategies. It enables configuring exponential backoff, fixed delay, batch sizes, and validation through a clean fluent API.
+
+/// <summary>
+/// Fluent configuration and pure delay calculation for the outbox processor's batch size and
+/// idle backoff. Kept separate from <see cref="OutboxProcessorOptions"/> so the delay maths can
+/// be unit-tested in isolation, without spinning up the background service.
+/// </summary>
+
+// Example Usage
+```csharp
+using System;
+using DotnetOutboxPattern.Infrastructure;
+
+// Create a new OutboxProcessorOptions instance
+var options = new OutboxProcessorOptions();
+
+// Configure batch size (messages processed per batch)
+options.WithBatchSize(50);
+
+// Configure exponential backoff strategy
+// Base delay: 100ms, Max delay: 5000ms, Multiplier: 2.0
+options.WithExponentialBackoff(
+    baseDelayMs: 100,
+    maxDelayMs: 5000,
+    multiplier: 2.0
+);
+
+// Or configure fixed delay (no backoff)
+// options.WithFixedDelay(200);
+
+// Validate the configuration
+options.ValidateBackoff();
+
+// Compute delay based on consecutive empty batches
+// For exponential backoff: delay grows exponentially with each empty batch
+var delay1 = options.ComputeDelay(0);   // Base delay (100ms)
+var delay2 = options.ComputeDelay(1);   // 100 * 2^1 = 200ms
+var delay3 = options.ComputeDelay(2);   // 100 * 2^2 = 400ms
+var delay4 = options.ComputeDelay(5);   // 100 * 2^5 = 3200ms (capped at max 5000ms)
+var delay5 = options.ComputeDelay(10);  // Still capped at 5000ms
+
+Console.WriteLine($"Base delay: {delay1.TotalMilliseconds}ms");
+Console.WriteLine($"After 1 empty batch: {delay2.TotalMilliseconds}ms");
+Console.WriteLine($"After 2 empty batches: {delay3.TotalMilliseconds}ms");
+Console.WriteLine($"After 5 empty batches: {delay4.TotalMilliseconds}ms");
+Console.WriteLine($"After 10 empty batches: {delay5.TotalMilliseconds}ms");
+
+// Use in OutboxProcessor configuration
+var processorOptions = new OutboxProcessorOptions()
+    .WithBatchSize(25)
+    .WithExponentialBackoff(baseDelayMs: 50, maxDelayMs: 10000, multiplier: 1.5)
+    .ValidateBackoff();
+
+// Create and configure OutboxProcessor with the options
+var processor = new OutboxProcessor(
+    dbContext: outboxDbContext,
+    options: processorOptions,
+    logger: logger
+);
+
+// Start the processor
+processor.Start();
+
+// Later, when shutting down
+processor.Stop();
+```
+
 // ## DefaultMessagePublisherExtensions
 // Extension methods that enhance `DefaultMessagePublisher` with logging, batch publishing, and retry capabilities.
 // They simplify common publishing scenarios such as bulk operations, parallel publishing with throttling, and resilient retries for transient failures.
