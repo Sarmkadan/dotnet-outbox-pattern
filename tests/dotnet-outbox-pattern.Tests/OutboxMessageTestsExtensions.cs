@@ -47,6 +47,7 @@ namespace DotnetOutboxPattern.Tests
             {
                 test.RecordFailure_IncrementsPublishAttempts();
             }
+
             return test;
         }
     }
