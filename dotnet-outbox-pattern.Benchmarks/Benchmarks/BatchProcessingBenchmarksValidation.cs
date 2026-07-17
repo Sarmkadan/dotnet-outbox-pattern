@@ -35,10 +35,7 @@ public static class BatchProcessingBenchmarksValidation
     /// </summary>
     /// <param name="value">The benchmarks instance to check.</param>
     /// <returns>True if valid; otherwise, false.</returns>
-    public static bool IsValid(this BatchProcessingBenchmarks value)
-    {
-        return Validate(value).Count == 0;
-    }
+    public static bool IsValid(this BatchProcessingBenchmarks value) => !value.Validate().Any();
 
     /// <summary>
     /// Ensures that the specified <see cref="BatchProcessingBenchmarks"/> instance is valid.
@@ -46,6 +43,7 @@ public static class BatchProcessingBenchmarksValidation
     /// <param name="value">The benchmarks instance to validate.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is null.</exception>
     /// <exception cref="ArgumentException">Thrown when the benchmarks instance is not valid, containing the validation errors.</exception>
+    /// <returns>No return value; throws if validation fails.</returns>
     public static void EnsureValid(this BatchProcessingBenchmarks value)
     {
         ArgumentNullException.ThrowIfNull(value);
