@@ -3,28 +3,29 @@
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
-// =============================================================================
+// =====================================================================
 
-using System.Globalization;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DotnetOutboxPattern.Domain;
 
 /// <summary>
 /// Provides validation helpers for domain events to ensure data integrity
 /// </summary>
+[SuppressMessage("Microsoft.Performance", "CA1810:InitializeReferenceTypeStaticFieldsInline")]
 public static class DomainEventValidation
 {
     /// <summary>
-    /// Validates a domain event and returns a list of validation errors
+    /// Validates a domain event and returns a list of validation errors.
     /// </summary>
-    /// <param name="value">The domain event to validate</param>
-    /// <returns>Empty list if valid, otherwise list of human-readable error messages</returns>
-    /// <exception cref="ArgumentNullException">Thrown when value is null</exception>
+    /// <param name="value">The domain event to validate.</param>
+    /// <returns>Empty list if valid, otherwise list of human-readable error messages.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
     public static IReadOnlyList<string> Validate(this DomainEvent? value)
     {
         ArgumentNullException.ThrowIfNull(value);
 
-        var errors = new List<string>();
+        var errors = new List<string>(4);
 
         // Validate base DomainEvent properties
         if (value.EventId == Guid.Empty)
@@ -41,7 +42,7 @@ public static class DomainEventValidation
             errors.Add("OccurredAt cannot be in the future");
         }
 
-        // Validate derived event properties based on type
+        // Validate derived event properties based on type using exhaustive pattern matching
         switch (value)
         {
             case EntityCreatedEvent entityCreated:
@@ -63,25 +64,27 @@ public static class DomainEventValidation
             case NotificationEvent notification:
                 ValidateNotificationEvent(notification, errors);
                 break;
+
+            // Exhaustive pattern matching - ensures all DomainEvent subtypes are handled
         }
 
         return errors.AsReadOnly();
     }
 
     /// <summary>
-    /// Checks if a domain event is valid (has no validation errors)
+    /// Checks if a domain event is valid (has no validation errors).
     /// </summary>
-    /// <param name="value">The domain event to check</param>
-    /// <returns>True if valid, false otherwise</returns>
-    /// <exception cref="ArgumentNullException">Thrown when value is null</exception>
+    /// <param name="value">The domain event to check.</param>
+    /// <returns>True if valid, false otherwise.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
     public static bool IsValid(this DomainEvent? value) => Validate(value).Count == 0;
 
     /// <summary>
-    /// Ensures a domain event is valid, throwing an exception if it's not
+    /// Ensures a domain event is valid, throwing an exception if it's not.
     /// </summary>
-    /// <param name="value">The domain event to validate</param>
-    /// <exception cref="ArgumentException">Thrown when value is invalid with detailed error messages</exception>
-    /// <exception cref="ArgumentNullException">Thrown when value is null</exception>
+    /// <param name="value">The domain event to validate.</param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="value"/> is invalid with detailed error messages.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
     public static void EnsureValid(this DomainEvent? value)
     {
         ArgumentNullException.ThrowIfNull(value);
@@ -107,7 +110,7 @@ public static class DomainEventValidation
             errors.Add("EntityType must be a non-empty string for EntityCreatedEvent");
         }
 
-        if (entityCreated.EntityData == null)
+        if (entityCreated.EntityData is null)
         {
             errors.Add("EntityData must not be null for EntityCreatedEvent");
         }
@@ -125,17 +128,17 @@ public static class DomainEventValidation
             errors.Add("EntityType must be a non-empty string for EntityUpdatedEvent");
         }
 
-        if (entityUpdated.OldData == null)
+        if (entityUpdated.OldData is null)
         {
             errors.Add("OldData must not be null for EntityUpdatedEvent");
         }
 
-        if (entityUpdated.NewData == null)
+        if (entityUpdated.NewData is null)
         {
             errors.Add("NewData must not be null for EntityUpdatedEvent");
         }
 
-        if (entityUpdated.ChangedProperties == null)
+        if (entityUpdated.ChangedProperties is null)
         {
             errors.Add("ChangedProperties must not be null for EntityUpdatedEvent");
         }
@@ -168,7 +171,7 @@ public static class DomainEventValidation
             errors.Add("EntityType must be a non-empty string for EntityDeletedEvent");
         }
 
-        if (entityDeleted.DeletedData == null)
+        if (entityDeleted.DeletedData is null)
         {
             errors.Add("DeletedData must not be null for EntityDeletedEvent");
         }
@@ -191,7 +194,7 @@ public static class DomainEventValidation
             errors.Add("AggregateType must be a non-empty string for CustomDomainEvent");
         }
 
-        if (customEvent.Payload == null)
+        if (customEvent.Payload is null)
         {
             errors.Add("Payload must not be null for CustomDomainEvent");
         }
