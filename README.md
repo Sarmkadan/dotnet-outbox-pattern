@@ -957,6 +957,73 @@ processor.Start();
 processor.Stop();
 ```
 
+// ## OutboxBackoffOptionsTests
+// The `OutboxBackoffOptionsTests` class provides comprehensive unit tests for the configurable batch size and idle backoff options on `OutboxProcessorOptions` and the helper methods in `OutboxBackoffExtensions`. These tests verify the fluent configuration API, validation logic, and delay calculation algorithms work correctly under various scenarios including edge cases and error conditions.
+
+/// <summary>
+/// Tests for the configurable batch-size and idle-backoff options on
+/// <see cref="OutboxProcessorOptions"/> and the helpers in
+/// <see cref="OutboxBackoffExtensions"/>: the fluent builders, the aggregate validation, and
+/// the pure delay calculation.
+/// </summary>
+
+// Example Usage
+```csharp
+using DotnetOutboxPattern.Infrastructure;
+using FluentAssertions;
+
+// Test batch size configuration
+var options = new OutboxProcessorOptions().WithBatchSize(250);
+options.BatchSize.Should().Be(250);
+
+// Test exponential backoff configuration
+var exponentialOptions = new OutboxProcessorOptions()
+    .WithExponentialBackoff(baseDelayMs: 1000, maxDelayMs: 30000, multiplier: 3.0);
+exponentialOptions.BackoffStrategy.Should().Be(BackoffStrategy.Exponential);
+exponentialOptions.DelayBetweenBatches.Should().Be(1000);
+exponentialOptions.MaxDelayBetweenBatches.Should().Be(30000);
+exponentialOptions.BackoffMultiplier.Should().Be(3.0);
+
+// Test fixed delay configuration
+var fixedOptions = new OutboxProcessorOptions().WithFixedDelay(2500);
+fixedOptions.BackoffStrategy.Should().Be(BackoffStrategy.Fixed);
+fixedOptions.DelayBetweenBatches.Should().Be(2500);
+
+// Test validation - should return same instance when valid
+var validOptions = new OutboxProcessorOptions();
+validOptions.ValidateBackoff().Should().BeSameAs(validOptions);
+
+// Test delay computation with exponential backoff
+var backoffOptions = new OutboxProcessorOptions()
+    .WithExponentialBackoff(baseDelayMs: 1000, maxDelayMs: 60000, multiplier: 2.0);
+
+// Base delay (no empty batches)
+var delay0 = backoffOptions.ComputeDelay(0);
+// After 1 empty batch: 1000 * 2^1 = 2000ms
+var delay1 = backoffOptions.ComputeDelay(1);
+// After 2 empty batches: 1000 * 2^2 = 4000ms
+var delay2 = backoffOptions.ComputeDelay(2);
+// Capped at max delay
+var delay20 = backoffOptions.ComputeDelay(20); // Still 60000ms (capped)
+
+Console.WriteLine($"Base delay: {delay0.TotalMilliseconds}ms");
+Console.WriteLine($"After 1 empty batch: {delay1.TotalMilliseconds}ms");
+Console.WriteLine($"After 2 empty batches: {delay2.TotalMilliseconds}ms");
+Console.WriteLine($"After 20 empty batches: {delay20.TotalMilliseconds}ms (capped)");
+
+// Test error cases - these will throw exceptions
+try {
+    new OutboxProcessorOptions().WithBatchSize(-1);
+    throw new Exception("Should have thrown");
+} catch (ArgumentOutOfRangeException) { }
+
+try {
+    new OutboxProcessorOptions()
+        .WithExponentialBackoff(baseDelayMs: 5000, maxDelayMs: 1000);
+    throw new Exception("Should have thrown");
+} catch (ArgumentOutOfRangeException) { }
+```
+
 // ## OutboxExceptionExtensions
 // The `OutboxExceptionExtensions` class provides extension methods for `OutboxException` and its derived types.
 // It offers utilities for determining retryability, formatting error messages, extracting diagnostic information,
