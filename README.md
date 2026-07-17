@@ -504,6 +504,135 @@ if (resourcesResponse.IsSuccessStatusCode)
 }
 ```
 
+// ## ExportController
+// The `ExportController` provides API endpoints for exporting outbox messages in various formats (JSON, CSV, XML).
+// It enables operators to export message data for analysis, auditing, or integration with external systems.
+
+/// <summary>
+/// API controller for exporting outbox messages
+/// Supports exporting messages in JSON, CSV, and XML formats with filtering options
+/// </summary>
+
+// Example Usage
+```csharp
+// Initialize HttpClient for API calls
+var httpClient = new HttpClient();
+httpClient.BaseAddress = new Uri("https://localhost:5001");
+
+// 1. Get information about available export options
+var infoResponse = await httpClient.GetAsync("/api/export/info");
+if (infoResponse.IsSuccessStatusCode)
+{
+    var exportInfo = await infoResponse.Content.ReadFromJsonAsync<ExportInfo>();
+    Console.WriteLine($"Default format: {exportInfo?.DefaultFormat}");
+    Console.WriteLine($"Max messages per export: {exportInfo?.MaxMessagesPerExport}");
+    Console.WriteLine($"Supported formats: {string.Join(", ", exportInfo?.SupportedFormats ?? new List<string>())}");
+    Console.WriteLine($"Filterable fields: {string.Join(", ", exportInfo?.FilterableFields ?? Array.Empty<string>())}");
+}
+
+// 2. Get supported export formats
+var formatsResponse = await httpClient.GetAsync("/api/export/formats");
+if (formatsResponse.IsSuccessStatusCode)
+{
+    var formats = await formatsResponse.Content.ReadFromJsonAsync<List<string>>();
+    Console.WriteLine($"Supported formats: {string.Join(", ", formats ?? new List<string>())}");
+}
+
+// 3. Get details about a specific format
+var formatDetailsResponse = await httpClient.GetAsync("/api/export/formats/json");
+if (formatDetailsResponse.IsSuccessStatusCode)
+{
+    var formatInfo = await formatDetailsResponse.Content.ReadFromJsonAsync<ExportFormatInfo>();
+    Console.WriteLine($"Format: {formatInfo?.Format}");
+    Console.WriteLine($"Content-Type: {formatInfo?.ContentType}");
+    Console.WriteLine($"Extension: {formatInfo?.Extension}");
+    Console.WriteLine($"Description: {formatInfo?.Description}");
+}
+
+// 4. Export messages to JSON format (last 24 hours)
+var exportRequest = new ExportRequest
+{
+    Format = "json",
+    StartDate = DateTime.UtcNow.AddHours(-24),
+    EndDate = DateTime.UtcNow,
+    Filter = new ExportFilter
+    {
+        AggregateId = "order-*",
+        Topic = "orders.events"
+    }
+};
+
+var exportResponse = await httpClient.PostAsync(
+    "/api/export/messages",
+    new StringContent(
+        JsonSerializer.Serialize(exportRequest),
+        Encoding.UTF8,
+        "application/json"
+    )
+);
+
+if (exportResponse.IsSuccessStatusCode)
+{
+    // Save the exported file
+    var fileBytes = await exportResponse.Content.ReadAsByteArrayAsync();
+    await File.WriteAllBytesAsync("outbox_messages.json", fileBytes);
+    Console.WriteLine("Messages exported successfully to outbox_messages.json");
+}
+
+// 5. Export messages to CSV format (no filters)
+var csvExportRequest = new ExportRequest
+{
+    Format = "csv",
+    StartDate = DateTime.UtcNow.AddDays(-7),
+    EndDate = DateTime.UtcNow
+};
+
+var csvExportResponse = await httpClient.PostAsync(
+    "/api/export/messages",
+    new StringContent(
+        JsonSerializer.Serialize(csvExportRequest),
+        Encoding.UTF8,
+        "application/json"
+    )
+);
+
+if (csvExportResponse.IsSuccessStatusCode)
+{
+    var csvBytes = await csvExportResponse.Content.ReadAsByteArrayAsync();
+    await File.WriteAllBytesAsync("outbox_messages.csv", csvBytes);
+    Console.WriteLine("Messages exported successfully to outbox_messages.csv");
+}
+
+// 6. Export messages to XML format with specific filters
+var xmlExportRequest = new ExportRequest
+{
+    Format = "xml",
+    StartDate = DateTime.UtcNow.AddDays(-30),
+    EndDate = DateTime.UtcNow,
+    Filter = new ExportFilter
+    {
+        AggregateType = "Order",
+        State = "Processed"
+    }
+};
+
+var xmlExportResponse = await httpClient.PostAsync(
+    "/api/export/messages",
+    new StringContent(
+        JsonSerializer.Serialize(xmlExportRequest),
+        Encoding.UTF8,
+        "application/json"
+    )
+);
+
+if (xmlExportResponse.IsSuccessStatusCode)
+{
+    var xmlBytes = await xmlExportResponse.Content.ReadAsByteArrayAsync();
+    await File.WriteAllBytesAsync("outbox_messages.xml", xmlBytes);
+    Console.WriteLine("Messages exported successfully to outbox_messages.xml");
+}
+```
+
 // ## DeadLetterController
 // The `DeadLetterController` provides API endpoints for managing failed messages in the dead letter queue (DLQ).
 // It enables operators to review, analyze, requeue, or permanently delete messages that failed to process,
