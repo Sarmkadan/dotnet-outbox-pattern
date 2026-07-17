@@ -6,13 +6,13 @@ namespace DotnetOutboxPattern.Tests;
 
 /// <summary>
 /// Provides validation helpers for <see cref="RetryPolicyHelperTests"/> instances.
-/// Validates that all required test methods exist and can be invoked.
+/// Validates that all required test methods exist and have the correct signatures.
 /// </summary>
 public static class RetryPolicyHelperTestsValidation
 {
     /// <summary>
     /// Validates the specified <see cref="RetryPolicyHelperTests"/> instance.
-    /// Ensures all required test methods exist and are accessible.
+    /// Ensures all required test methods exist and have the correct signatures.
     /// </summary>
     /// <param name="value">The instance to validate.</param>
     /// <returns>An enumerable of validation messages; empty if the instance is valid.</returns>
@@ -22,218 +22,78 @@ public static class RetryPolicyHelperTestsValidation
         ArgumentNullException.ThrowIfNull(value);
 
         var errors = new List<string>();
-
         var testType = typeof(RetryPolicyHelperTests);
+        ArgumentNullException.ThrowIfNull(testType);
 
         // Validate CalculateDelay_WithZeroAttempt_ThrowsArgumentException
-        try
-        {
-            var method = testType.GetMethod(
-                nameof(RetryPolicyHelperTests.CalculateDelay_WithZeroAttempt_ThrowsArgumentException),
-                BindingFlags.Instance | BindingFlags.Public);
-            if (method is null)
-            {
-                errors.Add("Missing method: CalculateDelay_WithZeroAttempt_ThrowsArgumentException");
-            }
-        }
-        catch
-        {
-            errors.Add("Failed to validate CalculateDelay_WithZeroAttempt_ThrowsArgumentException method");
-        }
+        if (!TryGetTestMethod(testType, nameof(RetryPolicyHelperTests.CalculateDelay_WithZeroAttempt_ThrowsArgumentException), out var method))
+            errors.Add("Missing method: CalculateDelay_WithZeroAttempt_ThrowsArgumentException");
 
         // Validate CalculateDelay_WithNegativeAttempt_ThrowsArgumentException
-        try
-        {
-            var method = testType.GetMethod(
-                nameof(RetryPolicyHelperTests.CalculateDelay_WithNegativeAttempt_ThrowsArgumentException),
-                BindingFlags.Instance | BindingFlags.Public);
-            if (method is null)
-            {
-                errors.Add("Missing method: CalculateDelay_WithNegativeAttempt_ThrowsArgumentException");
-            }
-        }
-        catch
-        {
-            errors.Add("Failed to validate CalculateDelay_WithNegativeAttempt_ThrowsArgumentException method");
-        }
+        if (!TryGetTestMethod(testType, nameof(RetryPolicyHelperTests.CalculateDelay_WithNegativeAttempt_ThrowsArgumentException), out method))
+            errors.Add("Missing method: CalculateDelay_WithNegativeAttempt_ThrowsArgumentException");
 
         // Validate CalculateDelay_WithNoRetryPolicy_ReturnsZero
-        try
-        {
-            var method = testType.GetMethod(
-                nameof(RetryPolicyHelperTests.CalculateDelay_WithNoRetryPolicy_ReturnsZero),
-                BindingFlags.Instance | BindingFlags.Public);
-            if (method is null)
-            {
-                errors.Add("Missing method: CalculateDelay_WithNoRetryPolicy_ReturnsZero");
-            }
-        }
-        catch
-        {
-            errors.Add("Failed to validate CalculateDelay_WithNoRetryPolicy_ReturnsZero method");
-        }
+        if (!TryGetTestMethod(testType, nameof(RetryPolicyHelperTests.CalculateDelay_WithNoRetryPolicy_ReturnsZero), out method))
+            errors.Add("Missing method: CalculateDelay_WithNoRetryPolicy_ReturnsZero");
 
         // Validate CalculateDelay_WithFixedIntervalPolicy_ReturnsSameDelayEachAttempt
-        try
-        {
-            var method = testType.GetMethod(
-                nameof(RetryPolicyHelperTests.CalculateDelay_WithFixedIntervalPolicy_ReturnsSameDelayEachAttempt),
-                BindingFlags.Instance | BindingFlags.Public);
-            if (method is null)
-            {
-                errors.Add("Missing method: CalculateDelay_WithFixedIntervalPolicy_ReturnsSameDelayEachAttempt");
-            }
-        }
-        catch
-        {
-            errors.Add("Failed to validate CalculateDelay_WithFixedIntervalPolicy_ReturnsSameDelayEachAttempt method");
-        }
+        if (!TryGetTestMethod(testType, nameof(RetryPolicyHelperTests.CalculateDelay_WithFixedIntervalPolicy_ReturnsSameDelayEachAttempt), out method))
+            errors.Add("Missing method: CalculateDelay_WithFixedIntervalPolicy_ReturnsSameDelayEachAttempt");
 
         // Validate CalculateDelay_WithLinearBackoffPolicy_IncreasesProperly
-        try
-        {
-            var method = testType.GetMethod(
-                nameof(RetryPolicyHelperTests.CalculateDelay_WithLinearBackoffPolicy_IncreasesProperly),
-                BindingFlags.Instance | BindingFlags.Public);
-            if (method is null)
-            {
-                errors.Add("Missing method: CalculateDelay_WithLinearBackoffPolicy_IncreasesProperly");
-            }
-        }
-        catch
-        {
-            errors.Add("Failed to validate CalculateDelay_WithLinearBackoffPolicy_IncreasesProperly method");
-        }
+        if (!TryGetTestMethod(testType, nameof(RetryPolicyHelperTests.CalculateDelay_WithLinearBackoffPolicy_IncreasesProperly), out method))
+            errors.Add("Missing method: CalculateDelay_WithLinearBackoffPolicy_IncreasesProperly");
 
         // Validate CalculateDelay_WithExponentialBackoffPolicy_ExponentiallyIncreases
-        try
-        {
-            var method = testType.GetMethod(
-                nameof(RetryPolicyHelperTests.CalculateDelay_WithExponentialBackoffPolicy_ExponentiallyIncreases),
-                BindingFlags.Instance | BindingFlags.Public);
-            if (method is null)
-            {
-                errors.Add("Missing method: CalculateDelay_WithExponentialBackoffPolicy_ExponentiallyIncreases");
-            }
-        }
-        catch
-        {
-            errors.Add("Failed to validate CalculateDelay_WithExponentialBackoffPolicy_ExponentiallyIncreases method");
-        }
+        if (!TryGetTestMethod(testType, nameof(RetryPolicyHelperTests.CalculateDelay_WithExponentialBackoffPolicy_ExponentiallyIncreases), out method))
+            errors.Add("Missing method: CalculateDelay_WithExponentialBackoffPolicy_ExponentiallyIncreases");
 
         // Validate CalculateDelay_RespectMaxDelayLimit
-        try
-        {
-            var method = testType.GetMethod(
-                nameof(RetryPolicyHelperTests.CalculateDelay_RespectMaxDelayLimit),
-                BindingFlags.Instance | BindingFlags.Public);
-            if (method is null)
-            {
-                errors.Add("Missing method: CalculateDelay_RespectMaxDelayLimit");
-            }
-        }
-        catch
-        {
-            errors.Add("Failed to validate CalculateDelay_RespectMaxDelayLimit method");
-        }
+        if (!TryGetTestMethod(testType, nameof(RetryPolicyHelperTests.CalculateDelay_RespectMaxDelayLimit), out method))
+            errors.Add("Missing method: CalculateDelay_RespectMaxDelayLimit");
 
         // Validate CalculateDelay_WithJitterEnabled_AddsRandomness
-        try
-        {
-            var method = testType.GetMethod(
-                nameof(RetryPolicyHelperTests.CalculateDelay_WithJitterEnabled_AddsRandomness),
-                BindingFlags.Instance | BindingFlags.Public);
-            if (method is null)
-            {
-                errors.Add("Missing method: CalculateDelay_WithJitterEnabled_AddsRandomness");
-            }
-        }
-        catch
-        {
-            errors.Add("Failed to validate CalculateDelay_WithJitterEnabled_AddsRandomness method");
-        }
+        if (!TryGetTestMethod(testType, nameof(RetryPolicyHelperTests.CalculateDelay_WithJitterEnabled_AddsRandomness), out method))
+            errors.Add("Missing method: CalculateDelay_WithJitterEnabled_AddsRandomness");
 
         // Validate CalculateDelay_WithJitterDisabled_ProducesSameDelay
-        try
-        {
-            var method = testType.GetMethod(
-                nameof(RetryPolicyHelperTests.CalculateDelay_WithJitterDisabled_ProducesSameDelay),
-                BindingFlags.Instance | BindingFlags.Public);
-            if (method is null)
-            {
-                errors.Add("Missing method: CalculateDelay_WithJitterDisabled_ProducesSameDelay");
-            }
-        }
-        catch
-        {
-            errors.Add("Failed to validate CalculateDelay_WithJitterDisabled_ProducesSameDelay method");
-        }
+        if (!TryGetTestMethod(testType, nameof(RetryPolicyHelperTests.CalculateDelay_WithJitterDisabled_ProducesSameDelay), out method))
+            errors.Add("Missing method: CalculateDelay_WithJitterDisabled_ProducesSameDelay");
 
         // Validate CalculateDelay_ReturnsMinimumOneSecond
-        try
-        {
-            var method = testType.GetMethod(
-                nameof(RetryPolicyHelperTests.CalculateDelay_ReturnsMinimumOneSecond),
-                BindingFlags.Instance | BindingFlags.Public);
-            if (method is null)
-            {
-                errors.Add("Missing method: CalculateDelay_ReturnsMinimumOneSecond");
-            }
-        }
-        catch
-        {
-            errors.Add("Failed to validate CalculateDelay_ReturnsMinimumOneSecond method");
-        }
+        if (!TryGetTestMethod(testType, nameof(RetryPolicyHelperTests.CalculateDelay_ReturnsMinimumOneSecond), out method))
+            errors.Add("Missing method: CalculateDelay_ReturnsMinimumOneSecond");
 
         // Validate CalculateStatistics_ReturnsProperValues
-        try
-        {
-            var method = testType.GetMethod(
-                nameof(RetryPolicyHelperTests.CalculateStatistics_ReturnsProperValues),
-                BindingFlags.Instance | BindingFlags.Public);
-            if (method is null)
-            {
-                errors.Add("Missing method: CalculateStatistics_ReturnsProperValues");
-            }
-        }
-        catch
-        {
-            errors.Add("Failed to validate CalculateStatistics_ReturnsProperValues method");
-        }
+        if (!TryGetTestMethod(testType, nameof(RetryPolicyHelperTests.CalculateStatistics_ReturnsProperValues), out method))
+            errors.Add("Missing method: CalculateStatistics_ReturnsProperValues");
 
         // Validate CalculateStatistics_WithOneAttempt_HasZeroRetries
-        try
-        {
-            var method = testType.GetMethod(
-                nameof(RetryPolicyHelperTests.CalculateStatistics_WithOneAttempt_HasZeroRetries),
-                BindingFlags.Instance | BindingFlags.Public);
-            if (method is null)
-            {
-                errors.Add("Missing method: CalculateStatistics_WithOneAttempt_HasZeroRetries");
-            }
-        }
-        catch
-        {
-            errors.Add("Failed to validate CalculateStatistics_WithOneAttempt_HasZeroRetries method");
-        }
+        if (!TryGetTestMethod(testType, nameof(RetryPolicyHelperTests.CalculateStatistics_WithOneAttempt_HasZeroRetries), out method))
+            errors.Add("Missing method: CalculateStatistics_WithOneAttempt_HasZeroRetries");
 
         // Validate CalculateStatistics_CalculatesAverageCorrectly
-        try
-        {
-            var method = testType.GetMethod(
-                nameof(RetryPolicyHelperTests.CalculateStatistics_CalculatesAverageCorrectly),
-                BindingFlags.Instance | BindingFlags.Public);
-            if (method is null)
-            {
-                errors.Add("Missing method: CalculateStatistics_CalculatesAverageCorrectly");
-            }
-        }
-        catch
-        {
-            errors.Add("Failed to validate CalculateStatistics_CalculatesAverageCorrectly method");
-        }
+        if (!TryGetTestMethod(testType, nameof(RetryPolicyHelperTests.CalculateStatistics_CalculatesAverageCorrectly), out method))
+            errors.Add("Missing method: CalculateStatistics_CalculatesAverageCorrectly");
 
         return errors.AsReadOnly();
+    }
+
+    /// <summary>
+    /// Helper method to safely retrieve a test method by name.
+    /// </summary>
+    /// <param name="type">The type to search for the method.</param>
+    /// <param name="methodName">The name of the method to find.</param>
+    /// <param name="method">Output parameter for the found method.</param>
+    /// <returns><see langword="true"/> if the method was found; otherwise, <see langword="false"/>.</returns>
+    private static bool TryGetTestMethod(Type type, string methodName, out MethodInfo? method)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+        ArgumentException.ThrowIfNullOrEmpty(methodName);
+
+        method = type.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public);
+        return method is not null;
     }
 
     /// <summary>
@@ -241,8 +101,10 @@ public static class RetryPolicyHelperTestsValidation
     /// </summary>
     /// <param name="value">The instance to check.</param>
     /// <returns><see langword="true"/> if the instance is valid; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
     public static bool IsValid(this RetryPolicyHelperTests value)
     {
+        ArgumentNullException.ThrowIfNull(value);
         return value.Validate().Count == 0;
     }
 
