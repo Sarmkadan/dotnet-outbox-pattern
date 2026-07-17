@@ -1190,6 +1190,103 @@ try {
 } catch (ArgumentOutOfRangeException) { }
 ```
 
+// ## PerformanceMonitoringMiddlewareJsonExtensions
+// The `PerformanceMonitoringMiddlewareJsonExtensions` class provides System.Text.Json serialization and deserialization extensions for `PerformanceMonitoringMiddleware` and `PerformanceMonitor` types. It enables configuration persistence, telemetry export, inter-process communication, and diagnostic data exchange scenarios by providing methods to serialize instances to JSON strings and deserialize them back.
+
+/// <summary>
+/// Provides JSON serialization and deserialization for PerformanceMonitoringMiddleware and PerformanceMonitor types
+/// </summary>
+
+// Example Usage
+```csharp
+using DotnetOutboxPattern.Middleware;
+using System.Text.Json;
+
+// Create a performance monitor instance
+var monitor = new PerformanceMonitor(
+    requestCount: 0,
+    totalRequestDuration: TimeSpan.Zero,
+    activeRequests: 0,
+    failedRequests: 0
+);
+
+// Serialize to compact JSON format (default)
+var json = monitor.ToJson();
+Console.WriteLine(json);
+// Output: {"requestCount":0,"totalRequestDuration":"00:00:00","activeRequests":0,"failedRequests":0}
+
+// Serialize to indented JSON format for readability
+var indentedJson = monitor.ToJson(indented: true);
+Console.WriteLine(indentedJson);
+/* Output:
+{
+  "requestCount": 0,
+  "totalRequestDuration": "00:00:00",
+  "activeRequests": 0,
+  "failedRequests": 0
+}
+*/
+
+// Serialize a middleware instance (note: Monitor property is serialized, but middleware requires runtime dependencies)
+var middleware = new PerformanceMonitoringMiddleware(
+    next: null!, // In real usage, this would be a RequestDelegate
+    logger: null!, // In real usage, this would be an ILogger
+    monitor: monitor
+);
+
+var middlewareJson = middleware.ToJson();
+Console.WriteLine(middlewareJson);
+
+// Deserialize back to PerformanceMonitor
+var deserializedMonitor = PerformanceMonitoringMiddlewareJsonExtensions.FromJsonToMonitor(json);
+if (deserializedMonitor != null)
+{
+    Console.WriteLine($"Deserialized monitor: {deserializedMonitor.RequestCount} requests");
+}
+
+// Deserialize middleware instance
+var deserializedMiddleware = PerformanceMonitoringMiddlewareJsonExtensions.FromJson(middlewareJson);
+if (deserializedMiddleware != null)
+{
+    Console.WriteLine($"Deserialized middleware with monitor: {deserializedMiddleware.Monitor.RequestCount} requests");
+}
+
+// Safe deserialization with Try pattern
+if (PerformanceMonitoringMiddlewareJsonExtensions.TryFromJsonToMonitor(json, out var safeMonitor))
+{
+    Console.WriteLine("Successfully deserialized monitor using Try pattern");
+}
+
+// Safe deserialization for middleware
+if (PerformanceMonitoringMiddlewareJsonExtensions.TryFromJson(middlewareJson, out var safeMiddleware))
+{
+    Console.WriteLine("Successfully deserialized middleware using Try pattern");
+}
+
+// Serialize and deserialize a complete monitoring session
+var sessionMonitor = new PerformanceMonitor(
+    requestCount: 150,
+    totalRequestDuration: TimeSpan.FromSeconds(45),
+    activeRequests: 5,
+    failedRequests: 2
+);
+
+var sessionJson = sessionMonitor.ToJson();
+
+// Store or transmit the JSON
+File.WriteAllText("monitor_session.json", sessionJson);
+
+// Later, retrieve and deserialize
+var storedJson = File.ReadAllText("monitor_session.json");
+var restoredMonitor = PerformanceMonitoringMiddlewareJsonExtensions.FromJsonToMonitor(storedJson);
+
+if (restoredMonitor != null)
+{
+    Console.WriteLine($"Restored monitoring session: {restoredMonitor.RequestCount} requests in {restoredMonitor.TotalRequestDuration.TotalSeconds}s");
+    Console.WriteLine($"Success rate: {100.0 * (restoredMonitor.RequestCount - restoredMonitor.FailedRequests) / restoredMonitor.RequestCount:F1}%");
+}
+```
+
 // ## StructuredLoggingExtensionsValidation
 // The `StructuredLoggingExtensionsValidation` class provides validation utilities for the `StructuredLoggingExtensions` methods.
 // It includes validation methods for all `ILogger` parameters and method-specific parameters used in structured logging,
