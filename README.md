@@ -715,6 +715,83 @@ if (deleteResponse.IsSuccessStatusCode)
 // Body: {"eventType":"OrderCreated","aggregateId":"order-12345","data":{...}}
 ```
 
+// ## OutboxMessageController
+// The `OutboxMessageController` is the core API controller for managing outbox messages.
+// It provides endpoints for publishing new events, querying existing messages,
+// retrying failed operations, archiving old messages, and retrieving outbox statistics.
+
+/// <summary>
+/// API controller for managing outbox messages - the primary interface for publishing events
+/// </summary>
+
+// Example Usage
+```csharp
+// Initialize HttpClient for API calls
+var httpClient = new HttpClient();
+httpClient.BaseAddress = new Uri("https://localhost:5001");
+
+// 1. Publish a new event to the outbox
+var publishableEvent = new PublishableEvent
+{
+    Topic = "orders.created",
+    EventData = new { OrderId = "order-123", Amount = 99.99 }
+};
+
+var publishResponse = await httpClient.PostAsJsonAsync("/api/outbox/events", publishableEvent);
+if (publishResponse.IsSuccessStatusCode)
+{
+    var message = await publishResponse.Content.ReadFromJsonAsync<OutboxMessageDto>();
+    Console.WriteLine($"Event published successfully with ID: {message.Id}");
+}
+
+// 2. Get a specific message by ID
+var messageResponse = await httpClient.GetAsync("/api/outbox/messages/550e8400-e29b-41d4-a716-446655440000");
+if (messageResponse.IsSuccessStatusCode)
+{
+    var message = await messageResponse.Content.ReadFromJsonAsync<OutboxMessageDto>();
+    Console.WriteLine($"Message state: {message.State}");
+}
+
+// 3. Get messages by aggregate ID
+var aggregateResponse = await httpClient.GetAsync("/api/outbox/messages/aggregate/order-123?limit=10");
+if (aggregateResponse.IsSuccessStatusCode)
+{
+    var messages = await aggregateResponse.Content.ReadFromJsonAsync<List<OutboxMessageDto>>();
+    Console.WriteLine($"Found {messages.Count} messages for aggregate order-123");
+}
+
+// 4. List messages with pagination and state filtering
+var listResponse = await httpClient.GetAsync("/api/outbox/messages?state=Published&page=1&pageSize=20");
+if (listResponse.IsSuccessStatusCode)
+{
+    var paginatedResponse = await listResponse.Content.ReadFromJsonAsync<PaginatedResponse<OutboxMessageDto>>();
+    Console.WriteLine($"Page {paginatedResponse.Page}, Total Items: {paginatedResponse.TotalItems}");
+}
+
+// 5. Retry a failed message
+var retryResponse = await httpClient.PostAsync("/api/outbox/messages/550e8400-e29b-41d4-a716-446655440000/retry", null);
+if (retryResponse.IsSuccessStatusCode)
+{
+    Console.WriteLine("Message retry initiated successfully");
+}
+
+// 6. Archive published messages older than 30 days
+var archiveResponse = await httpClient.PostAsync("/api/outbox/messages/archive?daysOld=30", null);
+if (archiveResponse.IsSuccessStatusCode)
+{
+    var archiveResult = await archiveResponse.Content.ReadFromJsonAsync<ArchiveResult>();
+    Console.WriteLine($"Archive status: {archiveResult.Status}");
+}
+
+// 7. Get outbox statistics
+var statsResponse = await httpClient.GetAsync("/api/outbox/statistics");
+if (statsResponse.IsSuccessStatusCode)
+{
+    var stats = await statsResponse.Content.ReadFromJsonAsync<OutboxStatisticsDto>();
+    Console.WriteLine($"Total messages: {stats.TotalMessages}, Failed: {stats.FailedMessages}");
+}
+```
+
 // ## DeadLetterController
 // The `DeadLetterController` provides API endpoints for managing failed messages in the dead letter queue (DLQ).
 // It enables operators to review, analyze, requeue, or permanently delete messages that failed to process,
