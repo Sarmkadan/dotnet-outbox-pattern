@@ -1025,6 +1025,104 @@ processor.Start();
 processor.Stop();
 ```
 
+// ## PoisonMessageDeadLetterTests
+// The `PoisonMessageDeadLetterTests` class provides end-to-end tests that verify the poison-message path in the outbox pattern. A message that can never be published (due to bad payload, permanently rejecting broker, or other unrecoverable errors) must not be retried forever. After its configured `MaxPublishAttempts` are exhausted, it must leave the hot pending set and land in the dead-letter store so an operator can inspect it, and it must stop being redelivered.
+
+/// <summary>
+/// End-to-end tests for the poison-message path: a message that can never be published 
+/// (bad payload, permanently rejecting broker, etc.) must not be retried forever. After its 
+/// attempts are exhausted it has to leave the hot pending set and land in the dead-letter 
+/// store so an operator can inspect it, and it must stop being redelivered.
+/// </summary>
+
+// Example Usage
+```csharp
+using DotnetOutboxPattern.Data;
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Services;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+
+// Create an in-memory SQLite database for testing
+var connection = new SqliteConnection("Data Source=:memory:");
+connection.Open();
+
+var dbOptions = new DbContextOptionsBuilder<OutboxDbContext>()
+  .UseSqlite(connection)
+  .Options;
+
+using var context = new OutboxDbContext(dbOptions);
+context.Database.EnsureCreated();
+
+// Create a publisher that always fails (poison message scenario)
+var failingPublisher = new PoisonMessageDeadLetterTests.AlwaysFailingPublisher();
+
+// Create the publishing service with the failing publisher
+var outbox = new OutboxRepository(context);
+var dlq = new DeadLetterRepository(context);
+var service = new MessagePublishingService(
+  outbox,
+  dlq,
+  failingPublisher,
+  NullLogger<MessagePublishingService>.Instance,
+  new PublishingOptions { PublishTimeout = TimeSpan.FromSeconds(5) }
+);
+
+// Create a poison message with limited attempts
+var poisonMessage = new OutboxMessage
+{
+  IdempotencyKey = Guid.NewGuid().ToString("N"),
+  AggregateId = "agg-poison",
+  AggregateType = "PoisonWidget",
+  EventType = EventType.Custom,
+  EventData = "{\"bad\":true}",
+  EventTypeName = "WidgetBroke",
+  Topic = "widgets",
+  MaxPublishAttempts = 3  // Limited attempts before dead-lettering
+};
+
+// Save the poison message
+context.OutboxMessages.Add(poisonMessage);
+await context.SaveChangesAsync();
+
+// Process messages multiple times (simulating dispatcher ticks)
+for (var attempt = 0; attempt < poisonMessage.MaxPublishAttempts; attempt++)
+{
+  await service.ProcessPendingMessagesAsync(batchSize: 10);
+  
+  // Requeue the message for next attempt (simulates scheduler requeue)
+  var msg = await context.OutboxMessages
+    .FirstOrDefaultAsync(x => x.IdempotencyKey == poisonMessage.IdempotencyKey);
+  if (msg?.State == OutboxMessageState.Processing)
+  {
+    msg.State = OutboxMessageState.Pending;
+    msg.IsLocked = false;
+    msg.LockExpiresAt = null;
+    await context.SaveChangesAsync();
+  }
+}
+
+// Verify the message was attempted exactly MaxPublishAttempts times
+Console.WriteLine($"Publisher attempts: {failingPublisher.Attempts}"); // Should be 3
+
+// Verify the message is now in Failed state and dead-lettered
+var persisted = await outbox.GetByIdempotencyKeyAsync(poisonMessage.IdempotencyKey);
+Console.WriteLine($"Message state: {persisted?.State}"); // Should be Failed
+Console.WriteLine($"Publish attempts: {persisted?.PublishAttempts}"); // Should be 3
+
+// Verify it's in the dead-letter store
+var deadLetter = await dlq.GetByOutboxMessageIdAsync(persisted?.Id ?? Guid.Empty);
+Console.WriteLine($"Dead letter exists: {deadLetter != null}"); // Should be true
+Console.WriteLine($"Dead letter topic: {deadLetter?.Topic}"); // Should be "widgets"
+
+// Verify no pending messages remain
+var pending = await outbox.GetPendingMessagesAsync(10);
+Console.WriteLine($"Pending messages: {pending.Count}"); // Should be 0
+
+// Cleanup
+connection.Dispose();
+```
+
 // ## OutboxBackoffOptionsTests
 // The `OutboxBackoffOptionsTests` class provides comprehensive unit tests for the configurable batch size and idle backoff options on `OutboxProcessorOptions` and the helper methods in `OutboxBackoffExtensions`. These tests verify the fluent configuration API, validation logic, and delay calculation algorithms work correctly under various scenarios including edge cases and error conditions.
 
