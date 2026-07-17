@@ -71,21 +71,21 @@ public static class PublishEventRequestJsonExtensions
     public static bool TryFromJson(string json, out PublishEventRequest? value)
     {
         ArgumentNullException.ThrowIfNull(json);
-
         value = default;
 
+        return !string.IsNullOrWhiteSpace(json) && TryDeserialize(json, out value);
+    }
+
+    private static bool TryDeserialize(string json, out PublishEventRequest? value)
+    {
         try
         {
-            if (!string.IsNullOrWhiteSpace(json))
-            {
-                value = JsonSerializer.Deserialize<PublishEventRequest>(json, _jsonSerializerOptions);
-                return true;
-            }
-
+            value = JsonSerializer.Deserialize<PublishEventRequest>(json, _jsonSerializerOptions);
             return true;
         }
         catch (JsonException)
         {
+            value = default;
             return false;
         }
     }
