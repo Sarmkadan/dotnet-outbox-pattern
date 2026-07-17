@@ -503,3 +503,100 @@ if (resourcesResponse.IsSuccessStatusCode)
     Console.WriteLine($"Database Connections: {resourceData.DatabaseConnections}");
 }
 ```
+
+// ## DeadLetterController
+// The `DeadLetterController` provides API endpoints for managing failed messages in the dead letter queue (DLQ).
+// It enables operators to review, analyze, requeue, or permanently delete messages that failed to process,
+// ensuring system reliability and providing visibility into message processing failures.
+
+/// <summary>
+/// API controller for managing dead letter queue operations
+/// Provides endpoints for reviewing, requeuing, and analyzing failed messages
+/// </summary>
+
+// Example Usage
+```csharp
+// Initialize HttpClient for API calls
+var httpClient = new HttpClient();
+httpClient.BaseAddress = new Uri("https://localhost:5001");
+
+// 1. Get unreviewed dead letters (messages awaiting operator review)
+var unreviewedResponse = await httpClient.GetAsync("/api/deadletters/unreviewed");
+if (unreviewedResponse.IsSuccessStatusCode)
+{
+    var unreviewedDeadLetters = await unreviewedResponse.Content.ReadFromJsonAsync<List<DeadLetter>>();
+    Console.WriteLine($"Found {unreviewedDeadLetters?.Count} unreviewed dead letters");
+}
+
+// 2. Get all dead letters with pagination
+var deadLettersResponse = await httpClient.GetAsync("/api/deadletters?page=1&pageSize=50");
+if (deadLettersResponse.IsSuccessStatusCode)
+{
+    var paginatedResponse = await deadLettersResponse.Content.ReadFromJsonAsync<PaginatedResponse<DeadLetter>>();
+    Console.WriteLine($"Page {paginatedResponse?.Page} of {paginatedResponse?.TotalPages} - " +
+                     $"Total: {paginatedResponse?.TotalItems} dead letters");
+}
+
+// 3. Get a specific dead letter by ID
+var specificDeadLetterResponse = await httpClient.GetAsync(
+    $"/api/deadletters/{Guid.NewGuid()}");
+if (specificDeadLetterResponse.IsSuccessStatusCode)
+{
+    var deadLetter = await specificDeadLetterResponse.Content.ReadFromJsonAsync<DeadLetter>();
+    Console.WriteLine($"Dead letter {deadLetter?.Id}: {deadLetter?.ErrorMessage}");
+}
+
+// 4. Review a dead letter (mark as reviewed with notes)
+var reviewResponse = await httpClient.PutAsync(
+    $"/api/deadletters/{Guid.NewGuid()}/review",
+    new StringContent(
+        JsonSerializer.Serialize(new ReviewDeadLetterRequest { Notes = "Investigated - transient network issue" }),
+        Encoding.UTF8,
+        "application/json"));
+if (reviewResponse.IsSuccessStatusCode)
+{
+    Console.WriteLine("Dead letter reviewed successfully");
+}
+
+// 5. Requeue a dead letter for retry
+var requeueResponse = await httpClient.PostAsync(
+    $"/api/deadletters/{Guid.NewGuid()}/requeue",
+    new StringContent(
+        JsonSerializer.Serialize(new RequeueDeadLetterRequest { Reason = "Temporary network issue resolved" }),
+        Encoding.UTF8,
+        "application/json"));
+if (requeueResponse.IsSuccessStatusCode)
+{
+    Console.WriteLine("Dead letter requeued for retry");
+}
+
+// 6. Get dead letter statistics
+var statsResponse = await httpClient.GetAsync("/api/deadletters/statistics");
+if (statsResponse.IsSuccessStatusCode)
+{
+    var stats = await statsResponse.Content.ReadFromJsonAsync<DeadLetterStatistics>();
+    Console.WriteLine($"Total: {stats?.TotalDeadLetters}, Unreviewed: {stats?.UnreviewedCount}, " +
+                     $"Reviewed: {stats?.ReviewedCount}");
+    Console.WriteLine($"Errors by type: {string.Join(", ", stats?.ErrorsByType.Select(kvp => $"{kvp.Key}: {kvp.Value}") ?? Array.Empty<string>())}");
+    Console.WriteLine($"Oldest: {stats?.OldestDeadLetter}, Last updated: {stats?.LastUpdated}");
+}
+
+// 7. Delete a dead letter permanently
+var deleteResponse = await httpClient.DeleteAsync($"/api/deadletters/{Guid.NewGuid()}");
+if (deleteResponse.IsSuccessStatusCode)
+{
+    Console.WriteLine("Dead letter deleted successfully");
+}
+
+// 8. Export dead letters to CSV
+var exportResponse = await httpClient.PostAsync("/api/deadletters/export",
+    new StringContent(
+        JsonSerializer.Serialize(new ExportRequest { Format = "csv" }),
+        Encoding.UTF8,
+        "application/json"));
+if (exportResponse.IsSuccessStatusCode)
+{
+    var csvContent = await exportResponse.Content.ReadAsStringAsync();
+    Console.WriteLine(csvContent);
+}
+```
