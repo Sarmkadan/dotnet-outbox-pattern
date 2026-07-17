@@ -1050,3 +1050,67 @@ await publisher.PublishWithRetryAsync(messages[0], maxRetries: 5, retryDelay: Ti
 IMessagePublisher loggingPublisher = publisher.WithLoggingDecorator(logger);
 await loggingPublisher.PublishAsync(messages[0], CancellationToken.None);
 ```
+
+// ## OutboxEndToEndTests
+// The `OutboxEndToEndTests` class provides end-to-end tests that exercise the outbox pattern against a real SQLite database through actual repositories and services. These tests verify the core guarantees of the outbox pattern: durability through process crashes and at-least-once delivery with consumer-side deduplication.
+
+/// <summary>
+/// End-to-end tests for the outbox pattern that verify durability and at-least-once delivery guarantees
+/// </summary>
+
+// Example Usage
+```csharp
+using DotnetOutboxPattern.Data;
+using DotnetOutboxPattern.Domain;
+using DotnetOutboxPattern.Services;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+
+// Create a test fixture with in-memory SQLite database
+var connection = new SqliteConnection("Data Source=:memory:");
+connection.Open();
+
+var dbOptions = new DbContextOptionsBuilder<OutboxDbContext>()
+    .UseSqlite(connection)
+    .Options;
+
+using var context = new OutboxDbContext(dbOptions);
+context.Database.EnsureCreated();
+
+// Create a recording publisher to track deliveries
+var publisher = new RecordingPublisher();
+
+// Create a process scope (simulates a fresh application process)
+using var process = new ProcessScope(dbOptions, publisher, new PublishingOptions());
+
+// Create and save a message within a transaction
+await using var tx = await process.Context.Database.BeginTransactionAsync();
+var message = new OutboxMessage
+{
+    IdempotencyKey = Guid.NewGuid().ToString("N"),
+    AggregateId = "order-123",
+    AggregateType = "Order",
+    EventType = EventType.Created,
+    EventData = "{\"orderId\":123}",
+    EventTypeName = "OrderCreated",
+    Topic = "orders",
+    MaxPublishAttempts = 3
+};
+process.Context.OutboxMessages.Add(message);
+await process.Context.SaveChangesAsync();
+await tx.CommitAsync();
+
+// Process pending messages (simulates the outbox processor running)
+await process.PublishingService.ProcessPendingMessagesAsync(batchSize: 10);
+
+// Verify the message was delivered
+publisher.Deliveries.Should().ContainSingle();
+
+// Verify the message state
+var persisted = await process.OutboxRepository.GetByIdempotencyKeyAsync(message.IdempotencyKey);
+persisted.Should().NotBeNull();
+persisted.State.Should().Be(OutboxMessageState.Published);
+
+// Cleanup
+connection.Dispose();
+```
