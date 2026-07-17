@@ -17,7 +17,7 @@ public static class OutboxMessageValidation
     /// </summary>
     /// <param name="value">The outbox message to validate</param>
     /// <returns>An immutable list of validation error messages; empty if valid</returns>
-    /// <exception cref="ArgumentNullException">Thrown if value is null</exception>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="value"/> is null</exception>
     public static IReadOnlyList<string> Validate(this OutboxMessage? value)
     {
         ArgumentNullException.ThrowIfNull(value);
@@ -152,6 +152,7 @@ public static class OutboxMessageValidation
                 {
                     errors.Add("PublishedAt cannot be set when State is Pending");
                 }
+
                 if (value.LastProcessedAt.HasValue)
                 {
                     errors.Add("LastProcessedAt cannot be set when State is Pending");
@@ -163,6 +164,7 @@ public static class OutboxMessageValidation
                 {
                     errors.Add("State is Processing but IsLocked is false");
                 }
+
                 if (!value.LockExpiresAt.HasValue)
                 {
                     errors.Add("State is Processing but LockExpiresAt is not set");
@@ -174,6 +176,7 @@ public static class OutboxMessageValidation
                 {
                     errors.Add("State is Published but PublishedAt is not set");
                 }
+
                 if (value.ErrorMessage is not null)
                 {
                     errors.Add("State is Published but ErrorMessage is set");
@@ -185,6 +188,7 @@ public static class OutboxMessageValidation
                 {
                     errors.Add("State is Failed but ErrorMessage is not set");
                 }
+
                 if (value.PublishAttempts < value.MaxPublishAttempts)
                 {
                     errors.Add("State is Failed but PublishAttempts is less than MaxPublishAttempts");
@@ -221,17 +225,15 @@ public static class OutboxMessageValidation
     /// </summary>
     /// <param name="value">The outbox message to check</param>
     /// <returns>True if the message is valid; otherwise, false</returns>
-    /// <exception cref="ArgumentNullException">Thrown if value is null</exception>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="value"/> is null</exception>
     public static bool IsValid(this OutboxMessage? value)
-    {
-        return value is null ? throw new ArgumentNullException(nameof(value)) : OutboxMessageValidation.Validate(value).Count == 0;
-    }
+        => value is not null && Validate(value).Count == 0;
 
     /// <summary>
     /// Ensures that an <see cref="OutboxMessage"/> is valid, throwing an exception if it is not.
     /// </summary>
     /// <param name="value">The outbox message to validate</param>
-    /// <exception cref="ArgumentNullException">Thrown if value is null</exception>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="value"/> is null</exception>
     /// <exception cref="ArgumentException">Thrown if the message is invalid, containing all validation errors</exception>
     public static void EnsureValid(this OutboxMessage? value)
     {
@@ -240,11 +242,10 @@ public static class OutboxMessageValidation
             throw new ArgumentNullException(nameof(value));
         }
 
-        var errors = OutboxMessageValidation.Validate(value);
+        var errors = Validate(value);
         if (errors.Count > 0)
         {
-            throw new ArgumentException(
-                $"OutboxMessage validation failed:{Environment.NewLine}- {string.Join($"{Environment.NewLine}- ", errors)}");
+            throw new ArgumentException($"OutboxMessage validation failed:{Environment.NewLine}- {string.Join($"{Environment.NewLine}- ", errors)}");
         }
     }
 }
