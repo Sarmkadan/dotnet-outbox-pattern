@@ -132,6 +132,74 @@ var joined = StringHelper.JoinNonEmpty("-", "prefix", null, "middle", "", "suffi
 var extracted = StringHelper.ExtractBetween("Hello [world] from [C#]", "[", "]"); // "world"
 ```
 
+// ## StringHelperTestsValidation
+// The `StringHelperTestsValidation` class provides validation utilities for testing the `StringHelper` methods.
+// It includes validation methods for all `StringHelper` public members that accept string parameters, ensuring test data
+// is valid before being passed to the actual methods. This helps maintain consistency between test expectations and actual behavior.
+
+/// <summary>
+/// Validation helpers for StringHelper method parameters used in StringHelperTests
+/// Provides validation for test data validation
+/// </summary>
+
+// Example Usage
+```csharp
+// Test validation for ComputeSha256Hash method
+var hashInput = "my-secret-password";
+var hashValidation = StringHelperTestsValidation.Validate(hashInput);
+if (StringHelperTestsValidation.IsValid(hashInput))
+{
+    var hash = StringHelper.StringHelper.ComputeSha256Hash(hashInput);
+    Console.WriteLine(hash);
+}
+
+// Test validation for IsValidEmail method
+var email = "user@example.com";
+var emailValidation = StringHelperTestsValidation.Validate(email, true);
+if (StringHelperTestsValidation.IsValid(email, true))
+{
+    var isValid = StringHelper.IsValidEmail(email);
+    Console.WriteLine(isValid); // true
+}
+
+// Test validation for Truncate method
+var longText = "This is a very long text that needs to be shortened";
+var truncateValidation = StringHelperTestsValidation.Validate(longText, 20, "This is a very lon...");
+if (StringHelperTestsValidation.IsValid(longText, 20, "This is a very lon..."))
+{
+    var truncated = StringHelper.Truncate(longText, 20);
+    Console.WriteLine(truncated);
+}
+
+// Test validation for ToSlug method
+var slugInput = "Hello World! This is a Test";
+var slugValidation = StringHelperTestsValidation.Validate(slugInput, "hello-world-this-is-a-test");
+if (StringHelperTestsValidation.IsValid(slugInput, "hello-world-this-is-a-test"))
+{
+    var slug = StringHelper.ToSlug(slugInput);
+    Console.WriteLine(slug); // "hello-world-this-is-a-test"
+}
+
+// Test validation for ToKebabCase method
+var kebabInput = "PascalCaseString";
+var kebabValidation = StringHelperTestsValidation.Validate(kebabInput, "pascal-case-string");
+if (StringHelperTestsValidation.IsValid(kebabInput, "pascal-case-string"))
+{
+    var kebab = StringHelper.ToKebabCase(kebabInput);
+    Console.WriteLine(kebab); // "pascal-case-string"
+}
+
+// Use EnsureValid to throw exceptions on invalid data
+try
+{
+    StringHelperTestsValidation.EnsureValid(null); // Throws ArgumentNullException
+}
+catch (ArgumentNullException ex)
+{
+    Console.WriteLine(ex.Message);
+}
+```
+
 // ## DateTimeHelper
 // The `DateTimeHelper` utility provides a set of static methods for common date/time operations used throughout the outbox pattern,
 // including parsing timestamps, calculating time deltas, and formatting durations. This utility helps ensure consistent handling
