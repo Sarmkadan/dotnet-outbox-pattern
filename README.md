@@ -1472,6 +1472,113 @@ IMessagePublisher loggingPublisher = publisher.WithLoggingDecorator(logger);
 await loggingPublisher.PublishAsync(messages[0], CancellationToken.None);
 ```
 
+// ## HealthCheckServiceValidation
+// The `HealthCheckServiceValidation` class provides validation utilities for health check related types in the outbox pattern system. It includes extension methods for validating `HealthAlert` and `HealthCheckOptions` instances, ensuring proper configuration and preventing runtime errors. These validation methods help maintain system reliability by catching configuration issues early.
+
+/// <summary>
+/// Validation utilities for health check related types
+/// </summary>
+
+// Example Usage
+```csharp
+using DotnetOutboxPattern.BackgroundServices;
+using System;
+
+// Create a health alert instance
+var healthAlert = new HealthAlert
+{
+    Type = "DatabaseConnectionFailure",
+    Message = "Database connection timeout after 30 seconds",
+    RaisedAt = DateTime.UtcNow
+};
+
+// Validate the health alert - returns list of errors (empty if valid)
+var validationErrors = healthAlert.Validate();
+if (validationErrors.Count > 0)
+{
+    Console.WriteLine("Health alert validation failed:");
+    foreach (var error in validationErrors)
+    {
+        Console.WriteLine($"- {error}");
+    }
+}
+else
+{
+    Console.WriteLine("Health alert is valid and can be processed");
+}
+
+// Check if health alert is valid using the IsValid method
+if (healthAlert.IsValid())
+{
+    Console.WriteLine("Health alert passes all validation rules");
+}
+
+// Use EnsureValid to throw an exception if validation fails
+try
+{
+    healthAlert.EnsureValid();
+    Console.WriteLine("Health alert validation passed - safe to use");
+}
+catch (ArgumentException ex)
+{
+    Console.WriteLine($"Validation failed: {ex.Message}");
+}
+
+// Create health check options with various configuration values
+var healthCheckOptions = new HealthCheckOptions
+{
+    CheckIntervalMs = 5000, // Check every 5 seconds
+    HighFailureRateThreshold = 0.75, // Alert if 75% of checks fail
+    StuckMessageThreshold = 3600000, // 1 hour
+    DeadLetterThreshold = 100 // 100 failed attempts before dead-lettering
+};
+
+// Validate health check options
+var optionsValidation = healthCheckOptions.Validate();
+if (optionsValidation.Count == 0)
+{
+    Console.WriteLine("Health check options are properly configured");
+}
+else
+{
+    Console.WriteLine("Health check options validation issues:");
+    foreach (var error in optionsValidation)
+    {
+        Console.WriteLine($"- {error}");
+    }
+}
+
+// Check if health check options are valid
+if (healthCheckOptions.IsValid())
+{
+    Console.WriteLine("Health check configuration is valid");
+}
+
+// Use EnsureValid to validate configuration at startup
+try
+{
+    healthCheckOptions.EnsureValid();
+    Console.WriteLine("Health check service configuration validated successfully");
+}
+catch (ArgumentException ex)
+{
+    Console.WriteLine($"Configuration error: {ex.Message}");
+    // Handle configuration error appropriately
+}
+
+// Example: Validate before using in HealthCheckService
+var healthCheckService = new HealthCheckService(
+    options: healthCheckOptions,
+    logger: logger
+);
+
+// The validation methods ensure that invalid configurations are caught early
+if (!healthCheckOptions.IsValid())
+{
+    throw new InvalidOperationException("Health check service cannot start with invalid configuration");
+}
+```
+
 // ## OutboxEndToEndTests
 // The `OutboxEndToEndTests` class provides end-to-end tests that exercise the outbox pattern against a real SQLite database through actual repositories and services. These tests verify the core guarantees of the outbox pattern: durability through process crashes and at-least-once delivery with consumer-side deduplication.
 
