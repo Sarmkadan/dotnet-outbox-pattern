@@ -2,9 +2,10 @@
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
-// =============================================================================
+// =====================================================================
 
 using System;
+using System.Collections.Generic;
 
 namespace DotnetOutboxPattern.Infrastructure;
 
@@ -21,7 +22,7 @@ public static class OutboxBackoffExtensions
     /// <param name="options">Options to configure.</param>
     /// <param name="batchSize">Messages per batch; must be greater than zero.</param>
     /// <returns>The same options instance for chaining.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="batchSize"/> is not positive.</exception>
     public static OutboxProcessorOptions WithBatchSize(this OutboxProcessorOptions options, int batchSize)
     {
@@ -42,8 +43,10 @@ public static class OutboxBackoffExtensions
     /// <param name="maxDelayMs">Delay ceiling in milliseconds; must be greater than or equal to <paramref name="baseDelayMs"/>.</param>
     /// <param name="multiplier">Growth factor per empty batch; must be greater than or equal to 1.</param>
     /// <returns>The same options instance for chaining.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
-    /// <exception cref="ArgumentOutOfRangeException">A numeric argument is out of range.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="baseDelayMs"/> is negative.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxDelayMs"/> is less than <paramref name="baseDelayMs"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="multiplier"/> is less than 1.0.</exception>
     public static OutboxProcessorOptions WithExponentialBackoff(
         this OutboxProcessorOptions options,
         int baseDelayMs,
@@ -68,7 +71,7 @@ public static class OutboxBackoffExtensions
     /// <param name="options">Options to configure.</param>
     /// <param name="delayMs">Fixed delay in milliseconds; must be zero or positive.</param>
     /// <returns>The same options instance for chaining.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="delayMs"/> is negative.</exception>
     public static OutboxProcessorOptions WithFixedDelay(this OutboxProcessorOptions options, int delayMs)
     {
@@ -86,7 +89,7 @@ public static class OutboxBackoffExtensions
     /// </summary>
     /// <param name="options">Options to validate.</param>
     /// <returns>The same options instance for chaining once validated.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">One or more values are out of range.</exception>
     public static OutboxProcessorOptions ValidateBackoff(this OutboxProcessorOptions options)
     {
@@ -124,7 +127,7 @@ public static class OutboxBackoffExtensions
     /// the base delay is returned. Negative values are treated as zero.
     /// </param>
     /// <returns>The delay to wait, never exceeding <see cref="OutboxProcessorOptions.MaxDelayBetweenBatches"/>.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
     public static TimeSpan ComputeDelay(this OutboxProcessorOptions options, int consecutiveEmptyBatches)
     {
         ArgumentNullException.ThrowIfNull(options);
