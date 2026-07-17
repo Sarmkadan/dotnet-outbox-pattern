@@ -36,10 +36,7 @@ public static class OutboxDbContextJsonExtensions
         ArgumentNullException.ThrowIfNull(value);
 
         var options = indented
-            ? new JsonSerializerOptions(_jsonOptions)
-            {
-                WriteIndented = true
-            }
+            ? new JsonSerializerOptions(_jsonOptions) { WriteIndented = true }
             : _jsonOptions;
 
         return JsonSerializer.Serialize(value, options);
@@ -49,7 +46,7 @@ public static class OutboxDbContextJsonExtensions
     /// Deserializes a JSON string to a <see cref="OutboxDbContext"/> instance.
     /// </summary>
     /// <param name="json">The JSON string to deserialize.</param>
-    /// <returns>A <see cref="OutboxDbContext"/> instance deserialized from JSON.</returns>
+    /// <returns>A <see cref="OutboxDbContext"/> instance deserialized from JSON, or <see langword="null"/> if deserialization fails.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is null.</exception>
     /// <exception cref="JsonException">Thrown when the JSON is invalid or cannot be deserialized.</exception>
     public static OutboxDbContext? FromJson(string json)
@@ -67,7 +64,11 @@ public static class OutboxDbContextJsonExtensions
     /// <returns>True if deserialization succeeded; otherwise, false.</returns>
     public static bool TryFromJson(string json, out OutboxDbContext? value)
     {
-        ArgumentException.ThrowIfNullOrEmpty(json);
+        if (string.IsNullOrEmpty(json))
+        {
+            value = null;
+            return false;
+        }
 
         try
         {
