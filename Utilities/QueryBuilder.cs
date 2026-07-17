@@ -4,6 +4,8 @@
 // CTO & Software Architect
 // =============================================================================
 
+using System.Text.Json.Serialization;
+
 namespace DotnetOutboxPattern.Utilities;
 
 /// <summary>
@@ -170,6 +172,17 @@ public sealed class QueryBuilder
 
         return summary;
     }
+
+    [JsonPropertyName("conditions")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    private List<FilterCondition> ConditionsForSerialization => _conditions;
+
+    [JsonPropertyName("orderBy")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    private string? OrderByForSerialization => _orderBy;
+
+    [JsonPropertyName("orderDescending")]
+    private bool OrderDescending => _orderDescending;
 }
 
 /// <summary>
@@ -177,8 +190,13 @@ public sealed class QueryBuilder
 /// </summary>
 public sealed class FilterCondition
 {
+    [JsonPropertyName("field")]
     public string Field { get; set; } = string.Empty;
+
+    [JsonPropertyName("operator")]
     public FilterOperator Operator { get; set; }
+
+    [JsonPropertyName("value")]
     public object? Value { get; set; }
 
     public override string ToString()
@@ -201,6 +219,7 @@ public sealed class FilterCondition
 /// <summary>
 /// Filter operator types
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum FilterOperator
 {
     Equals = 0,

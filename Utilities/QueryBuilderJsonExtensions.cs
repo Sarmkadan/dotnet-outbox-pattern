@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 
 namespace DotnetOutboxPattern.Utilities;
@@ -26,9 +27,10 @@ public static class QueryBuilderJsonExtensions
     {
         ArgumentNullException.ThrowIfNull(value);
 
-        var options = indented
-            ? new JsonSerializerOptions(_jsonOptions) { WriteIndented = true }
-            : _jsonOptions;
+        var options = new JsonSerializerOptions(_jsonOptions)
+        {
+            WriteIndented = indented
+        };
 
         return JsonSerializer.Serialize(value, options);
     }
@@ -40,6 +42,7 @@ public static class QueryBuilderJsonExtensions
     /// <returns>A deserialized <see cref="QueryBuilder"/> instance, or null if the JSON is invalid.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is null.</exception>
     /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is empty or whitespace.</exception>
+    /// <exception cref="JsonException">Thrown when the JSON is invalid or cannot be deserialized.</exception>
     public static QueryBuilder? FromJson(string json)
     {
         ArgumentNullException.ThrowIfNull(json);
