@@ -88,8 +88,9 @@ public static class DeadLetterTestsValidation
     /// Checks if a DeadLetter instance is valid
     /// </summary>
     /// <param name="value">The DeadLetter to validate</param>
-    /// <returns>True if valid, false otherwise</returns>
-    public static bool IsValid(this global::DotnetOutboxPattern.Domain.DeadLetter value) => Validate(value).Count == 0;
+    /// <returns>True if valid or null, false otherwise</returns>
+    public static bool IsValid(this global::DotnetOutboxPattern.Domain.DeadLetter? value) =>
+        value is null || Validate(value).Count == 0;
 
     /// <summary>
     /// Ensures a DeadLetter instance is valid, throwing ArgumentException if not
@@ -97,14 +98,15 @@ public static class DeadLetterTestsValidation
     /// <param name="value">The DeadLetter to validate</param>
     /// <exception cref="ArgumentNullException">Thrown if value is null</exception>
     /// <exception cref="ArgumentException">Thrown if value is invalid with list of problems</exception>
-    public static void EnsureValid(this global::DotnetOutboxPattern.Domain.DeadLetter value)
+    /// <returns>True if valid</returns>
+    public static bool EnsureValid(this global::DotnetOutboxPattern.Domain.DeadLetter value)
     {
         ArgumentNullException.ThrowIfNull(value);
 
         var problems = Validate(value);
         if (problems.Count == 0)
         {
-            return;
+            return true;
         }
 
         throw new ArgumentException(
@@ -113,6 +115,8 @@ public static class DeadLetterTestsValidation
 
     private static void ValidateRequiredString(string? value, string propertyName, List<string> problems)
     {
+        ArgumentException.ThrowIfNullOrEmpty(propertyName);
+
         if (string.IsNullOrEmpty(value))
         {
             problems.Add($"{propertyName} must be a non-empty string");
@@ -121,6 +125,8 @@ public static class DeadLetterTestsValidation
 
     private static void ValidateOptionalString(string? value, string propertyName, List<string> problems)
     {
+        ArgumentException.ThrowIfNullOrEmpty(propertyName);
+
         if (string.IsNullOrEmpty(value))
         {
             return;
@@ -135,6 +141,8 @@ public static class DeadLetterTestsValidation
 
     private static void ValidateDateTime(DateTime value, string propertyName, List<string> problems)
     {
+        ArgumentException.ThrowIfNullOrEmpty(propertyName);
+
         if (value == default)
         {
             problems.Add($"{propertyName} must not be default DateTime");
