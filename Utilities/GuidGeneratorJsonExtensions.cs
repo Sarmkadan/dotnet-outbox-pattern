@@ -26,25 +26,21 @@ public static class GuidGeneratorJsonExtensions
     /// <param name="guid">The Guid to serialize</param>
     /// <param name="indented">Whether to format the JSON with indentation</param>
     /// <returns>JSON string representation</returns>
-    /// <exception cref="ArgumentNullException">Thrown when guid is not a valid Guid</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="guid"/> is not a valid Guid</exception>
     public static string ToJson(this Guid guid, bool indented = false)
-    {
-        var options = indented
-            ? new JsonSerializerOptions(_jsonOptions) { WriteIndented = true }
-            : _jsonOptions;
-
-        return JsonSerializer.Serialize(guid, options);
-    }
+        => JsonSerializer.Serialize(guid, indented ? new JsonSerializerOptions(_jsonOptions) { WriteIndented = true } : _jsonOptions);
 
     /// <summary>
     /// Deserializes a JSON string to a Guid
     /// </summary>
     /// <param name="json">JSON string to deserialize</param>
     /// <returns>Deserialized Guid</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is null</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is empty or whitespace</exception>
     /// <exception cref="JsonException">Thrown when JSON is invalid</exception>
     public static Guid FromJson(string json)
     {
-        ArgumentException.ThrowIfNullOrEmpty(json);
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
         return JsonSerializer.Deserialize<Guid>(json, _jsonOptions);
     }
 
