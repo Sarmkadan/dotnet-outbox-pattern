@@ -1190,6 +1190,194 @@ try {
 } catch (ArgumentOutOfRangeException) { }
 ```
 
+// ## StructuredLoggingExtensionsValidation
+// The `StructuredLoggingExtensionsValidation` class provides validation utilities for the `StructuredLoggingExtensions` methods.
+// It includes validation methods for all `ILogger` parameters and method-specific parameters used in structured logging,
+// ensuring proper logging configuration and preventing null reference exceptions.
+
+/// <summary>
+/// Validation helpers for StructuredLoggingExtensions to ensure proper logging configuration
+/// </summary>
+
+// Example Usage
+```csharp
+using DotnetOutboxPattern.Logging;
+using Microsoft.Extensions.Logging;
+
+// Create a logger (typically injected in real applications)
+var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+ILogger<Program> logger = loggerFactory.CreateLogger<Program>();
+
+// Validate a logger instance - returns empty list if valid
+var validationResult = logger.Validate();
+if (validationResult.Count == 0)
+{
+    Console.WriteLine("Logger is valid and ready for structured logging");
+}
+
+// Validate logger with operation name and optional parameters
+var operationValidation = logger.Validate(
+    operation: "ProcessOrder",
+    aggregateId: "order-12345",
+    messageId: "msg-67890",
+    context: new Dictionary<string, object>
+    {
+        ["CustomerId"] = "customer-98765",
+        ["Priority"] = "High"
+    }
+);
+
+if (operationValidation.Count == 0)
+{
+    // Safe to use with StructuredLoggingExtensions
+    logger.LogOutboxOperation(
+        operation: "ProcessOrder",
+        aggregateId: "order-12345",
+        messageId: "msg-67890",
+        context: new Dictionary<string, object>
+        {
+            ["CustomerId"] = "customer-98765",
+            ["Priority"] = "High"
+        }
+    );
+}
+
+// Validate message publishing parameters
+var publishValidation = logger.Validate(
+    messageId: Guid.NewGuid(),
+    aggregateId: "order-12345",
+    topic: "orders.events",
+    publishAttempt: 1,
+    maxAttempts: 3
+);
+
+if (publishValidation.Count == 0)
+{
+    logger.LogMessagePublishing(
+        messageId: Guid.NewGuid(),
+        aggregateId: "order-12345",
+        topic: "orders.events",
+        publishAttempt: 1,
+        maxAttempts: 3
+    );
+}
+
+// Validate success logging
+var successValidation = logger.Validate(
+    messageId: Guid.NewGuid(),
+    durationMs: 150,
+    publishAttempts: 1
+);
+
+if (successValidation.Count == 0)
+{
+    logger.LogMessagePublishSuccess(
+        messageId: Guid.NewGuid(),
+        durationMs: 150,
+        publishAttempts: 1
+    );
+}
+
+// Validate failure logging
+var failureValidation = logger.Validate(
+    messageId: Guid.NewGuid(),
+    errorMessage: "Broker connection timeout",
+    publishAttempt: 1,
+    maxAttempts: 3
+);
+
+if (failureValidation.Count == 0)
+{
+    logger.LogMessagePublishFailure(
+        messageId: Guid.NewGuid(),
+        errorMessage: "Broker connection timeout",
+        publishAttempt: 1,
+        maxAttempts: 3
+    );
+}
+
+// Validate dead letter logging
+var deadLetterValidation = logger.Validate(
+    messageId: Guid.NewGuid(),
+    aggregateId: "order-12345",
+    reason: "Max publish attempts exceeded"
+);
+
+if (deadLetterValidation.Count == 0)
+{
+    logger.LogMessageMovedToDeadLetter(
+        messageId: Guid.NewGuid(),
+        aggregateId: "order-12345",
+        reason: "Max publish attempts exceeded"
+    );
+}
+
+// Validate retry logging
+var retryValidation = logger.Validate(
+    messageId: Guid.NewGuid(),
+    retryCount: 2,
+    delayMs: 2000
+);
+
+if (retryValidation.Count == 0)
+{
+    logger.LogMessageRetry(
+        messageId: Guid.NewGuid(),
+        retryCount: 2,
+        delayMs: 2000
+    );
+}
+
+// Validate health status logging
+var healthValidation = logger.Validate(
+    status: "Healthy",
+    pendingMessages: 5,
+    processingMessages: 2,
+    failedMessages: 0
+);
+
+if (healthValidation.Count == 0)
+{
+    logger.LogHealthStatus(
+        status: "Healthy",
+        pendingMessages: 5,
+        processingMessages: 2,
+        failedMessages: 0
+    );
+}
+
+// Validate performance metric logging
+var metricValidation = logger.Validate(
+    metricName: "MessagesPerSecond",
+    value: 45.2,
+    unit: "msg/s"
+);
+
+if (metricValidation.Count == 0)
+{
+    logger.LogPerformanceMetric(
+        metricName: "MessagesPerSecond",
+        value: 45.2,
+        unit: "msg/s"
+    );
+}
+
+// Use EnsureValid to throw exceptions on invalid data
+try
+{
+    ILogger? nullLogger = null;
+    nullLogger.EnsureValid(); // Throws ArgumentNullException
+}
+catch (ArgumentNullException ex)
+{
+    Console.WriteLine(ex.Message);
+}
+
+// Check if logger is valid
+bool isValidLogger = logger.IsValid(); // true
+bool isNullLogger = ((ILogger?)null).IsValid(); // false
+```
+
 // ## OutboxExceptionExtensions
 // The `OutboxExceptionExtensions` class provides extension methods for `OutboxException` and its derived types.
 // It offers utilities for determining retryability, formatting error messages, extracting diagnostic information,
