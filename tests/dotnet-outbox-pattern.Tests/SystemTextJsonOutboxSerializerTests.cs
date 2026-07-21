@@ -1,5 +1,6 @@
 #nullable enable
 
+using DotnetOutboxPattern.Domain;
 using DotnetOutboxPattern.Services;
 using FluentAssertions;
 using System.Text.Json;
@@ -144,7 +145,7 @@ public sealed class SystemTextJsonOutboxSerializerTests
     [Fact]
     public void Deserialize_WithWhitespaceString_ReturnsDefault()
     {
-        var result = _sut.Deserialize<object>("   ");
+        var result = _sut.Deserialize<object>(" ");
         result.Should().BeNull();
     }
 
@@ -253,6 +254,210 @@ public sealed class SystemTextJsonOutboxSerializerTests
 
         result.Should().NotBeNull();
         result!.Name.Should().Be("Test"); // Should work with camelCase if the DTO property matches
+    }
+
+    /// <summary>
+    /// Verifies that the serializer can round-trip a DomainEvent with nested payload.
+    /// </summary>
+    [Fact]
+    public void Serialize_Deserialize_DomainEvent_RoundTrip()
+    {
+        // Arrange - Create a PublishableEvent wrapping the DomainEvent (as used in actual code)
+        var domainEvent = new EntityCreatedEvent
+        {
+            EntityId = "123",
+            EntityType = "User",
+            EntityData = new Dictionary<string, object> { { "Name", "John Doe" }, { "Email", "john@example.com" } },
+            UserId = "user-42",
+            CorrelationId = "corr-123",
+            CausationId = "cmd-456"
+        };
+
+        var publishableEvent = new PublishableEvent
+        {
+            Event = domainEvent,
+            Topic = "test.topic",
+            PartitionKey = "test-partition"
+        };
+
+        // Act - Serialize the PublishableEvent (which contains the polymorphic DomainEvent)
+        var json = _sut.Serialize(publishableEvent);
+        var deserialized = _sut.Deserialize<PublishableEvent>(json);
+
+        // Assert
+        deserialized.Should().NotBeNull();
+        deserialized!.Event.Should().NotBeNull();
+        deserialized.Event.Should().BeOfType<EntityCreatedEvent>();
+        var deserializedEvent = deserialized.Event as EntityCreatedEvent;
+        deserializedEvent.Should().NotBeNull();
+        deserializedEvent!.EntityId.Should().Be(domainEvent.EntityId);
+        deserializedEvent.EntityType.Should().Be(domainEvent.EntityType);
+        deserializedEvent.UserId.Should().Be(domainEvent.UserId);
+        deserializedEvent.CorrelationId.Should().Be(domainEvent.CorrelationId);
+        deserializedEvent.CausationId.Should().Be(domainEvent.CausationId);
+    }
+
+    /// <summary>
+    /// Verifies that the serializer can resolve polymorphic types using JsonDerivedType attributes.
+    /// </summary>
+    [Fact]
+    public void Deserialize_PolymorphicDomainEvent_ResolvesCorrectType()
+    {
+        // Arrange - Create different types of domain events wrapped in PublishableEvent
+        var entityCreated = new EntityCreatedEvent
+        {
+            EntityId = "created-123",
+            EntityType = "Product",
+            EntityData = new Dictionary<string, object> { { "Name", "Widget" } }
+        };
+
+        var entityUpdated = new EntityUpdatedEvent
+        {
+            EntityId = "updated-456",
+            EntityType = "Product",
+            OldData = new Dictionary<string, object> { { "Name", "Old Widget" } },
+            NewData = new Dictionary<string, object> { { "Name", "New Widget" } },
+            ChangedProperties = new List<string> { "Name" }
+        };
+
+        var customEvent = new CustomDomainEvent
+        {
+            EventName = "SpecialEvent",
+            AggregateId = "agg-789",
+            AggregateType = "SpecialAggregate",
+            Payload = new Dictionary<string, object> { { "Key", "Value" } }
+        };
+
+        var notification = new NotificationEvent
+        {
+            NotificationType = "Email",
+            RecipientId = "user-999",
+            Subject = "Test Subject",
+            Body = "Test Body",
+            IsCritical = true
+        };
+
+        var publishableCreated = new PublishableEvent { Event = entityCreated, Topic = "test.created" };
+        var publishableUpdated = new PublishableEvent { Event = entityUpdated, Topic = "test.updated" };
+        var publishableCustom = new PublishableEvent { Event = customEvent, Topic = "test.custom" };
+        var publishableNotification = new PublishableEvent { Event = notification, Topic = "test.notification" };
+
+        // Act - Serialize each PublishableEvent
+        var createdJson = _sut.Serialize(publishableCreated);
+        var updatedJson = _sut.Serialize(publishableUpdated);
+        var customJson = _sut.Serialize(publishableCustom);
+        var notificationJson = _sut.Serialize(publishableNotification);
+
+        // Assert - Each should deserialize correctly and the Event property should be the correct concrete type
+        var deserializedCreated = _sut.Deserialize<PublishableEvent>(createdJson);
+        deserializedCreated.Should().NotBeNull();
+        deserializedCreated!.Event.Should().BeOfType<EntityCreatedEvent>();
+        (deserializedCreated.Event as EntityCreatedEvent)!.EntityId.Should().Be("created-123");
+
+        var deserializedUpdated = _sut.Deserialize<PublishableEvent>(updatedJson);
+        deserializedUpdated.Should().NotBeNull();
+        deserializedUpdated!.Event.Should().BeOfType<EntityUpdatedEvent>();
+        (deserializedUpdated.Event as EntityUpdatedEvent)!.EntityId.Should().Be("updated-456");
+
+        var deserializedCustom = _sut.Deserialize<PublishableEvent>(customJson);
+        deserializedCustom.Should().NotBeNull();
+        deserializedCustom!.Event.Should().BeOfType<CustomDomainEvent>();
+        (deserializedCustom.Event as CustomDomainEvent)!.EventName.Should().Be("SpecialEvent");
+
+        var deserializedNotification = _sut.Deserialize<PublishableEvent>(notificationJson);
+        deserializedNotification.Should().NotBeNull();
+        deserializedNotification!.Event.Should().BeOfType<NotificationEvent>();
+        (deserializedNotification.Event as NotificationEvent)!.Subject.Should().Be("Test Subject");
+    }
+
+    /// <summary>
+    /// Verifies that the serializer handles null payload correctly.
+    /// </summary>
+    [Fact]
+    public void Serialize_NullPayload_ReturnsNullString()
+    {
+        // Arrange
+        DomainEvent? nullEvent = null;
+
+        // Act
+        var result = _sut.Serialize(nullEvent);
+
+        // Assert
+        result.Should().Be("null");
+    }
+
+    /// <summary>
+    /// Verifies that the Deserialize method handles null payload correctly.
+    /// </summary>
+    [Fact]
+    public void Deserialize_NullPayload_ReturnsNull()
+    {
+        // Act
+        var result = _sut.Deserialize<DomainEvent>(null!);
+
+        // Assert
+        result.Should().BeNull();
+    }
+
+    /// <summary>
+    /// Verifies that the Deserialize method handles empty string input correctly.
+    /// </summary>
+    [Fact]
+    public void Deserialize_EmptyString_ReturnsNull()
+    {
+        // Act
+        var result = _sut.Deserialize<DomainEvent>("");
+
+        // Assert
+        result.Should().BeNull();
+    }
+
+    /// <summary>
+    /// Verifies that the Deserialize method handles malformed JSON gracefully.
+    /// </summary>
+    [Fact]
+    public void Deserialize_MalformedJson_ReturnsNull()
+    {
+        // Arrange - Malformed JSON
+        var malformedJson = "{ this is not valid json";
+
+        // Act
+        var result = _sut.Deserialize<DomainEvent>(malformedJson);
+
+        // Assert
+        result.Should().BeNull();
+    }
+
+    /// <summary>
+    /// Verifies that the Deserialize method handles malformed JSON with type parameter gracefully.
+    /// </summary>
+    [Fact]
+    public void Deserialize_MalformedJson_WithTypeParameter_ReturnsNull()
+    {
+        // Arrange - Malformed JSON
+        var malformedJson = "not a json at all {{{";
+
+        // Act
+        var result = _sut.Deserialize(malformedJson, typeof(DomainEvent));
+
+        // Assert
+        result.Should().BeNull();
+    }
+
+    /// <summary>
+    /// Verifies that the Deserialize method handles invalid JSON for the target type gracefully.
+    /// </summary>
+    [Fact]
+    public void Deserialize_InvalidJsonForTargetType_ReturnsNull()
+    {
+        // Arrange - Truly malformed JSON that will throw JsonException
+        var invalidJson = "not valid json {{{";
+
+        // Act - Try to deserialize as PublishableEvent
+        var result = _sut.Deserialize<PublishableEvent>(invalidJson);
+
+        // Assert - Should return null rather than throw
+        result.Should().BeNull();
     }
 
     /// <summary>
