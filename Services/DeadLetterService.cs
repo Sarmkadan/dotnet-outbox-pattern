@@ -162,7 +162,8 @@ public sealed class DeadLetterService : IDeadLetterService
                     CorrelationId = deadLetter.CorrelationId,
                     CausationId = deadLetter.CausationId,
                     Metadata = deadLetter.Metadata,
-                    PublishAttempts = 0
+                    PublishAttempts = 0,
+                    MaxPublishAttempts = OutboxConstants.DefaultMaxPublishAttempts
                 };
 
                 await _outboxRepository.AddAsync(message, cancellationToken);
@@ -172,6 +173,7 @@ public sealed class DeadLetterService : IDeadLetterService
                 // Reset existing message
                 message.State = OutboxMessageState.Pending;
                 message.PublishAttempts = 0;
+                message.MaxPublishAttempts = OutboxConstants.DefaultMaxPublishAttempts;
                 message.ErrorMessage = null;
                 message.ErrorStackTrace = null;
                 message.LastProcessedAt = null;
