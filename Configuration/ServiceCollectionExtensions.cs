@@ -54,6 +54,7 @@ public static class ServiceCollectionExtensions
         // TryAdd keeps any caller-provided implementation in place.
         services.TryAddSingleton<IOutboxSerializer, SystemTextJsonOutboxSerializer>();
         services.TryAddSingleton(_ => new PublishingOptions());
+        services.TryAddSingleton(_ => new OutboxRetryOptions());
 
         // Register services
         services.AddScoped<IOutboxService, OutboxService>();

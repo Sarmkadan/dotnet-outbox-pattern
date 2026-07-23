@@ -84,19 +84,47 @@ public sealed class MessagePublishingService : IMessagePublishingService
     private readonly IMessagePublisher _publisher;
     private readonly ILogger<MessagePublishingService> _logger;
     private readonly PublishingOptions _options;
+    private readonly OutboxRetryOptions _retryOptions;
+    private readonly IDeadLetterService? _deadLetterService;
 
+    /// <summary>
+    /// Creates a new message publishing service.
+    /// </summary>
+    /// <param name="outboxRepository">Repository used to load and update outbox messages.</param>
+    /// <param name="deadLetterRepository">
+    /// Repository used as a fallback dead-letter sink when no <paramref name="deadLetterService"/> is supplied.
+    /// </param>
+    /// <param name="publisher">The message publisher used to deliver each message.</param>
+    /// <param name="logger">Logger for processing diagnostics.</param>
+    /// <param name="options">Publishing options (lock duration, publish timeout, etc.).</param>
+    /// <param name="retryOptions">
+    /// Retry-with-backoff policy consulted on every publish failure. Defaults to a new
+    /// <see cref="OutboxRetryOptions"/> instance when omitted.
+    /// </param>
+    /// <param name="deadLetterService">
+    /// Optional dead letter service used to move exhausted messages to the dead letter store.
+    /// When omitted, messages are written directly via <paramref name="deadLetterRepository"/>.
+    /// </param>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="outboxRepository"/>, <paramref name="deadLetterRepository"/>,
+    /// <paramref name="publisher"/>, <paramref name="logger"/>, or <paramref name="options"/> is <see langword="null"/>.
+    /// </exception>
     public MessagePublishingService(
         IOutboxRepository outboxRepository,
         IDeadLetterRepository deadLetterRepository,
         IMessagePublisher publisher,
         ILogger<MessagePublishingService> logger,
-        PublishingOptions options)
+        PublishingOptions options,
+        OutboxRetryOptions? retryOptions = null,
+        IDeadLetterService? deadLetterService = null)
     {
         _outboxRepository = outboxRepository ?? throw new ArgumentNullException(nameof(outboxRepository));
         _deadLetterRepository = deadLetterRepository ?? throw new ArgumentNullException(nameof(deadLetterRepository));
         _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _retryOptions = retryOptions ?? new OutboxRetryOptions();
+        _deadLetterService = deadLetterService;
     }
 
     /// <summary>
@@ -391,17 +419,40 @@ public sealed class MessagePublishingService : IMessagePublishingService
         {
             message.RecordFailure(errorMessage, stackTrace);
 
-            // If max attempts reached, move to dead letter
-            // Checking PublishAttempts >= MaxPublishAttempts directly to ensure dead-lettering even if message.State is not consistently updated
-            if (message.PublishAttempts >= message.MaxPublishAttempts)
+            // The retry policy's MaxAttempts is the authority on when a message is exhausted;
+            // it is combined with the row's own MaxPublishAttempts so a caller can never exceed
+            // whichever limit is stricter.
+            var attemptCeiling = Math.Min(_retryOptions.MaxAttempts, message.MaxPublishAttempts);
+
+            if (message.PublishAttempts >= attemptCeiling)
             {
                 _logger.LogError(
                     "Message {MessageId} exhausted retries ({Attempts}). Moving to dead letter.",
                     message.Id, message.PublishAttempts);
 
-                var deadLetter = DeadLetter.FromOutboxMessage(message);
-                await _deadLetterRepository.AddAsync(deadLetter, cancellationToken);
+                if (_deadLetterService is not null)
+                {
+                    await _deadLetterService.MoveToDlqAsync(message, cancellationToken);
+                }
+                else
+                {
+                    var deadLetter = DeadLetter.FromOutboxMessage(message);
+                    await _deadLetterRepository.AddAsync(deadLetter, cancellationToken);
+                }
+
                 message.State = OutboxMessageState.Failed; // Explicitly mark as failed / dead-lettered
+            }
+            else
+            {
+                // Not yet exhausted: schedule the next attempt according to the configured
+                // backoff strategy instead of letting it be picked up again immediately.
+                var delay = _retryOptions.ComputeNextDelay(message.PublishAttempts);
+                message.ScheduledFor = DateTime.UtcNow.Add(delay);
+                message.State = OutboxMessageState.Pending;
+
+                _logger.LogWarning(
+                    "Message {MessageId} failed attempt {Attempt}/{MaxAttempts}. Retrying at {ScheduledFor} using {Strategy}.",
+                    message.Id, message.PublishAttempts, attemptCeiling, message.ScheduledFor, _retryOptions.BackoffStrategy);
             }
 
             await _outboxRepository.UpdateAsync(message, cancellationToken);
