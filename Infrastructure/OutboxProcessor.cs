@@ -103,6 +103,7 @@ public sealed class OutboxProcessor : BackgroundService
     private readonly IOutboxProcessorOptions _options;
     private readonly ILogger<OutboxProcessor> _logger;
     private readonly HealthMetrics _health;
+    private readonly CircuitBreaker _circuitBreaker;
     private DateTime _lastExpiredLockCheck = DateTime.UtcNow;
     private int _consecutiveEmptyBatches;
 
@@ -115,6 +116,7 @@ public sealed class OutboxProcessor : BackgroundService
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _health = new HealthMetrics();
+        _circuitBreaker = new CircuitBreaker(new CircuitBreakerOptions(), _logger);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -133,6 +135,18 @@ public sealed class OutboxProcessor : BackgroundService
         {
             try
             {
+                // Update circuit breaker state in health metrics
+                _health.CircuitState = (Domain.CircuitState)_circuitBreaker.State;
+
+			// When circuit is open, sleep until it's ready to try again
+			// This prevents hammering a downed downstream service
+			if (!_circuitBreaker.IsAllowed)
+			{
+				_logger.LogDebug("Circuit breaker is open, sleeping to allow recovery");
+				await Task.Delay(_options.DelayBetweenBatches, stoppingToken);
+				continue;
+			}
+
                 // Check for and release expired locks
                 if (DateTime.UtcNow - _lastExpiredLockCheck > TimeSpan.FromMilliseconds(_options.CheckExpiredLocksInterval))
                 {
@@ -154,6 +168,7 @@ public sealed class OutboxProcessor : BackgroundService
                 if (pendingWorked || scheduledWorked)
                 {
                     _consecutiveEmptyBatches = 0;
+                    _circuitBreaker.RecordSuccess();
                 }
                 else if (_consecutiveEmptyBatches < int.MaxValue)
                 {
@@ -175,6 +190,7 @@ public sealed class OutboxProcessor : BackgroundService
                 _health.IsHealthy = false;
                 _health.ErrorMessage = ex.Message;
                 _health.ConsecutiveFailures++;
+                _circuitBreaker.RecordFailure(ex);
 
                 // Wait a bit longer before retrying after an error
                 await Task.Delay(10000, stoppingToken);
@@ -206,6 +222,13 @@ public sealed class OutboxProcessor : BackgroundService
     /// </summary>
     private async Task<bool> ProcessPendingMessagesAsync(CancellationToken cancellationToken)
     {
+        // Check circuit breaker before attempting to publish
+        if (!_circuitBreaker.IsAllowed)
+        {
+            _logger.LogDebug("Skipping message processing - circuit breaker is open");
+            return false;
+        }
+
         using var scope = _serviceProvider.CreateScope();
         var publishingService = scope.ServiceProvider.GetRequiredService<IMessagePublishingService>();
 
@@ -228,6 +251,10 @@ public sealed class OutboxProcessor : BackgroundService
             }
             _health.LastSuccessfulPublish = DateTime.UtcNow;
         }
+        else if (result.FailedCount > 0)
+        {
+            _health.IsHealthy = false;
+        }
 
         return result.ProcessedCount > 0 || result.FailedCount > 0;
     }
@@ -238,6 +265,13 @@ public sealed class OutboxProcessor : BackgroundService
     /// </summary>
     private async Task<bool> ProcessScheduledMessagesAsync(CancellationToken cancellationToken)
     {
+        // Check circuit breaker before attempting to publish
+        if (!_circuitBreaker.IsAllowed)
+        {
+            _logger.LogDebug("Skipping scheduled message processing - circuit breaker is open");
+            return false;
+        }
+
         using var scope = _serviceProvider.CreateScope();
         var publishingService = scope.ServiceProvider.GetRequiredService<IMessagePublishingService>();
 

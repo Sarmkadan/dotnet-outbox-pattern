@@ -7,6 +7,28 @@
 namespace DotnetOutboxPattern.Domain;
 
 /// <summary>
+/// Circuit breaker state enumeration
+/// </summary>
+public enum CircuitState
+{
+    /// <summary>
+    /// The circuit is closed and requests are allowed to pass through
+    /// </summary>
+    Closed,
+
+    /// <summary>
+    /// The circuit is open and requests are blocked
+    /// </summary>
+    Open,
+
+    /// <summary>
+    /// The circuit is in half-open state, allowing a limited number of requests
+    /// to test if the downstream service has recovered
+    /// </summary>
+    HalfOpen
+}
+
+/// <summary>
 /// Result of processing an outbox message
 /// </summary>
 public sealed class OutboxProcessingResult
@@ -264,4 +286,14 @@ public sealed class HealthMetrics
     /// Age of the oldest unprocessed pending message, or <c>null</c> if there are no pending messages
     /// </summary>
     public TimeSpan? OldestMessageAge { get; set; }
+
+    /// <summary>
+    /// Current circuit breaker state
+    /// </summary>
+    public CircuitState CircuitState { get; set; } = CircuitState.Closed;
+
+    /// <summary>
+    /// Whether the circuit breaker is currently open
+    /// </summary>
+    public bool IsCircuitOpen => CircuitState == CircuitState.Open;
 }

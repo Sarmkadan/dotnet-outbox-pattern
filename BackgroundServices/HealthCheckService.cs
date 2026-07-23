@@ -7,6 +7,7 @@
 using Microsoft.Extensions.Hosting;
 using DotnetOutboxPattern.Data;
 using DotnetOutboxPattern.Caching;
+using DotnetOutboxPattern.Infrastructure;
 
 namespace DotnetOutboxPattern.BackgroundServices;
 
@@ -64,10 +65,24 @@ public sealed class HealthCheckService : BackgroundService
     {
         using var scope = _serviceProvider.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IOutboxRepository>();
+		var outboxProcessor = scope.ServiceProvider.GetService<OutboxProcessor>();
 
         try
         {
             var stats = await repository.GetStatisticsAsync();
+
+
+			// Check circuit breaker state - circuit breaker open is a degradation, not a failure
+			if (outboxProcessor?.GetHealth().IsCircuitOpen == true)
+			{
+				RaiseAlert(
+					"CircuitBreakerOpen",
+					"Circuit breaker is open - downstream service may be unavailable");
+			}
+			else
+			{
+				ClearAlert("CircuitBreakerOpen");
+			}
 
             // Check for high failure rate
             var totalMessages = stats.PublishedMessages + stats.FailedMessages;
