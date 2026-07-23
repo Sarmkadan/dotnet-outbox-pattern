@@ -132,22 +132,22 @@ public static class OutboxBackoffExtensions
     {
         ArgumentNullException.ThrowIfNull(options);
 
+        // Normalise the base delay (negative values are treated as zero)
         var baseDelay = Math.Max(0, options.DelayBetweenBatches);
 
+        // Fixed backoff or no empty batches – just return the base delay.
         if (options.BackoffStrategy != BackoffStrategy.Exponential || consecutiveEmptyBatches <= 0)
         {
             return TimeSpan.FromMilliseconds(baseDelay);
         }
 
-        // Grow geometrically, but clamp the exponent so pow() cannot overflow to Infinity on a
-        // long-idle processor before we cap it.
-        var multiplier = Math.Max(1.0, options.BackoffMultiplier);
-        var cappedExponent = Math.Min(consecutiveEmptyBatches, 32);
-        var scaled = baseDelay * Math.Pow(multiplier, cappedExponent);
+        // Delegate the exponential calculation to the shared BackoffMath implementation.
+        var delayMs = BackoffMath.ComputeExponentialDelay(
+            baseDelayMs: options.DelayBetweenBatches,
+            maxDelayMs: options.MaxDelayBetweenBatches,
+            multiplier: options.BackoffMultiplier,
+            attempt: consecutiveEmptyBatches);
 
-        var ceiling = Math.Max(options.MaxDelayBetweenBatches, baseDelay);
-        var clamped = Math.Min(scaled, ceiling);
-
-        return TimeSpan.FromMilliseconds(clamped);
+        return TimeSpan.FromMilliseconds(delayMs);
     }
 }

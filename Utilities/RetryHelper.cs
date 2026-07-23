@@ -4,6 +4,12 @@
 // CTO & Software Architect
 // =============================================================================
 
+using System;
+using System.IO;
+using System.Net.Http;
+using System.Threading.Tasks;
+using DotnetOutboxPattern.Infrastructure;
+
 namespace DotnetOutboxPattern.Utilities;
 
 /// <summary>
@@ -15,16 +21,25 @@ public static class RetryHelper
     /// <summary>
     /// Executes an action with exponential backoff retry
     /// </summary>
+    /// <param name="action">The asynchronous action to execute.</param>
+    /// <param name="maxRetries">Maximum number of retries (default 5).</param>
+    /// <param name="initialDelayMs">Initial delay in milliseconds (default 100).</param>
+    /// <param name="backoffMultiplier">Multiplier applied on each retry (default 2.0).</param>
+    /// <returns>The result of the action.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="initialDelayMs"/> is negative.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="backoffMultiplier"/> is less than 1.0.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxRetries"/> is negative.</exception>
     public static async Task<T> ExecuteWithExponentialBackoffAsync<T>(
         Func<Task<T>> action,
         int maxRetries = 5,
         int initialDelayMs = 100,
         double backoffMultiplier = 2.0)
     {
-        if (action is null)
-            throw new ArgumentNullException(nameof(action));
-
-        int delay = initialDelayMs;
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentOutOfRangeException.ThrowIfNegative(initialDelayMs);
+        ArgumentOutOfRangeException.ThrowIfLessThan(backoffMultiplier, 1.0);
+        ArgumentOutOfRangeException.ThrowIfNegative(maxRetries);
 
         for (int attempt = 0; attempt <= maxRetries; attempt++)
         {
@@ -34,8 +49,15 @@ public static class RetryHelper
             }
             catch (Exception ex) when (attempt < maxRetries && IsTransientError(ex))
             {
-                await Task.Delay(delay);
-                delay = (int)(delay * backoffMultiplier);
+                // Compute the delay using the shared exponential backoff logic.
+                // The first retry corresponds to attempt = 1.
+                var delayMs = (int)BackoffMath.ComputeExponentialDelay(
+                    baseDelayMs: initialDelayMs,
+                    maxDelayMs: int.MaxValue,
+                    multiplier: backoffMultiplier,
+                    attempt: attempt + 1);
+
+                await Task.Delay(delayMs);
             }
         }
 
