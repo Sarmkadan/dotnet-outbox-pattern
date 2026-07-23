@@ -44,6 +44,18 @@ public sealed class OutboxProcessorOptions : IOutboxProcessorOptions
     /// </summary>
     public int LockDurationSeconds { get; set; } = 300;
 
+        /// <summary>
+        /// Whether to use batch claiming with row-level locking for competing consumers
+        /// When enabled, messages are claimed in batches using SQL Server's UPDLOCK/ROWLOCK/READPAST
+        /// to prevent multiple instances from processing the same messages
+        /// </summary>
+        public bool UseBatchClaiming { get; set; } = true;
+
+        /// <summary>
+        /// Maximum number of messages to claim in a single batch when UseBatchClaiming is enabled
+        /// </summary>
+        public int MaxBatchClaimSize { get; set; } = 100;
+
     /// <summary>
     /// Whether to process partitioned messages sequentially
     /// </summary>

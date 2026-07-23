@@ -37,6 +37,36 @@ public interface IOutboxRepository
     Task<int> DeleteArchivedMessagesAsync(DateTime olderThan, CancellationToken cancellationToken = default);
     Task<List<OutboxMessage>> GetAllAsync(int limit = 10000, CancellationToken cancellationToken = default);
     Task<DateTime?> GetOldestPendingMessageCreatedAtAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Claims a batch of pending messages with row-level locking for competing consumers
+    /// Uses SQL Server's UPDLOCK/ROWLOCK/READPAST to atomically claim messages and prevent
+    /// multiple instances from processing the same messages
+    /// </summary>
+    /// <param name="batchSize">Maximum number of messages to claim</param>
+    /// <param name="lockDurationSeconds">Duration in seconds for which messages should be locked</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of claimed messages that this instance should process</returns>
+    Task<List<OutboxMessage>> ClaimPendingMessagesBatchAsync(int batchSize, int lockDurationSeconds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Claims pending messages for a specific partition with row-level locking
+    /// </summary>
+    /// <param name="partitionKey">The partition key</param>
+    /// <param name="batchSize">Maximum number of messages to claim</param>
+    /// <param name="lockDurationSeconds">Duration in seconds for which messages should be locked</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of claimed messages that this instance should process</returns>
+    Task<List<OutboxMessage>> ClaimPendingMessagesByPartitionBatchAsync(string partitionKey, int batchSize, int lockDurationSeconds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Claims scheduled messages that are due for processing with row-level locking
+    /// </summary>
+    /// <param name="batchSize">Maximum number of messages to claim</param>
+    /// <param name="lockDurationSeconds">Duration in seconds for which messages should be locked</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of claimed messages that this instance should process</returns>
+    Task<List<OutboxMessage>> ClaimScheduledMessagesBatchAsync(int batchSize, int lockDurationSeconds, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -495,6 +525,169 @@ public sealed class OutboxRepository : IOutboxRepository
             throw new OutboxRepositoryException(
                 "Failed to retrieve oldest pending message timestamp",
                 nameof(GetOldestPendingMessageCreatedAtAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Claims a batch of pending messages with row-level locking for competing consumers
+    /// Uses SQL Server's UPDLOCK/ROWLOCK/READPAST to atomically claim messages and prevent
+    /// multiple instances from processing the same messages
+    /// </summary>
+    public async Task<List<OutboxMessage>> ClaimPendingMessagesBatchAsync(int batchSize, int lockDurationSeconds, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            var lockExpiresAt = DateTime.UtcNow.AddSeconds(lockDurationSeconds);
+
+            // Use raw SQL to atomically claim messages with row-level locking
+            // The OUTPUT clause captures the IDs of claimed messages so we can return them
+            var sql = $@"
+DECLARE @BatchSize INT = {batchSize};
+DECLARE @Now DATETIME2 = {{0}};
+DECLARE @LockExpiresAt DATETIME2 = DATEADD(SECOND, {lockDurationSeconds}, @Now);
+
+-- Claim messages with row-level locking to prevent other instances from processing them
+UPDATE TOP (@BatchSize) om
+SET
+    om.State = {(int)OutboxMessageState.Processing},
+    om.IsLocked = 1,
+    om.LockExpiresAt = @LockExpiresAt,
+    om.LastProcessedAt = @Now
+OUTPUT inserted.Id AS Id
+FROM [OutboxMessages] om WITH (UPDLOCK, ROWLOCK, READPAST)
+WHERE om.[State] = {(int)OutboxMessageState.Pending}
+    AND (om.[ScheduledFor] IS NULL OR om.[ScheduledFor] <= @Now)
+    AND om.[IsLocked] = 0
+ORDER BY om.[Priority] DESC, om.[CreatedAt] ASC
+";
+
+            // Execute the SQL to get claimed message IDs
+            var claimedMessageIds = await _context.Database
+                .SqlQueryRaw<Guid>($@"{sql}", now)
+                .ToListAsync(cancellationToken);
+
+            // Retrieve the claimed messages to return them
+            if (claimedMessageIds.Count > 0)
+            {
+                return await _context.OutboxMessages
+                    .Where(m => claimedMessageIds.Contains(m.Id))
+                    .ToListAsync(cancellationToken);
+            }
+
+            return new List<OutboxMessage>();
+        }
+        catch (Exception ex)
+        {
+            throw new OutboxRepositoryException("Failed to claim pending messages batch", nameof(ClaimPendingMessagesBatchAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Claims pending messages for a specific partition with row-level locking
+    /// </summary>
+    public async Task<List<OutboxMessage>> ClaimPendingMessagesByPartitionBatchAsync(string partitionKey, int batchSize, int lockDurationSeconds, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            var lockExpiresAt = DateTime.UtcNow.AddSeconds(lockDurationSeconds);
+
+            // Use raw SQL to atomically claim messages with row-level locking
+            // The OUTPUT clause captures the IDs of claimed messages so we can return them
+            var sql = $@"
+DECLARE @BatchSize INT = {batchSize};
+DECLARE @Now DATETIME2 = {{0}};
+DECLARE @LockExpiresAt DATETIME2 = DATEADD(SECOND, {lockDurationSeconds}, @Now);
+DECLARE @PartitionKey NVARCHAR(256) = '{partitionKey}';
+
+-- Claim messages with row-level locking to prevent other instances from processing them
+UPDATE TOP (@BatchSize) om
+SET
+    om.State = {(int)OutboxMessageState.Processing},
+    om.IsLocked = 1,
+    om.LockExpiresAt = @LockExpiresAt,
+    om.LastProcessedAt = @Now
+OUTPUT inserted.Id AS Id
+FROM [OutboxMessages] om WITH (UPDLOCK, ROWLOCK, READPAST)
+WHERE om.[PartitionKey] = @PartitionKey
+    AND om.[State] = {(int)OutboxMessageState.Pending}
+    AND (om.[ScheduledFor] IS NULL OR om.[ScheduledFor] <= @Now)
+    AND om.[IsLocked] = 0
+ORDER BY om.[CreatedAt] ASC
+";
+
+            // Execute the SQL to get claimed message IDs
+            var claimedMessageIds = await _context.Database
+                .SqlQueryRaw<Guid>($@"{sql}", now)
+                .ToListAsync(cancellationToken);
+
+            // Retrieve the claimed messages to return them
+            if (claimedMessageIds.Count > 0)
+            {
+                return await _context.OutboxMessages
+                    .Where(m => claimedMessageIds.Contains(m.Id))
+                    .ToListAsync(cancellationToken);
+            }
+
+            return new List<OutboxMessage>();
+        }
+        catch (Exception ex)
+        {
+            throw new OutboxRepositoryException("Failed to claim pending messages by partition batch", nameof(ClaimPendingMessagesByPartitionBatchAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Claims scheduled messages that are due for processing with row-level locking
+    /// </summary>
+    public async Task<List<OutboxMessage>> ClaimScheduledMessagesBatchAsync(int batchSize, int lockDurationSeconds, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+
+            // Use raw SQL to atomically claim messages with row-level locking
+            // The OUTPUT clause captures the IDs of claimed messages so we can return them
+            var sql = $@"
+DECLARE @BatchSize INT = {batchSize};
+DECLARE @Now DATETIME2 = {{0}};
+DECLARE @LockExpiresAt DATETIME2 = DATEADD(SECOND, {lockDurationSeconds}, @Now);
+
+-- Claim messages with row-level locking to prevent other instances from processing them
+UPDATE TOP (@BatchSize) om
+SET
+    om.State = {(int)OutboxMessageState.Processing},
+    om.IsLocked = 1,
+    om.LockExpiresAt = @LockExpiresAt,
+    om.LastProcessedAt = @Now
+OUTPUT inserted.Id AS Id
+FROM [OutboxMessages] om WITH (UPDLOCK, ROWLOCK, READPAST)
+WHERE om.[State] = {(int)OutboxMessageState.Pending}
+    AND [ScheduledFor] IS NOT NULL
+    AND [ScheduledFor] <= @Now
+    AND [IsLocked] = 0
+ORDER BY om.[ScheduledFor] ASC
+";
+
+            // Execute the SQL to get claimed message IDs
+            var claimedMessageIds = await _context.Database
+                .SqlQueryRaw<Guid>($@"{sql}", now)
+                .ToListAsync(cancellationToken);
+
+            // Retrieve the claimed messages to return them
+            if (claimedMessageIds.Count > 0)
+            {
+                return await _context.OutboxMessages
+                    .Where(m => claimedMessageIds.Contains(m.Id))
+                    .ToListAsync(cancellationToken);
+            }
+
+            return new List<OutboxMessage>();
+        }
+        catch (Exception ex)
+        {
+            throw new OutboxRepositoryException("Failed to claim scheduled messages batch", nameof(ClaimScheduledMessagesBatchAsync), ex);
         }
     }
 }

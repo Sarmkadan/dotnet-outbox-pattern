@@ -136,7 +136,21 @@ public sealed class MessagePublishingService : IMessagePublishingService
 
         try
         {
-            var messages = await _outboxRepository.GetPendingMessagesAsync(batchSize, cancellationToken);
+            List<OutboxMessage> messages;
+
+            if (_options.UseBatchClaiming)
+            {
+                // Use batch claiming with row-level locking for competing consumers
+                messages = await _outboxRepository.ClaimPendingMessagesBatchAsync(
+                    Math.Min(batchSize, _options.MaxBatchClaimSize),
+                    _options.LockDurationSeconds,
+                    cancellationToken);
+            }
+            else
+            {
+                // Fallback to original method for backward compatibility
+                messages = await _outboxRepository.GetPendingMessagesAsync(batchSize, cancellationToken);
+            }
 
             _logger.LogInformation("Processing {Count} pending messages", messages.Count);
 
@@ -184,7 +198,21 @@ public sealed class MessagePublishingService : IMessagePublishingService
 
         try
         {
-            var messages = await _outboxRepository.GetScheduledMessagesAsync(batchSize, cancellationToken);
+            List<OutboxMessage> messages;
+
+            if (_options.UseBatchClaiming)
+            {
+                // Use batch claiming with row-level locking for competing consumers
+                messages = await _outboxRepository.ClaimScheduledMessagesBatchAsync(
+                    Math.Min(batchSize, _options.MaxBatchClaimSize),
+                    _options.LockDurationSeconds,
+                    cancellationToken);
+            }
+            else
+            {
+                // Fallback to original method for backward compatibility
+                messages = await _outboxRepository.GetScheduledMessagesAsync(batchSize, cancellationToken);
+            }
 
             _logger.LogInformation("Processing {Count} scheduled messages", messages.Count);
 
@@ -233,7 +261,22 @@ public sealed class MessagePublishingService : IMessagePublishingService
 
         try
         {
-            var messages = await _outboxRepository.GetPendingByPartitionAsync(partitionKey, batchSize, cancellationToken);
+            List<OutboxMessage> messages;
+
+            if (_options.UseBatchClaiming)
+            {
+                // Use batch claiming with row-level locking for competing consumers
+                messages = await _outboxRepository.ClaimPendingMessagesByPartitionBatchAsync(
+                    partitionKey,
+                    Math.Min(batchSize, _options.MaxBatchClaimSize),
+                    _options.LockDurationSeconds,
+                    cancellationToken);
+            }
+            else
+            {
+                // Fallback to original method for backward compatibility
+                messages = await _outboxRepository.GetPendingByPartitionAsync(partitionKey, batchSize, cancellationToken);
+            }
 
             _logger.LogInformation("Processing {Count} messages in partition {PartitionKey}", messages.Count, partitionKey);
 
@@ -324,9 +367,14 @@ public sealed class MessagePublishingService : IMessagePublishingService
                 return MessageProcessingOutcome.Skipped;
             }
 
-            // Lock the message for this instance
+        // For batch claiming, messages are already locked by the SQL query (UPDLOCK)
+        // For non-batch claiming, we need to lock the message
+        if (!message.IsLocked)
+        {
+            // Only lock if not already locked (batch claiming already locked it)
             message.Lock(_options.PublishTimeout);
             await _outboxRepository.UpdateAsync(message, cancellationToken);
+        }
 
             // Attempt to publish
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

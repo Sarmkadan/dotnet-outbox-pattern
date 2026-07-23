@@ -240,6 +240,23 @@ public sealed class PublishingOptions
     /// Clock skew tolerance for deduplication window (how far in the past/future to consider messages as duplicates)
     /// </summary>
     public TimeSpan ClockSkewTolerance { get; set; } = TimeSpan.FromMinutes(1);
+
+/// <summary>
+/// Whether to use batch claiming with row-level locking for competing consumers
+/// When enabled, messages are atomically claimed in batches using SQL Server's UPDLOCK/ROWLOCK/READPAST
+/// to prevent multiple instances from processing the same messages
+/// </summary>
+public bool UseBatchClaiming { get; set; } = true;
+
+/// <summary>
+/// Maximum number of messages to claim in a single batch when UseBatchClaiming is enabled
+/// </summary>
+public int MaxBatchClaimSize { get; set; } = 100;
+
+/// <summary>
+/// Lock duration for processing (seconds) when using batch claiming
+/// </summary>
+public int LockDurationSeconds { get; set; } = 300;
 }
 
 /// <summary>
