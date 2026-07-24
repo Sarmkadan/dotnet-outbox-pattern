@@ -3,7 +3,7 @@
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
-// ===================================
+// =============================================================================
 
 using System.Diagnostics;
 using DotnetOutboxPattern.Domain;
@@ -37,12 +37,15 @@ public static class MessageContextExtensions
     /// <summary>
     /// Creates an activity for an outbox service operation with automatic scope disposal.
     /// </summary>
+    /// <param name="context">The message context.</param>
     /// <param name="serviceName">Name of the service performing the operation.</param>
     /// <param name="operationName">Name of the operation being performed.</param>
     /// <returns>A disposable activity scope for the tracing operation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="context"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">Thrown when <paramref name="serviceName"/> or <paramref name="operationName"/> is <see langword="null"/>, empty, or consists only of whitespace.</exception>
-    public static ActivityScope StartServiceActivity(this MessageContext _, string serviceName, string operationName)
+    public static ActivityScope StartServiceActivity(this MessageContext context, string serviceName, string operationName)
     {
+        ArgumentNullException.ThrowIfNull(context);
         ArgumentException.ThrowIfNullOrEmpty(serviceName);
         ArgumentException.ThrowIfNullOrEmpty(operationName);
 
@@ -85,12 +88,14 @@ public static class MessageContextExtensions
     /// <summary>
     /// Records an event with the specified name and optional attributes.
     /// </summary>
-    /// <param name="context">The message context (unused but required for extension method pattern).</param>
+    /// <param name="context">The message context.</param>
     /// <param name="eventName">Name of the event to record.</param>
     /// <param name="attributes">Optional attributes to include with the event. Can be <see langword="null"/>.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="context"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">Thrown when <paramref name="eventName"/> is <see langword="null"/>, empty, or consists only of whitespace.</exception>
     public static void RecordEvent(this MessageContext context, string eventName, Dictionary<string, object>? attributes = null)
     {
+        ArgumentNullException.ThrowIfNull(context);
         ArgumentException.ThrowIfNullOrEmpty(eventName);
 
         MessageContext.RecordEvent(eventName, attributes);
@@ -99,11 +104,12 @@ public static class MessageContextExtensions
     /// <summary>
     /// Records an exception in the current activity.
     /// </summary>
-    /// <param name="context">The message context (unused but required for extension method pattern).</param>
+    /// <param name="context">The message context.</param>
     /// <param name="exception">The exception to record. Must not be <see langword="null"/>.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="exception"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="context"/> or <paramref name="exception"/> is <see langword="null"/>.</exception>
     public static void RecordException(this MessageContext context, Exception exception)
     {
+        ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(exception);
 
         MessageContext.RecordException(exception);

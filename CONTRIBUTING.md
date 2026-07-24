@@ -196,7 +196,7 @@ dotnet build
 - Ensure all tests pass
 - Address review feedback promptly
 
-## Code Style Guidelines
+### Code Style Guidelines
 
 ### C# Conventions
 
@@ -208,11 +208,16 @@ Follow these conventions when writing C# code:
    - Constants: `UPPER_CASE`
    - Local variables: `camelCase`
 
-2. **XML Documentation**:
+2. **Argument Validation**:
+   - Use `ArgumentNullException.ThrowIfNull(x)` or `ArgumentException.ThrowIfNullOrEmpty(s)` at the top of every public method to guard 'this' parameters and reference-type arguments.
+   - Do not rely on the CLR to throw `NullReferenceException`.
+
+3. **XML Documentation**:
    - Add XML doc comments to public classes, methods, and properties
    - Use `/// <summary>` for descriptions
    - Use `/// <param>` for parameters
    - Use `/// <returns>` for return values
+   - Use `/// <exception>` for all thrown exceptions, including `ArgumentNullException` and `ArgumentException`.
    - Example:
      ```csharp
      /// <summary>
@@ -220,19 +225,21 @@ Follow these conventions when writing C# code:
      /// </summary>
      /// <param name="message">The message to publish</param>
      /// <returns>The published message ID</returns>
+     /// <exception cref="ArgumentNullException">Thrown when <paramref name="message"/> is <see langword="null"/>.</exception>
      public async Task<Guid> PublishAsync(OutboxMessage message)
      {
+         ArgumentNullException.ThrowIfNull(message);
          // implementation
      }
      ```
 
-3. **File Organization**:
+4. **File Organization**:
    - One public class per file (with exceptions for related small types)
    - Group using statements at the top
    - Use appropriate namespaces matching folder structure
    - Keep files reasonably sized (aim for < 500 lines)
 
-4. **Testing**:
+5. **Testing**:
    - Write tests alongside features
    - Use descriptive test method names: `MethodName_Condition_ExpectedResult`
    - Arrange-Act-Assert (AAA) pattern
