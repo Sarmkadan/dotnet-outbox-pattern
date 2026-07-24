@@ -123,6 +123,13 @@ public sealed class OutboxMessage
     public string? Metadata { get; set; }
 
     /// <summary>
+    /// Transport-level headers carried alongside the message, including the W3C
+    /// trace-context ("traceparent"/"tracestate") captured at enqueue time so
+    /// downstream dispatch can correlate with the originating activity.
+    /// </summary>
+    public IDictionary<string, string> Headers { get; set; } = new Dictionary<string, string>();
+
+    /// <summary>
     /// Priority level for processing (higher number = higher priority)
     /// </summary>
     public int Priority { get; set; } = 0;

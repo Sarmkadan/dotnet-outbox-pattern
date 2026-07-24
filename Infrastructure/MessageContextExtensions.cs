@@ -51,6 +51,38 @@ public static class MessageContextExtensions
     }
 
     /// <summary>
+    /// Starts a dispatch activity for the message, linked to the trace-context captured at enqueue
+    /// time, with automatic scope disposal.
+    /// </summary>
+    /// <param name="_">The message context (unused but required for extension method pattern).</param>
+    /// <param name="message">The outbox message being dispatched.</param>
+    /// <param name="operationName">Name of the dispatch operation being performed.</param>
+    /// <returns>A disposable activity scope for the dispatch operation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="message"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="operationName"/> is <see langword="null"/>, empty, or consists only of whitespace.</exception>
+    public static ActivityScope StartDispatchActivity(this MessageContext _, OutboxMessage message, string operationName)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        ArgumentException.ThrowIfNullOrEmpty(operationName);
+
+        var activity = MessageContext.StartDispatchActivity(message, operationName);
+        return activity.UseScope();
+    }
+
+    /// <summary>
+    /// Captures the current activity's W3C trace-context into the message's headers.
+    /// </summary>
+    /// <param name="_">The message context (unused but required for extension method pattern).</param>
+    /// <param name="message">The outbox message being enqueued.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="message"/> is <see langword="null"/>.</exception>
+    public static void CaptureTraceContext(this MessageContext _, OutboxMessage message)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+
+        MessageContext.CaptureTraceContext(message);
+    }
+
+    /// <summary>
     /// Records an event with the specified name and optional attributes.
     /// </summary>
     /// <param name="context">The message context (unused but required for extension method pattern).</param>
