@@ -22,7 +22,22 @@ public sealed class OutboxRetryOptions
     /// <summary>
     /// Maximum number of publish attempts before a message is dead-lettered.
     /// </summary>
-    public int MaxAttempts { get; set; } = OutboxConstants.DefaultMaxPublishAttempts;
+    /// <remarks>
+    /// Must be between 1 and 20 inclusive to prevent unbounded retry loops.
+    /// </remarks>
+    public int MaxAttempts
+    {
+        get => _maxAttempts;
+        set
+        {
+            if (value < 1)
+                throw new ArgumentOutOfRangeException(nameof(value), value, "MaxAttempts must be at least 1");
+            if (value > 20)
+                throw new ArgumentOutOfRangeException(nameof(value), value, "MaxAttempts cannot exceed 20");
+            _maxAttempts = value;
+        }
+    }
+    private int _maxAttempts = OutboxConstants.DefaultMaxPublishAttempts;
 
     /// <summary>
     /// Backoff strategy applied between attempts, reusing <see cref="RetryHelper"/>'s strategy set.
@@ -33,22 +48,82 @@ public sealed class OutboxRetryOptions
     /// Delay used for the first retry (and the fixed interval when <see cref="BackoffStrategy"/>
     /// is <see cref="RetryStrategy.FixedDelay"/>).
     /// </summary>
-    public TimeSpan InitialDelay { get; set; } = TimeSpan.FromSeconds(1);
+    /// <remarks>
+    /// Must be between 0 and 30 seconds inclusive to prevent excessive delays.
+    /// </remarks>
+    public TimeSpan InitialDelay
+    {
+        get => _initialDelay;
+        set
+        {
+            if (value < TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(value), value, "InitialDelay cannot be negative");
+            if (value > TimeSpan.FromSeconds(30))
+                throw new ArgumentOutOfRangeException(nameof(value), value, "InitialDelay cannot exceed 30 seconds");
+            _initialDelay = value;
+        }
+    }
+    private TimeSpan _initialDelay = TimeSpan.FromSeconds(1);
 
     /// <summary>
     /// Hard ceiling applied to every computed delay, regardless of strategy.
     /// </summary>
-    public TimeSpan MaxDelay { get; set; } = TimeSpan.FromMinutes(5);
+    /// <remarks>
+    /// Must be between 0 and 30 seconds inclusive to prevent excessive delays.
+    /// </remarks>
+    public TimeSpan MaxDelay
+    {
+        get => _maxDelay;
+        set
+        {
+            if (value < TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(value), value, "MaxDelay cannot be negative");
+            if (value > TimeSpan.FromSeconds(30))
+                throw new ArgumentOutOfRangeException(nameof(value), value, "MaxDelay cannot exceed 30 seconds");
+            _maxDelay = value;
+        }
+    }
+    private TimeSpan _maxDelay = TimeSpan.FromMinutes(5);
 
     /// <summary>
     /// Growth factor used by the exponential and jittered strategies.
     /// </summary>
-    public double BackoffMultiplier { get; set; } = 2.0;
+    /// <remarks>
+    /// Must be between 1.0 and 10.0 inclusive to prevent unbounded exponential growth.
+    /// </remarks>
+    public double BackoffMultiplier
+    {
+        get => _backoffMultiplier;
+        set
+        {
+            if (value < 1.0)
+                throw new ArgumentOutOfRangeException(nameof(value), value, "BackoffMultiplier must be at least 1.0");
+            if (value > 10.0)
+                throw new ArgumentOutOfRangeException(nameof(value), value, "BackoffMultiplier cannot exceed 10.0");
+            _backoffMultiplier = value;
+        }
+    }
+    private double _backoffMultiplier = 2.0;
 
     /// <summary>
     /// Fixed increment added per attempt by the linear strategy.
     /// </summary>
-    public TimeSpan LinearIncrement { get; set; } = TimeSpan.FromSeconds(1);
+    /// <remarks>
+    /// Must be between 0 and 30 seconds inclusive to prevent excessive delays.
+    /// </remarks>
+    public TimeSpan LinearIncrement
+    {
+        get => _linearIncrement;
+        set
+        {
+            if (value < TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(value), value, "LinearIncrement cannot be negative");
+            if (value > TimeSpan.FromSeconds(30))
+                throw new ArgumentOutOfRangeException(nameof(value), value, "LinearIncrement cannot exceed 30 seconds");
+            _linearIncrement = value;
+        }
+    }
+    private TimeSpan _linearIncrement = TimeSpan.FromSeconds(1);
 
     /// <summary>
     /// Random number source used to compute jitter for <see cref="RetryStrategy.JitteredBackoff"/>.
@@ -62,13 +137,16 @@ public sealed class OutboxRetryOptions
     /// </summary>
     /// <param name="attemptNumber">
     /// The 1-based attempt number that just failed (i.e. <see cref="OutboxMessage.PublishAttempts"/>
-    /// after recording the failure).
+    /// after recording the failure). Must be between 1 and 20 inclusive.
     /// </param>
     /// <returns>The delay to wait, never exceeding <see cref="MaxDelay"/>.</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="attemptNumber"/> is negative.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="attemptNumber"/> is less than 1 or exceeds 20.</exception>
     public TimeSpan ComputeNextDelay(int attemptNumber)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(attemptNumber);
+        if (attemptNumber < 1)
+            throw new ArgumentOutOfRangeException(nameof(attemptNumber), attemptNumber, "attemptNumber must be at least 1");
+        if (attemptNumber > 20)
+            throw new ArgumentOutOfRangeException(nameof(attemptNumber), attemptNumber, "attemptNumber cannot exceed 20");
 
         var maxDelayMs = (int)Math.Min(MaxDelay.TotalMilliseconds, int.MaxValue);
         var initialDelayMs = (int)Math.Min(InitialDelay.TotalMilliseconds, int.MaxValue);
