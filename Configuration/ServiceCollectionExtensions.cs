@@ -53,6 +53,7 @@ public static class ServiceCollectionExtensions
         // IOutboxService or IMessagePublishingService can be resolved at all.
         // TryAdd keeps any caller-provided implementation in place.
         services.TryAddSingleton<IOutboxSerializer, SystemTextJsonOutboxSerializer>();
+        services.TryAddSingleton<IOutboxTypeResolver, DefaultOutboxTypeResolver>();
         services.TryAddSingleton(_ => new PublishingOptions());
         services.TryAddSingleton(_ => new OutboxRetryOptions());
 
@@ -60,6 +61,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOutboxService, OutboxService>();
         services.AddScoped<IMessagePublishingService, MessagePublishingService>();
         services.AddScoped<IDeadLetterService, DeadLetterService>();
+        services.AddScoped<IOutboxMessageDeserializer, OutboxMessageDeserializer>();
 
         return services;
     }

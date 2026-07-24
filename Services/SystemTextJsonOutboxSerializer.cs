@@ -70,4 +70,58 @@ public sealed class SystemTextJsonOutboxSerializer : IOutboxSerializer
             return null;
         }
     }
+
+    /// <inheritdoc />
+    public string SerializeEnvelope<T>(T value, int schemaVersion = 1)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        var messageType = typeof(T).FullName ?? typeof(T).Name;
+        var payload = JsonSerializer.Serialize(value, _options);
+        var envelope = new OutboxEnvelope(messageType, schemaVersion, payload);
+        return JsonSerializer.Serialize(envelope, _options);
+    }
+
+    /// <inheritdoc />
+    public OutboxDeserializationResult DeserializeEnvelope(string envelopeJson, IOutboxTypeResolver resolver)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(envelopeJson);
+        ArgumentNullException.ThrowIfNull(resolver);
+
+        OutboxEnvelope? envelope;
+        try
+        {
+            envelope = JsonSerializer.Deserialize<OutboxEnvelope>(envelopeJson, _options);
+        }
+        catch (JsonException ex)
+        {
+            return OutboxDeserializationResult.Failed($"envelope is not valid json: {ex.Message}");
+        }
+
+        if (envelope is null || string.IsNullOrWhiteSpace(envelope.MessageType))
+        {
+            return OutboxDeserializationResult.Failed("envelope is missing a message type");
+        }
+
+        if (!resolver.TryResolve(envelope.MessageType, out var clrType) || clrType is null)
+        {
+            return OutboxDeserializationResult.Failed(
+                $"no type is registered for message type '{envelope.MessageType}'",
+                envelope.MessageType,
+                envelope.SchemaVersion);
+        }
+
+        try
+        {
+            var value = JsonSerializer.Deserialize(envelope.Payload, clrType, _options);
+            return OutboxDeserializationResult.Ok(value, envelope.MessageType, envelope.SchemaVersion);
+        }
+        catch (JsonException ex)
+        {
+            return OutboxDeserializationResult.Failed(
+                $"payload does not match type '{envelope.MessageType}': {ex.Message}",
+                envelope.MessageType,
+                envelope.SchemaVersion);
+        }
+    }
 }
