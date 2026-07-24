@@ -19,17 +19,29 @@ namespace DotnetOutboxPattern.Utilities;
 public static class RetryHelper
 {
     /// <summary>
-    /// Executes an action with exponential backoff retry
+    /// Executes an action with exponential backoff retry using the shared <see cref="BackoffMath.ComputeExponentialDelay"/> calculation.
     /// </summary>
+    /// <remarks>
+    /// This method provides consistent retry behavior with <see cref="OutboxBackoffExtensions"/> and <see cref="OutboxRetryOptions"/>
+    /// by using the centralized <see cref="BackoffMath.ComputeExponentialDelay"/> method for all backoff calculations.
+    /// </remarks>
     /// <param name="action">The asynchronous action to execute.</param>
-    /// <param name="maxRetries">Maximum number of retries (default 5). Must be between 0 and 20 inclusive.</param>
-    /// <param name="initialDelayMs">Initial delay in milliseconds (default 100). Must be between 0 and 30000 inclusive.</param>
-    /// <param name="backoffMultiplier">Multiplier applied on each retry (default 2.0). Must be between 1.0 and 10.0 inclusive.</param>
+    /// <param name="maxRetries">
+    /// Maximum number of retries (default 5). Must be between 0 and 20 inclusive.
+    /// Values exceeding 20 are silently capped to prevent unbounded retry loops.
+    /// </param>
+    /// <param name="initialDelayMs">
+    /// Initial delay in milliseconds (default 100). Must be between 0 and 30000 inclusive.
+    /// Values exceeding 30000 are silently capped to 30000 seconds to prevent excessive delays.
+    /// </param>
+    /// <param name="backoffMultiplier">
+    /// Multiplier applied on each retry (default 2.0). Must be between 1.0 and 10.0 inclusive.
+    /// </param>
     /// <returns>The result of the action.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="action"/> is <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="initialDelayMs"/> is negative or exceeds 30000.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="initialDelayMs"/> is negative.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="backoffMultiplier"/> is less than 1.0 or greater than 10.0.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxRetries"/> is negative or exceeds 20.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxRetries"/> is negative.</exception>
     public static async Task<T> ExecuteWithExponentialBackoffAsync<T>(
         Func<Task<T>> action,
         int maxRetries = 5,
@@ -44,8 +56,14 @@ public static class RetryHelper
         ArgumentOutOfRangeException.ThrowIfGreaterThan(maxRetries, 20);
 
         // Cap initial delay to prevent excessive delays even with valid inputs
+        // This ensures consistency with OutboxBackoffExtensions which also caps delays
         const int MaxInitialDelayMs = 30000; // 30 seconds
         initialDelayMs = Math.Min(initialDelayMs, MaxInitialDelayMs);
+
+        // Cap max retries to prevent unbounded retry loops
+        // This ensures consistency with OutboxRetryOptions which also limits max attempts
+        const int MaxRetriesLimit = 20;
+        maxRetries = Math.Min(maxRetries, MaxRetriesLimit);
 
         for (int attempt = 0; attempt <= maxRetries; attempt++)
         {
@@ -72,15 +90,25 @@ public static class RetryHelper
     }
 
     /// <summary>
-    /// Executes an action with fixed interval retry
+    /// Executes an action with fixed interval retry.
     /// </summary>
+    /// <remarks>
+    /// Provides consistent behavior with other retry strategies in this class by capping delays at 30 seconds
+    /// and retries at 20 attempts, matching the limits used by <see cref="OutboxBackoffExtensions"/> and <see cref="OutboxRetryOptions"/>.
+    /// </remarks>
     /// <param name="action">The asynchronous action to execute.</param>
-    /// <param name="maxRetries">Maximum number of retries (default 5). Must be between 0 and 20 inclusive.</param>
-    /// <param name="delayMs">Fixed delay in milliseconds between attempts (default 1000). Must be between 0 and 30000 inclusive.</param>
+    /// <param name="maxRetries">
+    /// Maximum number of retries (default 5). Must be between 0 and 20 inclusive.
+    /// Values exceeding 20 are silently capped to prevent unbounded retry loops.
+    /// </param>
+    /// <param name="delayMs">
+    /// Fixed delay in milliseconds between attempts (default 1000). Must be between 0 and 30000 inclusive.
+    /// Values exceeding 30000 are silently capped to 30000 to prevent excessive delays.
+    /// </param>
     /// <returns>The result of the action.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="action"/> is <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="delayMs"/> is negative or exceeds 30000.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxRetries"/> is negative or exceeds 20.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="delayMs"/> is negative.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxRetries"/> is negative.</exception>
     public static async Task<T> ExecuteWithFixedDelayAsync<T>(
         Func<Task<T>> action,
         int maxRetries = 5,
@@ -111,16 +139,29 @@ public static class RetryHelper
     }
 
     /// <summary>
-    /// Executes an action with linear backoff retry
+    /// Executes an action with linear backoff retry.
     /// </summary>
+    /// <remarks>
+    /// Provides consistent behavior with other retry strategies by capping delays and retries at the same limits
+    /// used by <see cref="OutboxBackoffExtensions"/> and <see cref="OutboxRetryOptions"/>.
+    /// </remarks>
     /// <param name="action">The asynchronous action to execute.</param>
-    /// <param name="maxRetries">Maximum number of retries (default 5). Must be between 0 and 20 inclusive.</param>
-    /// <param name="initialDelayMs">Initial delay in milliseconds (default 100). Must be between 0 and 30000 inclusive.</param>
-    /// <param name="delayIncrementMs">Increment added to delay on each attempt (default 100). Must be between 0 and 30000 inclusive.</param>
+    /// <param name="maxRetries">
+    /// Maximum number of retries (default 5). Must be between 0 and 20 inclusive.
+    /// Values exceeding 20 are silently capped to prevent unbounded retry loops.
+    /// </param>
+    /// <param name="initialDelayMs">
+    /// Initial delay in milliseconds (default 100). Must be between 0 and 30000 inclusive.
+    /// Values exceeding 30000 are silently capped to 30000 to prevent excessive delays.
+    /// </param>
+    /// <param name="delayIncrementMs">
+    /// Increment added to delay on each attempt (default 100). Must be between 0 and 30000 inclusive.
+    /// Values exceeding 30000 are silently capped to 30000.
+    /// </param>
     /// <returns>The result of the action.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="action"/> is <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="initialDelayMs"/>, <paramref name="delayIncrementMs"/> are negative or exceed 30000.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxRetries"/> is negative or exceeds 20.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="initialDelayMs"/> or <paramref name="delayIncrementMs"/> is negative.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxRetries"/> is negative.</exception>
     public static async Task<T> ExecuteWithLinearBackoffAsync<T>(
         Func<Task<T>> action,
         int maxRetries = 5,
@@ -164,16 +205,25 @@ public static class RetryHelper
     }
 
     /// <summary>
-    /// Executes an action with jittered backoff (exponential + random)
-    /// Prevents thundering herd problem in distributed systems
+    /// Executes an action with jittered backoff (exponential + random) to prevent thundering herd problems.
     /// </summary>
+    /// <remarks>
+    /// Uses the same delay calculation pattern as other strategies, with consistent delay capping at 30 seconds
+    /// to match the limits used by <see cref="OutboxBackoffExtensions"/> and <see cref="OutboxRetryOptions"/>.
+    /// </remarks>
     /// <param name="action">The asynchronous action to execute.</param>
-    /// <param name="maxRetries">Maximum number of retries (default 5). Must be between 0 and 20 inclusive.</param>
-    /// <param name="initialDelayMs">Initial delay in milliseconds (default 100). Must be between 0 and 30000 inclusive.</param>
+    /// <param name="maxRetries">
+    /// Maximum number of retries (default 5). Must be between 0 and 20 inclusive.
+    /// Values exceeding 20 are silently capped to prevent unbounded retry loops.
+    /// </param>
+    /// <param name="initialDelayMs">
+    /// Initial delay in milliseconds (default 100). Must be between 0 and 30000 inclusive.
+    /// Values exceeding 30000 are silently capped to 30000 to prevent excessive delays.
+    /// </param>
     /// <returns>The result of the action.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="action"/> is <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="initialDelayMs"/> is negative or exceeds 30000.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxRetries"/> is negative or exceeds 20.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="initialDelayMs"/> is negative.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxRetries"/> is negative.</exception>
     public static async Task<T> ExecuteWithJitteredBackoffAsync<T>(
         Func<Task<T>> action,
         int maxRetries = 5,
@@ -238,14 +288,24 @@ public static class RetryHelper
     }
 
     /// <summary>
-    /// Creates a retry policy with specified configuration
+    /// Creates a retry policy with specified configuration.
     /// </summary>
-    /// <param name="maxRetries">Maximum number of retries (default 5). Must be between 0 and 20 inclusive.</param>
+    /// <remarks>
+    /// The created policy uses the same delay limits (30 seconds max, 20 retries max) as <see cref="OutboxBackoffExtensions"/>
+    /// and <see cref="OutboxRetryOptions"/> to ensure consistent backoff behavior across the codebase.
+    /// </remarks>
+    /// <param name="maxRetries">
+    /// Maximum number of retries (default 5). Must be between 0 and 20 inclusive.
+    /// Values exceeding 20 are rejected.
+    /// </param>
     /// <param name="strategy">The retry strategy to use (default ExponentialBackoff).</param>
-    /// <param name="initialDelayMs">Initial delay in milliseconds (default 100). Must be between 0 and 30000 inclusive.</param>
+    /// <param name="initialDelayMs">
+    /// Initial delay in milliseconds (default 100). Must be between 0 and 30000 inclusive.
+    /// Values exceeding 30000 are rejected.
+    /// </param>
     /// <returns>A configured retry policy.</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxRetries"/> is negative or exceeds 20.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="initialDelayMs"/> is negative or exceeds 30000.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxRetries"/> is zero or negative, or exceeds 20.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="initialDelayMs"/> is zero or negative, or exceeds 30000.</exception>
     public static RetryPolicy CreatePolicy(
         int maxRetries = 5,
         RetryStrategy strategy = RetryStrategy.ExponentialBackoff,
