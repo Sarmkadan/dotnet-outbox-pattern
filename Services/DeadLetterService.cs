@@ -37,17 +37,37 @@ public sealed class DeadLetterService : IDeadLetterService
     private readonly IOutboxRepository _outboxRepository;
     private readonly IOutboxService _outboxService;
     private readonly ILogger<DeadLetterService> _logger;
+    private readonly OutboxRetryOptions _retryOptions;
 
+    /// <summary>
+    /// Creates a new dead letter service.
+    /// </summary>
+    /// <param name="dlRepository">Repository used to persist and query dead letter records.</param>
+    /// <param name="outboxRepository">Repository used to read and update outbox messages on requeue.</param>
+    /// <param name="outboxService">Outbox service used by dependent operations.</param>
+    /// <param name="logger">Logger for dead letter diagnostics.</param>
+    /// <param name="retryOptions">
+    /// Retry-with-backoff policy used to restore <see cref="OutboxMessage.MaxPublishAttempts"/>
+    /// when a dead letter is requeued. Defaults to a new <see cref="OutboxRetryOptions"/> instance
+    /// when omitted, so a requeued message is bound by the same attempt ceiling the dispatch loop
+    /// would have enforced before dead-lettering it in the first place.
+    /// </param>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="dlRepository"/>, <paramref name="outboxRepository"/>,
+    /// <paramref name="outboxService"/>, or <paramref name="logger"/> is <see langword="null"/>.
+    /// </exception>
     public DeadLetterService(
         IDeadLetterRepository dlRepository,
         IOutboxRepository outboxRepository,
         IOutboxService outboxService,
-        ILogger<DeadLetterService> logger)
+        ILogger<DeadLetterService> logger,
+        OutboxRetryOptions? retryOptions = null)
     {
         _dlRepository = dlRepository ?? throw new ArgumentNullException(nameof(dlRepository));
         _outboxRepository = outboxRepository ?? throw new ArgumentNullException(nameof(outboxRepository));
         _outboxService = outboxService ?? throw new ArgumentNullException(nameof(outboxService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _retryOptions = retryOptions ?? new OutboxRetryOptions();
     }
 
     /// <summary>
@@ -163,7 +183,7 @@ public sealed class DeadLetterService : IDeadLetterService
                     CausationId = deadLetter.CausationId,
                     Metadata = deadLetter.Metadata,
                     PublishAttempts = 0,
-                    MaxPublishAttempts = OutboxConstants.DefaultMaxPublishAttempts
+                    MaxPublishAttempts = _retryOptions.MaxAttempts
                 };
 
                 await _outboxRepository.AddAsync(message, cancellationToken);
@@ -173,7 +193,7 @@ public sealed class DeadLetterService : IDeadLetterService
                 // Reset existing message
                 message.State = OutboxMessageState.Pending;
                 message.PublishAttempts = 0;
-                message.MaxPublishAttempts = OutboxConstants.DefaultMaxPublishAttempts;
+                message.MaxPublishAttempts = _retryOptions.MaxAttempts;
                 message.ErrorMessage = null;
                 message.ErrorStackTrace = null;
                 message.LastProcessedAt = null;
