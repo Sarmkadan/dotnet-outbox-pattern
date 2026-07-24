@@ -7,6 +7,7 @@
 using DotnetOutboxPattern.Data;
 using DotnetOutboxPattern.Domain;
 using DotnetOutboxPattern.Exceptions;
+using DotnetOutboxPattern.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -379,6 +380,9 @@ public sealed class MessagePublishingService : IMessagePublishingService
             // Attempt to publish
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(_options.PublishTimeout);
+
+            // Start a dispatch activity linked to the stored trace context for distributed tracing
+            using var dispatchScope = MessageContext.StartDispatchActivity(message, "OutboxMessage.Publish");
 
             await _publisher.PublishAsync(message, cts.Token);
 

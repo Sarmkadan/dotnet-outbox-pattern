@@ -8,6 +8,7 @@ using System.Text.Json;
 using DotnetOutboxPattern.Data;
 using DotnetOutboxPattern.Domain;
 using DotnetOutboxPattern.Exceptions;
+using DotnetOutboxPattern.Infrastructure;
 using Microsoft.Extensions.Logging;
 
 namespace DotnetOutboxPattern.Services;
@@ -173,6 +174,10 @@ public sealed class OutboxService : IOutboxService
                 CausationId = publishableEvent.Event.CausationId,
                 State = OutboxMessageState.Pending
             };
+
+        // Capture W3C trace-context from the current activity into message headers
+        // This enables distributed tracing correlation across service boundaries
+        MessageContext.CaptureTraceContext(message);
 
             var result = await _repository.AddAsync(message, cancellationToken);
 
