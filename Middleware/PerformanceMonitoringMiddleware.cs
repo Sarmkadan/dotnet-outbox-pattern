@@ -12,7 +12,7 @@ namespace DotnetOutboxPattern.Middleware;
 /// Captures request/response performance metrics for monitoring and alerting
 /// Tracks latency, throughput, and identifies performance bottlenecks
 /// </summary>
-public sealed class PerformanceMonitoringMiddleware
+public sealed class PerformanceMonitoringMiddleware : IEquatable<PerformanceMonitoringMiddleware>
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<PerformanceMonitoringMiddleware> _logger;
@@ -67,6 +67,33 @@ public sealed class PerformanceMonitoringMiddleware
             }
         }
     }
+
+    public bool Equals(PerformanceMonitoringMiddleware? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+
+        var monitor = (PerformanceMonitor)_monitor;
+        var otherMonitor = (PerformanceMonitor)other._monitor;
+
+        return monitor.GetStats().RequestCount == otherMonitor.GetStats().RequestCount &&
+               monitor.GetStats().AverageDurationMs == otherMonitor.GetStats().AverageDurationMs &&
+               monitor.GetStats().MinDurationMs == otherMonitor.GetStats().MinDurationMs;
+    }
+
+    public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is PerformanceMonitoringMiddleware other && Equals(other);
+
+    public override int GetHashCode()
+    {
+        var monitor = (PerformanceMonitor)_monitor;
+        var stats = monitor.GetStats();
+
+        return HashCode.Combine(stats.RequestCount, stats.AverageDurationMs, stats.MinDurationMs);
+    }
+
+    public static bool operator ==(PerformanceMonitoringMiddleware? left, PerformanceMonitoringMiddleware? right) => EqualityComparer<PerformanceMonitoringMiddleware>.Default.Equals(left, right);
+
+    public static bool operator !=(PerformanceMonitoringMiddleware? left, PerformanceMonitoringMiddleware? right) => !(left == right);
 }
 
 /// <summary>
