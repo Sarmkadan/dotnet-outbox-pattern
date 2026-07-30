@@ -12,7 +12,7 @@ namespace DotnetOutboxPattern.Utilities;
 /// Fluent query builder for constructing complex filter conditions
 /// Simplifies building dynamic queries without SQL injection risks
 /// </summary>
-public sealed class QueryBuilder
+public sealed class QueryBuilder : IEquatable<QueryBuilder>
 {
     private readonly List<FilterCondition> _conditions = new();
     private string? _orderBy;
@@ -183,6 +183,81 @@ public sealed class QueryBuilder
 
     [JsonPropertyName("orderDescending")]
     private bool OrderDescending => _orderDescending;
+
+    // ------------------------------------------------------------------------
+    // Equality members
+    // ------------------------------------------------------------------------
+
+    public bool Equals(QueryBuilder? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+
+        if (_orderBy != other._orderBy) return false;
+        if (_orderDescending != other._orderDescending) return false;
+        if (_conditions.Count != other._conditions.Count) return false;
+
+        for (int i = 0; i < _conditions.Count; i++)
+        {
+            var a = _conditions[i];
+            var b = other._conditions[i];
+
+            if (a.Field != b.Field) return false;
+            if (a.Operator != b.Operator) return false;
+
+            if (a.Value is null && b.Value is not null) return false;
+            if (a.Value is not null && b.Value is null) return false;
+
+            if (a.Value is Array aArr && b.Value is Array bArr)
+            {
+                if (aArr.Length != bArr.Length) return false;
+                for (int j = 0; j < aArr.Length; j++)
+                {
+                    if (!object.Equals(aArr.GetValue(j), bArr.GetValue(j))) return false;
+                }
+            }
+            else
+            {
+                if (!object.Equals(a.Value, b.Value)) return false;
+            }
+        }
+
+        return true;
+    }
+
+    public override bool Equals(object? obj) => Equals(obj as QueryBuilder);
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(_orderBy);
+        hash.Add(_orderDescending);
+        hash.Add(_conditions.Count);
+
+        foreach (var condition in _conditions)
+        {
+            hash.Add(condition.Field);
+            hash.Add(condition.Operator);
+            if (condition.Value is Array arr)
+            {
+                foreach (var item in arr)
+                {
+                    hash.Add(item);
+                }
+            }
+            else
+            {
+                hash.Add(condition.Value);
+            }
+        }
+
+        return hash.ToHashCode();
+    }
+
+    public static bool operator ==(QueryBuilder? left, QueryBuilder? right) =>
+        EqualityComparer<QueryBuilder>.Default.Equals(left, right);
+
+    public static bool operator !=(QueryBuilder? left, QueryBuilder? right) => !(left == right);
 }
 
 /// <summary>
