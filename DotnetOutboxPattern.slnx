@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/dotnet-outbox-pattern.Tests/dotnet-outbox-pattern.Tests.csproj" />
+  </Folder>
+  <Project Path="dotnet-outbox-pattern.Benchmarks/dotnet-outbox-pattern.Benchmarks.csproj" />
+  <Project Path="DotnetOutboxPattern.csproj" />
+</Solution>

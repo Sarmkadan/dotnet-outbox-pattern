@@ -15,7 +15,7 @@ namespace DotnetOutboxPattern.Benchmarks;
 public class OutboxServiceBenchmarks : IDisposable
 {
     private ServiceProvider? _serviceProvider;
-    private IOutboxService? _outboxService;
+    internal IOutboxService? _outboxService;
     private OutboxDbContext? _context;
 
     [GlobalSetup]
@@ -98,9 +98,9 @@ public class OutboxServiceBenchmarks : IDisposable
     }
 
     [Benchmark]
-    public async Task GetStatistics()
+    public async Task<OutboxStatistics> GetStatistics()
     {
-        await _outboxService!.GetStatisticsAsync();
+        return await _outboxService!.GetStatisticsAsync();
     }
 
     [Benchmark]

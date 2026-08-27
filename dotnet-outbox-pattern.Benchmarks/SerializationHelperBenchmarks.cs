@@ -27,7 +27,7 @@ public class SerializationHelperBenchmarks
     /// <summary>
     /// Simple POCO used for serialization tests.
     /// </summary>
-    private sealed class TestModel
+    public sealed class TestModel
     {
         public Guid Id { get; set; }
         public string? Name { get; set; }

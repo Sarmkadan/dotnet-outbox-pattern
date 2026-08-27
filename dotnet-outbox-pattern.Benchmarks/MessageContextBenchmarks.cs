@@ -13,8 +13,9 @@ namespace DotnetOutboxPattern.Benchmarks
         [Params(10, 100, 1000)]
         public int MessageCount;
 
-        private List<OutboxMessage> _messages;
-        private Activity _parentActivity;
+        private List<OutboxMessage> _messages = null!;
+        private Activity? _parentActivity;
+        private static readonly ActivitySource BenchmarkActivitySource = new("DotnetOutboxPattern.Benchmarks");
 
         [GlobalSetup]
         public void Setup()
@@ -25,8 +26,8 @@ namespace DotnetOutboxPattern.Benchmarks
                 var msg = new OutboxMessage
                 {
                     Id = Guid.NewGuid(),
-                    AggregateId = Guid.NewGuid(),
-                    EventType = typeof(string),
+                    AggregateId = Guid.NewGuid().ToString(),
+                    EventType = EventType.Created,
                     Topic = "test-topic",
                     State = OutboxMessageState.Pending,
                     CorrelationId = Guid.NewGuid().ToString(),
@@ -36,7 +37,7 @@ namespace DotnetOutboxPattern.Benchmarks
             }
 
             // Create a parent activity to provide a trace context for dispatch activities
-            _parentActivity = ActivitySource.StartActivity("parent");
+            _parentActivity = BenchmarkActivitySource.StartActivity("parent");
             Activity.Current = _parentActivity;
         }
 

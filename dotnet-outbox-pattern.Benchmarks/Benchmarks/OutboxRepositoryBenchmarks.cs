@@ -14,7 +14,7 @@ public class OutboxRepositoryBenchmarks : IDisposable
 {
     private ServiceProvider? _serviceProvider;
     private OutboxDbContext? _context;
-    private IOutboxRepository? _repository;
+    internal IOutboxRepository? _repository;
     private const int BatchSize = 100;
 
     [GlobalSetup]

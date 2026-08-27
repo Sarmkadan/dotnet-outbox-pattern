@@ -19,7 +19,7 @@ namespace DotnetOutboxPattern.Benchmarks
         {
             ArgumentNullException.ThrowIfNull(benchmarks);
 
-            await benchmarks.PublishAsync().ConfigureAwait(false);
+            await benchmarks.ProcessSingleMessage().ConfigureAwait(false);
         }
 
         /// <summary>

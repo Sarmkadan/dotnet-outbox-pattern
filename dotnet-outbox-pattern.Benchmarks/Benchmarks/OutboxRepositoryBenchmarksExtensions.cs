@@ -38,7 +38,7 @@ public static class OutboxRepositoryBenchmarksExtensions
                 AggregateId = Guid.NewGuid().ToString(),
                 AggregateType = "TestAggregate",
                 EventType = EventType.Created,
-                EventData = $"{\"Index\":{i}}",
+                EventData = $"{{\"Index\":{i}}}",
                 EventTypeName = "TestEvent",
                 Topic = "test.topic",
                 PartitionKey = "test-partition",
@@ -48,7 +48,10 @@ public static class OutboxRepositoryBenchmarksExtensions
             });
         }
 
-        await benchmarks._repository.AddRangeAsync(messages);
+        foreach (var m in messages)
+        {
+            await benchmarks._repository.AddAsync(m);
+        }
     }
 
     /// <summary>
@@ -73,7 +76,7 @@ public static class OutboxRepositoryBenchmarksExtensions
                 AggregateId = Guid.NewGuid().ToString(),
                 AggregateType = "TestAggregate",
                 EventType = EventType.Created,
-                EventData = $"{\"Index\":{i}}",
+                EventData = $"{{\"Index\":{i}}}",
                 EventTypeName = "TestEvent",
                 Topic = "test.topic",
                 PartitionKey = $"partition-{i % 10}", // 10 different partitions
@@ -83,7 +86,10 @@ public static class OutboxRepositoryBenchmarksExtensions
             });
         }
 
-        await benchmarks._repository.AddRangeAsync(messages);
+        foreach (var m in messages)
+        {
+            await benchmarks._repository.AddAsync(m);
+        }
     }
 
     /// <summary>
@@ -194,7 +200,7 @@ public static class OutboxRepositoryBenchmarksExtensions
                 AggregateId = Guid.NewGuid().ToString(),
                 AggregateType = "TestAggregate",
                 EventType = EventType.Created,
-                EventData = $"{\"Index\":{i}}",
+                EventData = $"{{\"Index\":{i}}}",
                 EventTypeName = "TestEvent",
                 Topic = "test.topic",
                 PartitionKey = "stress-test-partition",
@@ -204,7 +210,10 @@ public static class OutboxRepositoryBenchmarksExtensions
             });
         }
 
-        await benchmarks._repository.AddRangeAsync(messages);
+        foreach (var m in messages)
+        {
+            await benchmarks._repository.AddAsync(m);
+        }
     }
 
     /// <summary>
