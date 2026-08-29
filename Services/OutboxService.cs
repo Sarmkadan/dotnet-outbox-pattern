@@ -68,7 +68,7 @@ public interface IOutboxService
     Task ArchiveOldMessagesAsync(DateTime olderThan, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Retrieves all outbox messages.
+    /// Retrieves up to 1,000 outbox messages.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A list of outbox messages.</returns>
@@ -114,18 +114,23 @@ public interface IOutboxService
 /// </summary>
 public sealed class OutboxService : IOutboxService
 {
+    private const int GetAllMessagesLimit = 1000;
+
     private readonly IOutboxRepository _repository;
     private readonly ILogger<OutboxService> _logger;
     private readonly IOutboxSerializer _serializer;
+    private readonly TimeProvider _timeProvider;
 
     public OutboxService(
         IOutboxRepository repository,
         ILogger<OutboxService> logger,
-        IOutboxSerializer serializer)
+        IOutboxSerializer serializer,
+        TimeProvider? timeProvider = null)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     /// <summary>
@@ -135,8 +140,8 @@ public sealed class OutboxService : IOutboxService
     public async Task<OutboxMessage> PublishEventAsync(PublishableEvent publishableEvent, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(publishableEvent);
-    ArgumentNullException.ThrowIfNull(publishableEvent.Event);
-    ArgumentException.ThrowIfNullOrEmpty(publishableEvent.Topic);
+        ArgumentNullException.ThrowIfNull(publishableEvent.Event);
+        ArgumentException.ThrowIfNullOrWhiteSpace(publishableEvent.Topic);
 
         try
         {
@@ -167,7 +172,7 @@ public sealed class OutboxService : IOutboxService
                 MaxPublishAttempts = publishableEvent.DeliveryGuarantee == DeliveryGuarantee.AtMostOnce
                     ? 1
                     : publishableEvent.MaxAttempts,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = _timeProvider.GetUtcNow().UtcDateTime,
                 ScheduledFor = publishableEvent.ScheduledTime,
                 DeliveryGuarantee = publishableEvent.DeliveryGuarantee,
                 CorrelationId = correlationId,
@@ -207,6 +212,8 @@ public sealed class OutboxService : IOutboxService
         string? partitionKey = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+
         var publishable = new PublishableEvent
         {
             Event = domainEvent,
@@ -289,13 +296,13 @@ public sealed class OutboxService : IOutboxService
     }
 
     /// <summary>
-    /// Retrieves all outbox messages up to the specified limit
+    /// Retrieves up to 1,000 outbox messages to prevent unbounded queries.
     /// </summary>
     public async Task<List<OutboxMessage>> GetAllMessagesAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            return await _repository.GetAllAsync(cancellationToken: cancellationToken);
+            return await _repository.GetAllAsync(GetAllMessagesLimit, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -373,6 +380,12 @@ public sealed class OutboxService : IOutboxService
     /// </summary>
     public async Task ArchiveOldMessagesAsync(DateTime olderThan, CancellationToken cancellationToken = default)
     {
+        if (olderThan == default)
+            throw new ArgumentException("Archive cutoff must not be DateTime.MinValue or default.", nameof(olderThan));
+
+        if (olderThan > _timeProvider.GetUtcNow().UtcDateTime)
+            throw new ArgumentException("Archive cutoff must not be in the future.", nameof(olderThan));
+
         try
         {
             await _repository.ArchiveOldMessagesAsync(olderThan, cancellationToken);
