@@ -1,4 +1,6 @@
 #nullable enable
+using System.Linq.Expressions;
+
 // =============================================================================
 // Author: Vladyslav Zaiets | https://sarmkadan.com
 // CTO & Software Architect
@@ -116,6 +118,51 @@ public static class PaginationHelper
     }
 
     /// <summary>
+    /// Applies keyset pagination to a query and retrieves one extra item to detect whether more items exist
+    /// </summary>
+    /// <typeparam name="T">The type of item being paginated</typeparam>
+    /// <typeparam name="TKey">The type of the pagination key</typeparam>
+    /// <param name="query">The query to paginate</param>
+    /// <param name="keySelector">The expression that selects the pagination key</param>
+    /// <param name="afterKey">The cursor after which items are returned, or <see langword="null"/> for the first page</param>
+    /// <param name="pageSize">The number of items in a page</param>
+    /// <param name="descending">Whether to sort keys in descending order</param>
+    /// <returns>An ordered query limited to one more than the requested page size</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="pageSize"/> is not greater than zero</exception>
+    public static IQueryable<T> ApplyKeysetPagination<T, TKey>(
+        IQueryable<T> query,
+        Expression<Func<T, TKey>> keySelector,
+        TKey? afterKey,
+        int pageSize,
+        bool descending = false)
+        where TKey : IComparable<TKey>
+    {
+        if (pageSize <= 0)
+            throw new ArgumentOutOfRangeException(nameof(pageSize), pageSize, "Page size must be greater than 0");
+
+        if (afterKey is not null)
+        {
+            var cursor = Expression.Constant(afterKey, typeof(TKey));
+            var compareTo = Expression.Call(
+                keySelector.Body,
+                typeof(IComparable<TKey>).GetMethod(nameof(IComparable<TKey>.CompareTo))!,
+                cursor);
+            var comparison = descending
+                ? Expression.LessThan(compareTo, Expression.Constant(0))
+                : Expression.GreaterThan(compareTo, Expression.Constant(0));
+            var predicate = Expression.Lambda<Func<T, bool>>(comparison, keySelector.Parameters);
+
+            query = query.Where(predicate);
+        }
+
+        query = descending
+            ? query.OrderByDescending(keySelector)
+            : query.OrderBy(keySelector);
+
+        return query.Take(pageSize + 1);
+    }
+
+    /// <summary>
     /// Creates pagination metadata
     /// </summary>
     public static PaginationMetadata CreateMetadata(int page, int pageSize, int totalItems)
@@ -135,6 +182,16 @@ public static class PaginationHelper
         };
     }
 }
+
+/// <summary>
+/// Result of a keyset-paginated query
+/// </summary>
+/// <typeparam name="T">The type of item in the page</typeparam>
+/// <typeparam name="TKey">The type of the pagination cursor</typeparam>
+/// <param name="Items">The items in the current page</param>
+/// <param name="HasMore">Whether more items are available</param>
+/// <param name="NextCursor">The cursor to use for the next page</param>
+public sealed record KeysetPage<T, TKey>(IReadOnlyList<T> Items, bool HasMore, TKey? NextCursor);
 
 /// <summary>
 /// Pagination metadata
