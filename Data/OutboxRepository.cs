@@ -5,6 +5,8 @@
 // =============================================================================
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using DotnetOutboxPattern.Domain;
 using DotnetOutboxPattern.Exceptions;
 
@@ -75,10 +77,17 @@ public interface IOutboxRepository
 public sealed class OutboxRepository : IOutboxRepository
 {
     private readonly OutboxDbContext _context;
+    private readonly ILogger<OutboxRepository> _logger;
 
     public OutboxRepository(OutboxDbContext context)
+        : this(context, NullLogger<OutboxRepository>.Instance)
+    {
+    }
+
+    public OutboxRepository(OutboxDbContext context, ILogger<OutboxRepository> logger)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -91,6 +100,7 @@ public sealed class OutboxRepository : IOutboxRepository
             message.Validate();
             _context.OutboxMessages.Add(message);
             await _context.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("Added outbox message {MessageId}", message.Id);
             return message;
         }
         catch (DbUpdateException ex)
@@ -110,8 +120,15 @@ public sealed class OutboxRepository : IOutboxRepository
     {
         try
         {
-            return await _context.OutboxMessages.AsNoTracking()
+            var message = await _context.OutboxMessages.AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+            LogRead(nameof(GetByIdAsync), message is null ? 0 : 1);
+            if (message is null)
+            {
+                _logger.LogWarning("Outbox message {MessageId} was not found", id);
+            }
+
+            return message;
         }
         catch (Exception ex)
         {
@@ -126,8 +143,15 @@ public sealed class OutboxRepository : IOutboxRepository
     {
         try
         {
-            return await _context.OutboxMessages.AsNoTracking()
+            var message = await _context.OutboxMessages.AsNoTracking()
                 .FirstOrDefaultAsync(x => x.IdempotencyKey == idempotencyKey, cancellationToken);
+            LogRead(nameof(GetByIdempotencyKeyAsync), message is null ? 0 : 1);
+            if (message is null)
+            {
+                _logger.LogWarning("Outbox message with idempotency key {IdempotencyKey} was not found", idempotencyKey);
+            }
+
+            return message;
         }
         catch (Exception ex)
         {
@@ -142,13 +166,15 @@ public sealed class OutboxRepository : IOutboxRepository
     {
         try
         {
-            return await _context.OutboxMessages.AsNoTracking()
+            var messages = await _context.OutboxMessages.AsNoTracking()
                 .Where(x => x.State == OutboxMessageState.Pending && !x.IsLocked)
                 .Where(x => !x.ScheduledFor.HasValue || x.ScheduledFor <= DateTime.UtcNow)
                 .OrderByDescending(x => x.Priority)
                 .ThenBy(x => x.CreatedAt)
                 .Take(batchSize)
                 .ToListAsync(cancellationToken);
+            LogRead(nameof(GetPendingMessagesAsync), messages.Count);
+            return messages;
         }
         catch (Exception ex)
         {
@@ -163,13 +189,15 @@ public sealed class OutboxRepository : IOutboxRepository
     {
         try
         {
-            return await _context.OutboxMessages.AsNoTracking()
+            var messages = await _context.OutboxMessages.AsNoTracking()
                 .Where(x => x.PartitionKey == partitionKey)
                 .Where(x => x.State == OutboxMessageState.Pending && !x.IsLocked)
                 .Where(x => !x.ScheduledFor.HasValue || x.ScheduledFor <= DateTime.UtcNow)
                 .OrderBy(x => x.CreatedAt)
                 .Take(batchSize)
                 .ToListAsync(cancellationToken);
+            LogRead(nameof(GetPendingByPartitionAsync), messages.Count);
+            return messages;
         }
         catch (Exception ex)
         {
@@ -185,12 +213,14 @@ public sealed class OutboxRepository : IOutboxRepository
         try
         {
             var now = DateTime.UtcNow;
-            return await _context.OutboxMessages.AsNoTracking()
+            var messages = await _context.OutboxMessages.AsNoTracking()
                 .Where(x => x.ScheduledFor.HasValue && x.ScheduledFor <= now)
                 .Where(x => x.State == OutboxMessageState.Pending && !x.IsLocked)
                 .OrderBy(x => x.ScheduledFor)
                 .Take(batchSize)
                 .ToListAsync(cancellationToken);
+            LogRead(nameof(GetScheduledMessagesAsync), messages.Count);
+            return messages;
         }
         catch (Exception ex)
         {
@@ -206,10 +236,12 @@ public sealed class OutboxRepository : IOutboxRepository
         try
         {
             var now = DateTime.UtcNow;
-            return await _context.OutboxMessages.AsNoTracking()
+            var messages = await _context.OutboxMessages.AsNoTracking()
                 .Where(x => x.IsLocked && x.LockExpiresAt.HasValue && x.LockExpiresAt <= now)
                 .OrderBy(x => x.LockExpiresAt)
                 .ToListAsync(cancellationToken);
+            LogRead(nameof(GetExpiredLocksAsync), messages.Count);
+            return messages;
         }
         catch (Exception ex)
         {
@@ -239,6 +271,7 @@ public sealed class OutboxRepository : IOutboxRepository
 
             _context.OutboxMessages.Update(message);
             await _context.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("Updated outbox message {MessageId}", message.Id);
         }
         catch (DbUpdateConcurrencyException ex)
         {
@@ -258,11 +291,15 @@ public sealed class OutboxRepository : IOutboxRepository
         try
         {
             var message = await _context.OutboxMessages.FindAsync(new object[] { id }, cancellationToken);
+            var count = 0;
             if (message is not null)
             {
                 _context.OutboxMessages.Remove(message);
                 await _context.SaveChangesAsync(cancellationToken);
+                count = 1;
             }
+
+            _logger.LogInformation("Deleted {Count} outbox messages for {MessageId}", count, id);
         }
         catch (Exception ex)
         {
@@ -277,8 +314,10 @@ public sealed class OutboxRepository : IOutboxRepository
     {
         try
         {
-            return await _context.OutboxMessages.AsNoTracking()
+            var count = await _context.OutboxMessages.AsNoTracking()
                 .CountAsync(x => x.State == OutboxMessageState.Pending, cancellationToken);
+            LogRead(nameof(GetPendingCountAsync), count);
+            return count;
         }
         catch (Exception ex)
         {
@@ -293,8 +332,10 @@ public sealed class OutboxRepository : IOutboxRepository
     {
         try
         {
-            return await _context.OutboxMessages.AsNoTracking()
+            var count = await _context.OutboxMessages.AsNoTracking()
                 .CountAsync(x => x.State == OutboxMessageState.Published, cancellationToken);
+            LogRead(nameof(GetPublishedCountAsync), count);
+            return count;
         }
         catch (Exception ex)
         {
@@ -309,8 +350,10 @@ public sealed class OutboxRepository : IOutboxRepository
     {
         try
         {
-            return await _context.OutboxMessages.AsNoTracking()
+            var count = await _context.OutboxMessages.AsNoTracking()
                 .CountAsync(x => x.State == OutboxMessageState.Failed, cancellationToken);
+            LogRead(nameof(GetFailedCountAsync), count);
+            return count;
         }
         catch (Exception ex)
         {
@@ -338,7 +381,7 @@ public sealed class OutboxRepository : IOutboxRepository
                 ? publishedMessages.Average(x => (x.PublishedAt!.Value - x.CreatedAt).TotalSeconds)
                 : 0;
 
-            return new OutboxStatistics
+            var statistics = new OutboxStatistics
             {
                 TotalMessages = messages.Count,
                 PendingMessages = messages.Count(x => x.State == OutboxMessageState.Pending),
@@ -350,6 +393,8 @@ public sealed class OutboxRepository : IOutboxRepository
                 AveragePublishTime = TimeSpan.FromSeconds(avgPublishTime),
                 OldestPendingAge = oldestPending is not null ? DateTime.UtcNow - oldestPending.CreatedAt : null
             };
+            LogRead(nameof(GetStatisticsAsync), statistics.TotalMessages);
+            return statistics;
         }
         catch (Exception ex)
         {
@@ -364,10 +409,12 @@ public sealed class OutboxRepository : IOutboxRepository
     {
         try
         {
-            return await _context.OutboxMessages.AsNoTracking()
+            var messages = await _context.OutboxMessages.AsNoTracking()
                 .Where(x => x.AggregateId == aggregateId)
                 .OrderBy(x => x.CreatedAt)
                 .ToListAsync(cancellationToken);
+            LogRead(nameof(GetByAggregateIdAsync), messages.Count);
+            return messages;
         }
         catch (Exception ex)
         {
@@ -382,11 +429,13 @@ public sealed class OutboxRepository : IOutboxRepository
     {
         try
         {
-            return await _context.OutboxMessages.AsNoTracking()
+            var messages = await _context.OutboxMessages.AsNoTracking()
                 .Where(x => x.Topic == topic)
                 .OrderByDescending(x => x.CreatedAt)
                 .Take(limit)
                 .ToListAsync(cancellationToken);
+            LogRead(nameof(GetByTopicAsync), messages.Count);
+            return messages;
         }
         catch (Exception ex)
         {
@@ -401,10 +450,12 @@ public sealed class OutboxRepository : IOutboxRepository
     {
         try
         {
-            return await _context.OutboxMessages.AsNoTracking()
+            var messages = await _context.OutboxMessages.AsNoTracking()
                 .Where(x => x.CorrelationId == correlationId)
                 .OrderBy(x => x.CreatedAt)
                 .ToListAsync(cancellationToken);
+            LogRead(nameof(GetByCorrelationIdAsync), messages.Count);
+            return messages;
         }
         catch (Exception ex)
         {
@@ -419,10 +470,12 @@ public sealed class OutboxRepository : IOutboxRepository
     {
         try
         {
-            return await _context.OutboxMessages.AsNoTracking()
+            var messages = await _context.OutboxMessages.AsNoTracking()
                 .Where(x => x.State == state)
                 .OrderBy(x => x.CreatedAt)
                 .ToListAsync(cancellationToken);
+            LogRead(nameof(GetByStateAsync), messages.Count);
+            return messages;
         }
         catch (Exception ex)
         {
@@ -437,10 +490,12 @@ public sealed class OutboxRepository : IOutboxRepository
     {
         try
         {
-            return await _context.OutboxMessages.AsNoTracking()
+            var messages = await _context.OutboxMessages.AsNoTracking()
                 .Where(x => x.CreatedAt >= startDate && x.CreatedAt <= endDate)
                 .OrderBy(x => x.CreatedAt)
                 .ToListAsync(cancellationToken);
+            LogRead(nameof(GetByDateRangeAsync), messages.Count);
+            return messages;
         }
         catch (Exception ex)
         {
@@ -465,6 +520,7 @@ public sealed class OutboxRepository : IOutboxRepository
             }
 
             await _context.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("Archived {Count} outbox messages", messages.Count);
         }
         catch (Exception ex)
         {
@@ -483,6 +539,7 @@ public sealed class OutboxRepository : IOutboxRepository
                 .Where(x => x.State == OutboxMessageState.Archived && x.PublishedAt < olderThan)
                 .ExecuteDeleteAsync(cancellationToken);
 
+            _logger.LogInformation("Deleted {Count} archived outbox messages", count);
             return (int)count;
         }
         catch (Exception ex)
@@ -495,10 +552,12 @@ public sealed class OutboxRepository : IOutboxRepository
     {
         try
         {
-            return await _context.OutboxMessages.AsNoTracking()
+            var messages = await _context.OutboxMessages.AsNoTracking()
                 .OrderByDescending(x => x.CreatedAt)
                 .Take(limit)
                 .ToListAsync(cancellationToken);
+            LogRead(nameof(GetAllAsync), messages.Count);
+            return messages;
         }
         catch (Exception ex)
         {
@@ -514,11 +573,13 @@ public sealed class OutboxRepository : IOutboxRepository
     {
         try
         {
-            return await _context.OutboxMessages.AsNoTracking()
+            var createdAt = await _context.OutboxMessages.AsNoTracking()
                 .Where(x => x.State == OutboxMessageState.Pending && !x.IsLocked)
                 .OrderBy(x => x.CreatedAt)
                 .Select(x => (DateTime?)x.CreatedAt)
                 .FirstOrDefaultAsync(cancellationToken);
+            LogRead(nameof(GetOldestPendingMessageCreatedAtAsync), createdAt.HasValue ? 1 : 0);
+            return createdAt;
         }
         catch (Exception ex)
         {
@@ -689,5 +750,10 @@ ORDER BY om.[ScheduledFor] ASC
         {
             throw new OutboxRepositoryException("Failed to claim scheduled messages batch", nameof(ClaimScheduledMessagesBatchAsync), ex);
         }
+    }
+
+    private void LogRead(string queryName, long count)
+    {
+        _logger.LogDebug("Executed outbox query {QueryName} with {Count} results", queryName, count);
     }
 }
