@@ -7,6 +7,7 @@
 using System;
 using System.IO;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using DotnetOutboxPattern.Infrastructure;
 
@@ -65,28 +66,15 @@ public static class RetryHelper
         const int MaxRetriesLimit = 20;
         maxRetries = Math.Min(maxRetries, MaxRetriesLimit);
 
-        for (int attempt = 0; attempt <= maxRetries; attempt++)
-        {
-            try
-            {
-                return await action();
-            }
-            catch (Exception ex) when (attempt < maxRetries && IsTransientError(ex))
-            {
-                // Compute the delay using the shared exponential backoff logic.
-                // The first retry corresponds to attempt = 1.
-                var delayMs = (int)BackoffMath.ComputeExponentialDelay(
+        return await ExecuteCoreAsync(
+            action,
+            maxRetries,
+            attempt => TimeSpan.FromMilliseconds(BackoffMath.ComputeExponentialDelay(
                     baseDelayMs: initialDelayMs,
                     maxDelayMs: int.MaxValue,
                     multiplier: backoffMultiplier,
-                    attempt: attempt + 1);
-
-                await Task.Delay(delayMs);
-            }
-        }
-
-        // Final attempt without catching
-        return await action();
+                    attempt: attempt)),
+            CancellationToken.None);
     }
 
     /// <summary>
@@ -123,19 +111,11 @@ public static class RetryHelper
         const int MaxDelayMs = 30000; // 30 seconds
         delayMs = Math.Min(delayMs, MaxDelayMs);
 
-        for (int attempt = 0; attempt <= maxRetries; attempt++)
-        {
-            try
-            {
-                return await action();
-            }
-            catch (Exception ex) when (attempt < maxRetries && IsTransientError(ex))
-            {
-                await Task.Delay(delayMs);
-            }
-        }
-
-        return await action();
+        return await ExecuteCoreAsync(
+            action,
+            maxRetries,
+            _ => TimeSpan.FromMilliseconds(delayMs),
+            CancellationToken.None);
     }
 
     /// <summary>
@@ -181,27 +161,13 @@ public static class RetryHelper
         initialDelayMs = Math.Min(initialDelayMs, MaxDelayMs);
         delayIncrementMs = Math.Min(delayIncrementMs, MaxDelayMs);
 
-        int delay = initialDelayMs;
-
-        for (int attempt = 0; attempt <= maxRetries; attempt++)
-        {
-            try
-            {
-                return await action();
-            }
-            catch (Exception ex) when (attempt < maxRetries && IsTransientError(ex))
-            {
-                await Task.Delay(delay);
-                delay += delayIncrementMs;
-                // Cap the delay to prevent overflow
-                if (delay > MaxDelayMs)
-                {
-                    delay = MaxDelayMs;
-                }
-            }
-        }
-
-        return await action();
+        return await ExecuteCoreAsync(
+            action,
+            maxRetries,
+            attempt => TimeSpan.FromMilliseconds(Math.Min(
+                initialDelayMs + ((attempt - 1) * delayIncrementMs),
+                MaxDelayMs)),
+            CancellationToken.None);
     }
 
     /// <summary>
@@ -241,6 +207,24 @@ public static class RetryHelper
         var random = new Random();
         int delay = initialDelayMs;
 
+        return await ExecuteCoreAsync(
+            action,
+            maxRetries,
+            _ =>
+            {
+                var actualDelay = delay + random.Next(0, delay);
+                delay = Math.Min(delay * 2, MaxInitialDelayMs);
+                return TimeSpan.FromMilliseconds(actualDelay);
+            },
+            CancellationToken.None);
+    }
+
+    private static async Task<T> ExecuteCoreAsync<T>(
+        Func<Task<T>> action,
+        int maxRetries,
+        Func<int, TimeSpan> computeDelay,
+        CancellationToken cancellationToken)
+    {
         for (int attempt = 0; attempt <= maxRetries; attempt++)
         {
             try
@@ -249,16 +233,7 @@ public static class RetryHelper
             }
             catch (Exception ex) when (attempt < maxRetries && IsTransientError(ex))
             {
-                // Add random jitter to delay
-                var jitter = random.Next(0, delay);
-                var actualDelay = delay + jitter;
-                await Task.Delay(actualDelay);
-                delay *= 2; // Exponential backoff
-                // Cap the delay to prevent overflow
-                if (delay > MaxInitialDelayMs)
-                {
-                    delay = MaxInitialDelayMs;
-                }
+                await Task.Delay(computeDelay(attempt + 1), cancellationToken);
             }
         }
 
