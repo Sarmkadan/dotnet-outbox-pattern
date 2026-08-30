@@ -1,180 +1,138 @@
 #nullable enable
-// =============================================================================
-// Author: Test
-// Circuit breaker tests
-// =============================================================================
 
 using DotnetOutboxPattern.Domain;
 using DotnetOutboxPattern.Infrastructure;
-using Microsoft.Extensions.Logging;
-using Moq;
 
 namespace DotnetOutboxPattern.Tests;
 
 public sealed class CircuitBreakerTests
 {
     [Fact]
-    public void CircuitBreaker_InitialState_IsClosed()
+    public void RecordFailure_BelowFailureThreshold_KeepsCircuitClosed()
     {
-        // Arrange
-        var options = new CircuitBreakerOptions();
-        var loggerMock = new Mock<ILogger>();
+        using var breaker = CreateBreaker(failureThreshold: 3);
 
-        // Act
-        var breaker = new CircuitBreaker(options, loggerMock.Object);
+        breaker.RecordFailure(new InvalidOperationException("First failure"));
+        breaker.RecordFailure(new InvalidOperationException("Second failure"));
 
-        // Assert
         Assert.Equal(CircuitState.Closed, breaker.State);
         Assert.True(breaker.IsAllowed);
     }
 
     [Fact]
-    public void CircuitBreaker_RecordFailure_IncrementsFailureCount()
+    public async Task ExecuteAsync_AtFailureThreshold_OpensCircuitAndRejectsCalls()
     {
-        // Arrange
-        var options = new CircuitBreakerOptions { FailureThreshold = 3 };
-        var loggerMock = new Mock<ILogger>();
-        var breaker = new CircuitBreaker(options, loggerMock.Object);
-        var exception = new Exception("Test failure");
+        using var breaker = CreateBreaker(failureThreshold: 2);
+        var rejectedActionWasCalled = false;
 
-        // Act
-        breaker.RecordFailure(exception);
-        breaker.RecordFailure(exception);
+        Assert.False(await breaker.ExecuteAsync(FailingAction));
+        Assert.False(await breaker.ExecuteAsync(FailingAction));
 
-        // Assert
-        Assert.Equal(2, breaker.State == CircuitState.Closed ? GetFailureCount(breaker) : 0);
-        Assert.Equal(CircuitState.Closed, breaker.State);
-    }
+        var result = await breaker.ExecuteAsync(() =>
+        {
+            rejectedActionWasCalled = true;
+            return Task.CompletedTask;
+        });
 
-    [Fact]
-    public void CircuitBreaker_ExceedsThreshold_OpensCircuit()
-    {
-        // Arrange
-        var options = new CircuitBreakerOptions { FailureThreshold = 2 };
-        var loggerMock = new Mock<ILogger>();
-        var breaker = new CircuitBreaker(options, loggerMock.Object);
-        var exception = new Exception("Test failure");
-
-        // Act - exceed threshold
-        breaker.RecordFailure(exception);
-        breaker.RecordFailure(exception);
-
-        // Assert
         Assert.Equal(CircuitState.Open, breaker.State);
         Assert.False(breaker.IsAllowed);
+        Assert.False(result);
+        Assert.False(rejectedActionWasCalled);
     }
 
     [Fact]
-    public void CircuitBreaker_InHalfOpen_AllowsLimitedRequests()
+    public async Task State_AfterOpenDuration_TransitionsToHalfOpen()
     {
-        // Arrange
-        var options = new CircuitBreakerOptions {
-            FailureThreshold = 2,
-            OpenDuration = TimeSpan.FromMilliseconds(10)
-        };
-        var loggerMock = new Mock<ILogger>();
-        var breaker = new CircuitBreaker(options, loggerMock.Object);
-        var exception = new Exception("Test failure");
+        using var breaker = CreateBreaker(
+            failureThreshold: 1,
+            openDuration: TimeSpan.FromMilliseconds(50));
+        breaker.RecordFailure(new InvalidOperationException("Failure"));
 
-        // Open the circuit
-        breaker.RecordFailure(exception);
-        breaker.RecordFailure(exception);
+        await Task.Delay(TimeSpan.FromMilliseconds(75));
 
-        // Force transition to half-open after open duration
-        System.Threading.Thread.Sleep(20);
-        var state = breaker.State; // This should trigger state transition
-
-        // Assert
         Assert.Equal(CircuitState.HalfOpen, breaker.State);
         Assert.True(breaker.IsAllowed);
     }
 
     [Fact]
-    public void CircuitBreaker_Reset_ReturnsToClosed()
+    public void RecordSuccess_InHalfOpenAfterRequiredSuccesses_ClosesCircuit()
     {
-        // Arrange
-        var options = new CircuitBreakerOptions { FailureThreshold = 2 };
-        var loggerMock = new Mock<ILogger>();
-        var breaker = new CircuitBreaker(options, loggerMock.Object);
-        var exception = new Exception("Test failure");
+        using var breaker = CreateBreaker(failureThreshold: 1, halfOpenTestRequests: 2);
+        breaker.RecordFailure(new InvalidOperationException("Failure"));
+        breaker.ForceHalfOpen();
 
-        // Open the circuit
-        breaker.RecordFailure(exception);
-        breaker.RecordFailure(exception);
+        breaker.RecordSuccess();
+        Assert.Equal(CircuitState.HalfOpen, breaker.State);
 
-        // Reset
-        breaker.Reset();
+        breaker.RecordSuccess();
 
-        // Assert
         Assert.Equal(CircuitState.Closed, breaker.State);
         Assert.True(breaker.IsAllowed);
+        Assert.Null(breaker.LastException);
     }
 
     [Fact]
-    public async Task CircuitBreaker_ExecuteAsync_BlocksWhenOpen()
+    public void RecordFailure_InHalfOpen_ReopensCircuit()
     {
-        // Arrange
-        var options = new CircuitBreakerOptions { FailureThreshold = 1 };
-        var loggerMock = new Mock<ILogger>();
-        var breaker = new CircuitBreaker(options, loggerMock.Object);
-        var exception = new Exception("Test failure");
+        using var breaker = CreateBreaker(failureThreshold: 1);
+        breaker.RecordFailure(new InvalidOperationException("Initial failure"));
+        breaker.ForceHalfOpen();
 
-        // Open the circuit
-        breaker.RecordFailure(exception);
+        var halfOpenFailure = new InvalidOperationException("Half-open failure");
+        breaker.RecordFailure(halfOpenFailure);
 
-        // Act - try to execute when circuit is open
-        var executed = await breaker.ExecuteAsync(() => Task.CompletedTask);
-
-        // Assert
-        Assert.False(executed);
+        Assert.Equal(CircuitState.Open, breaker.State);
+        Assert.False(breaker.IsAllowed);
+        Assert.Same(halfOpenFailure, breaker.LastException);
     }
 
     [Fact]
-    public async Task CircuitBreaker_ExecuteAsync_AllowsWhenClosed()
+    public async Task ExecuteAsync_WhenDisabled_BypassesCircuitStateAndNeverRejectsCalls()
     {
-        // Arrange
-        var options = new CircuitBreakerOptions();
-        var loggerMock = new Mock<ILogger>();
-        var breaker = new CircuitBreaker(options, loggerMock.Object);
-        var executed = false;
+        using var breaker = CreateBreaker(failureThreshold: 1, enabled: false);
+        var invocationCount = 0;
 
-        // Act - execute when circuit is closed
-        var result = await breaker.ExecuteAsync(() =>
+        for (var attempt = 0; attempt < 3; attempt++)
         {
-            executed = true;
+            var result = await breaker.ExecuteAsync((Func<Task>)(() =>
+            {
+                invocationCount++;
+                throw new InvalidOperationException("Failure");
+            }));
+
+            Assert.False(result);
+            Assert.Equal(CircuitState.Closed, breaker.State);
+            Assert.True(breaker.IsAllowed);
+        }
+
+        var successfulResult = await breaker.ExecuteAsync(() =>
+        {
+            invocationCount++;
             return Task.CompletedTask;
         });
 
-        // Assert
-        Assert.True(result);
-        Assert.True(executed);
-    }
-
-    [Fact]
-    public void CircuitBreaker_RecordSuccess_ResetsFailureCount()
-    {
-        // Arrange
-        var options = new CircuitBreakerOptions { FailureThreshold = 5 };
-        var loggerMock = new Mock<ILogger>();
-        var breaker = new CircuitBreaker(options, loggerMock.Object);
-        var exception = new Exception("Test failure");
-
-        // Fail a few times
-        breaker.RecordFailure(exception);
-        breaker.RecordFailure(exception);
-
-        // Succeed
-        breaker.RecordSuccess();
-
-        // Assert - failure count should reset
-        Assert.Equal(0, GetFailureCount(breaker));
+        Assert.True(successfulResult);
+        Assert.Equal(4, invocationCount);
         Assert.Equal(CircuitState.Closed, breaker.State);
     }
 
-    private static int GetFailureCount(CircuitBreaker breaker)
+    private static CircuitBreaker CreateBreaker(
+        int failureThreshold,
+        TimeSpan? openDuration = null,
+        int halfOpenTestRequests = 1,
+        bool enabled = true)
     {
-        // Use reflection to get the private _failureCount field
-        var field = typeof(CircuitBreaker).GetField("_failureCount", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        return (int)field!.GetValue(breaker)!;
+        return new CircuitBreaker(new CircuitBreakerOptions
+        {
+            Enabled = enabled,
+            FailureThreshold = failureThreshold,
+            OpenDuration = openDuration ?? TimeSpan.FromMinutes(1),
+            HalfOpenTestRequests = halfOpenTestRequests
+        });
+    }
+
+    private static Task FailingAction()
+    {
+        throw new InvalidOperationException("Failure");
     }
 }
