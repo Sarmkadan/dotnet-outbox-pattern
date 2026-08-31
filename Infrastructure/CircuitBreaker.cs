@@ -15,35 +15,42 @@ namespace DotnetOutboxPattern.Infrastructure;
 /// </summary>
 public sealed class CircuitBreakerOptions
 {
+    private const bool DefaultEnabled = true;
+    private const int DefaultFailureThreshold = 5;
+    private const int DefaultHalfOpenTestRequests = 2;
+    private static readonly TimeSpan DefaultOpenDuration = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan DefaultHalfOpenSuccessDuration = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan DefaultHalfOpenFailureDuration = TimeSpan.FromSeconds(10);
+
     /// <summary>
     /// Whether the circuit breaker is enabled
     /// </summary>
-    public bool Enabled { get; set; } = true;
+    public bool Enabled { get; set; } = DefaultEnabled;
 
     /// <summary>
     /// Number of consecutive failures before opening the circuit
     /// </summary>
-    public int FailureThreshold { get; set; } = 5;
+    public int FailureThreshold { get; set; } = DefaultFailureThreshold;
 
     /// <summary>
     /// Duration to keep the circuit open before transitioning to half-open state
     /// </summary>
-    public TimeSpan OpenDuration { get; set; } = TimeSpan.FromMinutes(1);
+    public TimeSpan OpenDuration { get; set; } = DefaultOpenDuration;
 
     /// <summary>
     /// Number of test requests to allow in half-open state
     /// </summary>
-    public int HalfOpenTestRequests { get; set; } = 2;
+    public int HalfOpenTestRequests { get; set; } = DefaultHalfOpenTestRequests;
 
     /// <summary>
     /// Duration to wait before transitioning from half-open to closed state after success
     /// </summary>
-    public TimeSpan HalfOpenSuccessDuration { get; set; } = TimeSpan.FromSeconds(30);
+    public TimeSpan HalfOpenSuccessDuration { get; set; } = DefaultHalfOpenSuccessDuration;
 
     /// <summary>
     /// Duration to wait before transitioning from half-open to open state after failure
     /// </summary>
-    public TimeSpan HalfOpenFailureDuration { get; set; } = TimeSpan.FromSeconds(10);
+    public TimeSpan HalfOpenFailureDuration { get; set; } = DefaultHalfOpenFailureDuration;
 }
 
 /// <summary>
@@ -52,6 +59,17 @@ public sealed class CircuitBreakerOptions
 /// </summary>
 public sealed class CircuitBreaker : IDisposable
 {
+    private const int InitialCount = 0;
+    private const string CircuitBlockedLogMessage = "Circuit breaker blocked operation - circuit is open";
+    private const string FailureRecordedLogMessage = "Circuit breaker recorded failure";
+    private const string CircuitOpenedLogMessage = "Circuit breaker opened after {FailureCount} failures";
+    private const string CircuitClosedLogMessage = "Circuit breaker closed - downstream service recovered";
+    private const string HalfOpenTransitionLogMessage = "Circuit breaker transitioning to half-open state for testing";
+    private const string HalfOpenSuccessLogMessage = "Circuit breaker test request succeeded in half-open state";
+    private const string HalfOpenFailureLogMessage = "Circuit breaker test request failed in half-open state - reopening circuit";
+    private const string ForcedHalfOpenLogMessage = "Circuit breaker forced into half-open state for testing";
+    private static readonly DateTime UninitializedTimestamp = DateTime.MinValue;
+
     private readonly CircuitBreakerOptions _options;
     private readonly ILogger? _logger;
     private readonly object _lock = new();
@@ -106,10 +124,10 @@ public sealed class CircuitBreaker : IDisposable
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = logger;
         _state = CircuitState.Closed;
-        _failureCount = 0;
-        _openedAt = DateTime.MinValue;
-        _lastTestAt = DateTime.MinValue;
-        _testSuccessCount = 0;
+        _failureCount = InitialCount;
+        _openedAt = UninitializedTimestamp;
+        _lastTestAt = UninitializedTimestamp;
+        _testSuccessCount = InitialCount;
     }
 
     /// <summary>
@@ -197,7 +215,7 @@ public sealed class CircuitBreaker : IDisposable
             else
             {
                 // Reset failure count on success in closed state
-                _failureCount = 0;
+                _failureCount = InitialCount;
             }
         }
     }
@@ -243,9 +261,9 @@ public sealed class CircuitBreaker : IDisposable
         lock (_lock)
         {
             _state = CircuitState.Closed;
-            _failureCount = 0;
-            _openedAt = DateTime.MinValue;
-            _testSuccessCount = 0;
+            _failureCount = InitialCount;
+            _openedAt = UninitializedTimestamp;
+            _testSuccessCount = InitialCount;
             LastException = null;
         }
     }
@@ -284,7 +302,7 @@ public sealed class CircuitBreaker : IDisposable
             {
                 _state = CircuitState.HalfOpen;
                 _lastTestAt = DateTime.UtcNow;
-                _testSuccessCount = 0;
+                _testSuccessCount = InitialCount;
                 LogCircuitTransitionToHalfOpen();
             }
         }
@@ -309,42 +327,42 @@ public sealed class CircuitBreaker : IDisposable
 
     private void LogCircuitBlocked()
     {
-        _logger?.LogDebug("Circuit breaker blocked operation - circuit is open");
+        _logger?.LogDebug(CircuitBlockedLogMessage);
     }
 
     private void LogFailure(Exception ex)
     {
-        _logger?.LogDebug(ex, "Circuit breaker recorded failure");
+        _logger?.LogDebug(ex, FailureRecordedLogMessage);
     }
 
     private void LogCircuitOpened(Exception ex)
     {
-        _logger?.LogWarning(ex, "Circuit breaker opened after {FailureCount} failures", _failureCount);
+        _logger?.LogWarning(ex, CircuitOpenedLogMessage, _failureCount);
     }
 
     private void LogCircuitClosed()
     {
-        _logger?.LogInformation("Circuit breaker closed - downstream service recovered");
+        _logger?.LogInformation(CircuitClosedLogMessage);
     }
 
     private void LogCircuitTransitionToHalfOpen()
     {
-        _logger?.LogInformation("Circuit breaker transitioning to half-open state for testing");
+        _logger?.LogInformation(HalfOpenTransitionLogMessage);
     }
 
     private void LogHalfOpenSuccess()
     {
-        _logger?.LogInformation("Circuit breaker test request succeeded in half-open state");
+        _logger?.LogInformation(HalfOpenSuccessLogMessage);
     }
 
     private void LogHalfOpenFailure()
     {
-        _logger?.LogWarning("Circuit breaker test request failed in half-open state - reopening circuit");
+        _logger?.LogWarning(HalfOpenFailureLogMessage);
     }
 
     private void LogCircuitForcedHalfOpen()
     {
-        _logger?.LogInformation("Circuit breaker forced into half-open state for testing");
+        _logger?.LogInformation(ForcedHalfOpenLogMessage);
     }
 
     /// <summary>
