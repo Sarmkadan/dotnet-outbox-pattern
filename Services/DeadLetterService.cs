@@ -63,10 +63,15 @@ public sealed class DeadLetterService : IDeadLetterService
         ILogger<DeadLetterService> logger,
         OutboxRetryOptions? retryOptions = null)
     {
-        _dlRepository = dlRepository ?? throw new ArgumentNullException(nameof(dlRepository));
-        _outboxRepository = outboxRepository ?? throw new ArgumentNullException(nameof(outboxRepository));
-        _outboxService = outboxService ?? throw new ArgumentNullException(nameof(outboxService));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(dlRepository);
+        ArgumentNullException.ThrowIfNull(outboxRepository);
+        ArgumentNullException.ThrowIfNull(outboxService);
+        ArgumentNullException.ThrowIfNull(logger);
+
+        _dlRepository = dlRepository;
+        _outboxRepository = outboxRepository;
+        _outboxService = outboxService;
+        _logger = logger;
         _retryOptions = retryOptions ?? new OutboxRetryOptions();
     }
 
@@ -75,11 +80,10 @@ public sealed class DeadLetterService : IDeadLetterService
     /// </summary>
     public async Task<DeadLetter> MoveToDlqAsync(OutboxMessage message, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(message);
+
         try
         {
-            if (message is null)
-                throw new ArgumentNullException(nameof(message));
-
             var deadLetter = DeadLetter.FromOutboxMessage(message);
             var result = await _dlRepository.AddAsync(deadLetter, cancellationToken);
 
@@ -101,6 +105,9 @@ public sealed class DeadLetterService : IDeadLetterService
     /// </summary>
     public async Task<DeadLetter?> GetAsync(Guid deadLetterId, CancellationToken cancellationToken = default)
     {
+        if (deadLetterId == Guid.Empty)
+            throw new ArgumentException("Dead letter ID cannot be empty.", nameof(deadLetterId));
+
         try
         {
             return await _dlRepository.GetByIdAsync(deadLetterId, cancellationToken);
@@ -117,6 +124,8 @@ public sealed class DeadLetterService : IDeadLetterService
     /// </summary>
     public async Task<List<DeadLetter>> GetUnreviewedAsync(int limit = 100, CancellationToken cancellationToken = default)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
+
         try
         {
             return await _dlRepository.GetUnreviewedAsync(limit, cancellationToken);
@@ -133,6 +142,10 @@ public sealed class DeadLetterService : IDeadLetterService
     /// </summary>
     public async Task ReviewAsync(Guid deadLetterId, string notes, CancellationToken cancellationToken = default)
     {
+        if (deadLetterId == Guid.Empty)
+            throw new ArgumentException("Dead letter ID cannot be empty.", nameof(deadLetterId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(notes);
+
         try
         {
             var deadLetter = await _dlRepository.GetByIdAsync(deadLetterId, cancellationToken);
@@ -156,6 +169,10 @@ public sealed class DeadLetterService : IDeadLetterService
     /// </summary>
     public async Task RequeueAsync(Guid deadLetterId, string reason, CancellationToken cancellationToken = default)
     {
+        if (deadLetterId == Guid.Empty)
+            throw new ArgumentException("Dead letter ID cannot be empty.", nameof(deadLetterId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+
         try
         {
             var deadLetter = await _dlRepository.GetByIdAsync(deadLetterId, cancellationToken);
@@ -241,6 +258,8 @@ public sealed class DeadLetterService : IDeadLetterService
     /// </summary>
     public async Task<List<DeadLetter>> GetByTopicAsync(string topic, CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+
         try
         {
             return await _dlRepository.GetByTopicAsync(topic, cancellationToken);
@@ -257,6 +276,9 @@ public sealed class DeadLetterService : IDeadLetterService
     /// </summary>
     public async Task DeleteAsync(Guid deadLetterId, CancellationToken cancellationToken = default)
     {
+        if (deadLetterId == Guid.Empty)
+            throw new ArgumentException("Dead letter ID cannot be empty.", nameof(deadLetterId));
+
         try
         {
             await _dlRepository.DeleteAsync(deadLetterId, cancellationToken);
