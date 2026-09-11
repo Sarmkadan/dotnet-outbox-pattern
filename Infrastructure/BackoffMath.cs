@@ -23,6 +23,13 @@ public static class BackoffMath
     /// This method provides a centralized, shared implementation of exponential backoff calculation
     /// used by both <see cref="RetryHelper"/> and <see cref="OutboxBackoffExtensions"/> to ensure consistent behavior
     /// across the codebase.
+    ///
+    /// The delay is calculated using the formula: <c>baseDelayMs * multiplier^attempt</c>
+    /// with the following constraints:
+    /// - The exponent (<paramref name="attempt"/>) is capped at 32 to prevent overflow in the double calculation.
+    /// - The result is clamped to not exceed <paramref name="maxDelayMs"/> (and due to validation,
+    ///   <paramref name="maxDelayMs"/> is guaranteed to be at least <paramref name="baseDelayMs"/>
+    ///   so the delay will never be less than <paramref name="baseDelayMs"/>).
     /// </remarks>
     /// <param name="baseDelayMs">
     /// The initial delay in milliseconds. Must be non‑negative.
