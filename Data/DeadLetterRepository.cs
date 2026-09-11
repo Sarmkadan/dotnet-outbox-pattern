@@ -46,6 +46,8 @@ public sealed class DeadLetterRepository : IDeadLetterRepository
     /// </summary>
     public async Task<DeadLetter> AddAsync(DeadLetter deadLetter, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(deadLetter);
+
         try
         {
             _context.DeadLetters.Add(deadLetter);
@@ -133,6 +135,8 @@ public sealed class DeadLetterRepository : IDeadLetterRepository
     /// </summary>
     public async Task<List<DeadLetter>> GetByTopicAsync(string topic, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(topic);
+
         try
         {
             return await _context.DeadLetters.AsNoTracking()
@@ -151,6 +155,8 @@ public sealed class DeadLetterRepository : IDeadLetterRepository
     /// </summary>
     public async Task<List<DeadLetter>> GetByAggregateIdAsync(string aggregateId, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(aggregateId);
+
         try
         {
             return await _context.DeadLetters.AsNoTracking()
