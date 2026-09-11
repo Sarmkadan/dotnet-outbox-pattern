@@ -16,6 +16,9 @@ public static class RetryPolicyHelper
     /// <summary>
     /// Calculates the delay for the next retry attempt
     /// </summary>
+    /// <param name="attemptNumber">The current attempt number (starts at 1)</param>
+    /// <param name="options">The publishing options containing retry policy configuration</param>
+    /// <returns>The calculated delay for the next retry attempt</returns>
     public static TimeSpan CalculateDelay(
         int attemptNumber,
         PublishingOptions options)
@@ -61,6 +64,9 @@ public static class RetryPolicyHelper
     /// <summary>
     /// Calculates retry statistics for diagnostic purposes
     /// </summary>
+    /// <param name="options">The publishing options containing retry policy configuration</param>
+    /// <param name="maxAttempts">The maximum number of attempts (including the first attempt)</param>
+    /// <returns>Retry statistics containing delay information</returns>
     public static RetryStatistics CalculateStatistics(PublishingOptions options, int maxAttempts)
     {
         var stats = new RetryStatistics
