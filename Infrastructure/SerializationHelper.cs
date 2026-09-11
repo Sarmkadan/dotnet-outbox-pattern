@@ -51,6 +51,10 @@ public static class SerializationHelper
     /// <summary>
     /// Serializes an object to JSON
     /// </summary>
+    /// <typeparam name="T">The type of the object to serialize</typeparam>
+    /// <param name="obj">The object to serialize</param>
+    /// <returns>The JSON string representation of the object</returns>
+    /// <exception cref="SerializationException">Thrown when serialization fails</exception>
     public static string Serialize<T>(T obj) where T : class
     {
         try
@@ -70,6 +74,10 @@ public static class SerializationHelper
     /// <summary>
     /// Deserializes JSON to an object
     /// </summary>
+    /// <typeparam name="T">The type of the object to deserialize</typeparam>
+    /// <param name="json">The JSON string to deserialize</param>
+    /// <returns>The deserialized object</returns>
+    /// <exception cref="SerializationException">Thrown when deserialization fails or results in null</exception>
     public static T Deserialize<T>(string json) where T : class
     {
         try
@@ -97,6 +105,10 @@ public static class SerializationHelper
     /// <summary>
     /// Deserializes JSON to a dynamic object
     /// </summary>
+    /// <param name="json">The JSON string to deserialize</param>
+    /// <param name="targetType">The type to deserialize to</param>
+    /// <returns>The deserialized object, or null if json is null</returns>
+    /// <exception cref="SerializationException">Thrown when deserialization fails</exception>
     public static object? DeserializeDynamic(string json, Type targetType)
     {
         try
@@ -116,6 +128,10 @@ public static class SerializationHelper
     /// <summary>
     /// Gets pretty-printed JSON for debugging
     /// </summary>
+    /// <typeparam name="T">The type of the object to serialize</typeparam>
+    /// <param name="obj">The object to serialize</param>
+    /// <returns>The pretty-printed JSON string representation of the object</returns>
+    /// <exception cref="SerializationException">Thrown when serialization fails</exception>
     public static string SerializePretty<T>(T obj) where T : class
     {
         try
@@ -131,6 +147,8 @@ public static class SerializationHelper
     /// <summary>
     /// Validates if a string is valid JSON
     /// </summary>
+    /// <param name="json">The JSON string to validate</param>
+    /// <returns>true if the JSON string is valid; otherwise, false</returns>
     public static bool IsValidJson(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -152,11 +170,24 @@ public static class SerializationHelper
     /// </summary>
     private class GuidConverter : JsonConverter<Guid>
     {
+        /// <summary>
+        /// Reads and converts the JSON to a Guid
+        /// </summary>
+        /// <param name="reader">The Utf8JsonReader to read from</param>
+        /// <param name="typeToConvert">The type to convert to</param>
+        /// <param name="options">The JsonSerializerOptions to use</param>
+        /// <returns>The converted Guid value</returns>
         public override Guid Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             return Guid.Parse(reader.GetString() ?? throw new InvalidOperationException("GUID cannot be null"));
         }
 
+        /// <summary>
+        /// Writes the Guid as JSON
+        /// </summary>
+        /// <param name="writer">The Utf8JsonWriter to write to</param>
+        /// <param name="value">The Guid value to write</param>
+        /// <param name="options">The JsonSerializerOptions to use</param>
         public override void Write(Utf8JsonWriter writer, Guid value, JsonSerializerOptions options)
         {
             writer.WriteStringValue(value.ToString());
@@ -168,6 +199,13 @@ public static class SerializationHelper
     /// </summary>
     private class DateTimeConverter : JsonConverter<DateTime>
     {
+        /// <summary>
+        /// Reads and converts the JSON to a DateTime
+        /// </summary>
+        /// <param name="reader">The Utf8JsonReader to read from</param>
+        /// <param name="typeToConvert">The type to convert to</param>
+        /// <param name="options">The JsonSerializerOptions to use</param>
+        /// <returns>The converted DateTime value</returns>
         public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             var str = reader.GetString();
@@ -183,6 +221,12 @@ public static class SerializationHelper
                 System.Globalization.DateTimeStyles.RoundtripKind);
         }
 
+        /// <summary>
+        /// Writes the DateTime as JSON
+        /// </summary>
+        /// <param name="writer">The Utf8JsonWriter to write to</param>
+        /// <param name="value">The DateTime value to write</param>
+        /// <param name="options">The JsonSerializerOptions to use</param>
         public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
         {
             writer.WriteStringValue(value.ToString("O"));
