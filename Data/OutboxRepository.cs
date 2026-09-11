@@ -17,27 +17,178 @@ namespace DotnetOutboxPattern.Data;
 /// </summary>
 public interface IOutboxRepository
 {
+    /// <summary>
+    /// Adds a new outbox message to the database
+    /// </summary>
+    /// <param name="message">The outbox message to add.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The added outbox message.</returns>
     Task<OutboxMessage> AddAsync(OutboxMessage message, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves a message by its ID
+    /// </summary>
+    /// <param name="id">The message ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The outbox message, or null if not found.</returns>
     Task<OutboxMessage?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves a message by its idempotency key for deduplication
+    /// </summary>
+    /// <param name="idempotencyKey">The idempotency key.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The outbox message, or null if not found.</returns>
     Task<OutboxMessage?> GetByIdempotencyKeyAsync(string idempotencyKey, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves pending messages that should be published, ordered by priority and creation time
+    /// </summary>
+    /// <param name="batchSize">Maximum number of messages to retrieve.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of pending outbox messages.</returns>
     Task<List<OutboxMessage>> GetPendingMessagesAsync(int batchSize, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves pending messages for a specific partition to maintain ordering
+    /// </summary>
+    /// <param name="partitionKey">The partition key.</param>
+    /// <param name="batchSize">Maximum number of messages to retrieve.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of pending outbox messages for the specified partition.</returns>
     Task<List<OutboxMessage>> GetPendingByPartitionAsync(string partitionKey, int batchSize, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves messages scheduled for future delivery
+    /// </summary>
+    /// <param name="batchSize">Maximum number of messages to retrieve.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of scheduled outbox messages.</returns>
     Task<List<OutboxMessage>> GetScheduledMessagesAsync(int batchSize, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves messages with expired processing locks for recovery
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of outbox messages with expired locks.</returns>
     Task<List<OutboxMessage>> GetExpiredLocksAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates an existing outbox message
+    /// </summary>
+    /// <param name="message">The outbox message to update.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the update operation.</returns>
     Task UpdateAsync(OutboxMessage message, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes an outbox message
+    /// </summary>
+    /// <param name="id">The message ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the delete operation.</returns>
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the count of pending messages
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The number of pending messages.</returns>
     Task<int> GetPendingCountAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the count of published messages
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The number of published messages.</returns>
     Task<int> GetPublishedCountAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the count of failed messages
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The number of failed messages.</returns>
     Task<int> GetFailedCountAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets comprehensive statistics about the outbox
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Outbox statistics.</returns>
     Task<OutboxStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves all messages for a specific aggregate
+    /// </summary>
+    /// <param name="aggregateId">The aggregate ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of outbox messages for the specified aggregate.</returns>
     Task<List<OutboxMessage>> GetByAggregateIdAsync(string aggregateId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves all messages for a specific topic
+    /// </summary>
+    /// <param name="topic">The topic.</param>
+    /// <param name="limit">Maximum number of messages to retrieve (default: 1000).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of outbox messages for the specified topic.</returns>
     Task<List<OutboxMessage>> GetByTopicAsync(string topic, int limit = 1000, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves all messages with a specific correlation ID
+    /// </summary>
+    /// <param name="correlationId">The correlation ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of outbox messages with the specified correlation ID.</returns>
     Task<List<OutboxMessage>> GetByCorrelationIdAsync(string correlationId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves all messages with a specific processing state
+    /// </summary>
+    /// <param name="state">The message state.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of outbox messages with the specified state.</returns>
     Task<List<OutboxMessage>> GetByStateAsync(OutboxMessageState state, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves all messages created within the specified date range
+    /// </summary>
+    /// <param name="startDate">The start date.</param>
+    /// <param name="endDate">The end date.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of outbox messages created within the specified date range.</returns>
     Task<List<OutboxMessage>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Archives old published messages
+    /// </summary>
+    /// <param name="olderThan">Archive messages published before this date.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the archive operation.</returns>
     Task ArchiveOldMessagesAsync(DateTime olderThan, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes archived messages older than specified date
+    /// </summary>
+    /// <param name="olderThan">Delete archived messages published before this date.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The number of deleted archived messages.</returns>
     Task<int> DeleteArchivedMessagesAsync(DateTime olderThan, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves all outbox messages with optional limit
+    /// </summary>
+    /// <param name="limit">Maximum number of messages to retrieve (default: 10000).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of outbox messages.</returns>
     Task<List<OutboxMessage>> GetAllAsync(int limit = 10000, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the creation timestamp of the oldest pending (unprocessed) message,
+    /// or <c>null</c> if there are no pending messages.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The creation timestamp of the oldest pending message, or null.</returns>
     Task<DateTime?> GetOldestPendingMessageCreatedAtAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -79,11 +230,20 @@ public sealed class OutboxRepository : IOutboxRepository
     private readonly OutboxDbContext _context;
     private readonly ILogger<OutboxRepository> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OutboxRepository"/> class.
+    /// </summary>
+    /// <param name="context">The database context.</param>
     public OutboxRepository(OutboxDbContext context)
         : this(context, NullLogger<OutboxRepository>.Instance)
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OutboxRepository"/> class.
+    /// </summary>
+    /// <param name="context">The database context.</param>
+    /// <param name="logger">The logger.</param>
     public OutboxRepository(OutboxDbContext context, ILogger<OutboxRepository> logger)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
@@ -561,6 +721,12 @@ public sealed class OutboxRepository : IOutboxRepository
         }
     }
 
+    /// <summary>
+    /// Retrieves all outbox messages with optional limit
+    /// </summary>
+    /// <param name="limit">Maximum number of messages to retrieve (default: 10000)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of outbox messages</returns>
     public async Task<List<OutboxMessage>> GetAllAsync(int limit = 10000, CancellationToken cancellationToken = default)
     {
         try
