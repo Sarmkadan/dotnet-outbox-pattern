@@ -32,6 +32,13 @@ public sealed class OutboxMessageController : ControllerBase
     /// <summary>
     /// Publishes a new event to the outbox. The event is persisted and published asynchronously.
     /// </summary>
+    /// <remarks>
+    /// POST /api/outbox/events
+    /// </remarks>
+    /// <param name="request">The event to publish.</param>
+    /// <response code="201">Returns the created outbox message.</response>
+    /// <response code="400">If the request is invalid.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
     [HttpPost("events")]
     [ProducesResponseType(typeof(OutboxMessageDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -68,6 +75,13 @@ public sealed class OutboxMessageController : ControllerBase
     /// <summary>
     /// Retrieves a specific outbox message by ID with full details including event data and status
     /// </summary>
+    /// <remarks>
+    /// GET /api/outbox/messages/{id}
+    /// </remarks>
+    /// <param name="id">The unique identifier of the outbox message.</param>
+    /// <response code="200">Returns the outbox message.</response>
+    /// <response code="404">If the outbox message is not found.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
     [HttpGet("messages/{id:guid}")]
     [ProducesResponseType(typeof(OutboxMessageDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -96,6 +110,13 @@ public sealed class OutboxMessageController : ControllerBase
     /// <summary>
     /// Retrieves messages filtered by aggregate ID
     /// </summary>
+    /// <remarks>
+    /// GET /api/outbox/messages/aggregate/{aggregateId}
+    /// </remarks>
+    /// <param name="aggregateId">The aggregate identifier to filter messages by.</param>
+    /// <param name="limit">Maximum number of messages to return (optional, defaults to 50).</param>
+    /// <response code="200">Returns the list of outbox messages for the aggregate.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
     [HttpGet("messages/aggregate/{aggregateId}")]
     [ProducesResponseType(typeof(List<OutboxMessageDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMessagesByAggregateAsync(string aggregateId, [FromQuery] int? limit = 50)
@@ -124,6 +145,15 @@ public sealed class OutboxMessageController : ControllerBase
     /// <summary>
     /// Retrieves outbox messages with optional state filter and pagination
     /// </summary>
+    /// <remarks>
+    /// GET /api/outbox/messages
+    /// </remarks>
+    /// <param name="state">Filter messages by state (optional).</param>
+    /// <param name="page">The page number to retrieve (defaults to 1).</param>
+    /// <param name="pageSize">The number of items per page (defaults to 50, max 500).</param>
+    /// <response code="200">Returns the paginated list of outbox messages.</response>
+    /// <response code="400">If pagination parameters are invalid.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
     [HttpGet("messages")]
     [ProducesResponseType(typeof(PaginatedResponse<OutboxMessageDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMessagesAsync(
@@ -165,6 +195,13 @@ public sealed class OutboxMessageController : ControllerBase
     /// <summary>
     /// Manually retries a failed message - useful for operational recovery
     /// </summary>
+    /// <remarks>
+    /// POST /api/outbox/messages/{id}/retry
+    /// </remarks>
+    /// <param name="id">The unique identifier of the outbox message to retry.</param>
+    /// <response code="204">If the message retry was initiated successfully.</response>
+    /// <response code="404">If the message is not found or not eligible for retry.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
     [HttpPost("messages/{id:guid}/retry")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -194,6 +231,13 @@ public sealed class OutboxMessageController : ControllerBase
     /// <summary>
     /// Archives published messages older than the specified number of days
     /// </summary>
+    /// <remarks>
+    /// POST /api/outbox/messages/archive
+    /// </remarks>
+    /// <param name="daysOld">The age in days for messages to be archived (must be between 1 and 365).</param>
+    /// <response code="200">Returns the result of the archive operation.</response>
+    /// <response code="400">If the daysOld parameter is outside the valid range.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
     [HttpPost("messages/archive")]
     [ProducesResponseType(typeof(ArchiveResult), StatusCodes.Status200OK)]
     public async Task<IActionResult> ArchivePublishedMessagesAsync([FromQuery] int daysOld = 30)
@@ -222,6 +266,11 @@ public sealed class OutboxMessageController : ControllerBase
     /// <summary>
     /// Gets detailed statistics about the outbox - provides operational insights
     /// </summary>
+    /// <remarks>
+    /// GET /api/outbox/statistics
+    /// </remarks>
+    /// <response code="200">Returns the outbox statistics.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
     [HttpGet("statistics")]
     [ProducesResponseType(typeof(OutboxStatisticsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetStatisticsAsync()
