@@ -1,0 +1,19 @@
+
+### 3. Ensure Required Services are Registered
+The processor depends on the following services, which must be registered in the DI container:
+- `IMessagePublishingService`: Handles the actual publishing of outbox messages.
+- `IOutboxRepository`: Provides data access methods for querying and updating outbox messages.
+- `ILogger<OutboxProcessor>`: Automatically provided by the framework.
+
+### 4. Access Health Metrics
+The processor exposes its current health status via the `GetHealth()` method, which returns a `HealthMetrics` object containing:
+- `CircuitState`
+- `IsHealthy`
+- `ErrorMessage`
+- `ConsecutiveFailures`
+- `HasExpiredLocks`
+- `LockedMessagesCount`
+- `OldestMessageAge`
+- `LastSuccessfulPublish`
+
+This can be used by custom health checks or monitoring tools to track processor status.
