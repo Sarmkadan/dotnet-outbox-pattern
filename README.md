@@ -1,3 +1,45 @@
+## Quick Start
+
+Get up and running with the Outbox Pattern in minutes.
+
+### 1. Register Services
+Add the outbox services to your dependency injection container and configure the database connection:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Register outbox pattern services with your database connection string
+builder.Services.AddOutboxPattern(builder.Configuration.GetConnectionString("DefaultConnection"));
+
+// Register your message publisher implementation
+builder.Services.AddMessagePublisher<DefaultMessagePublisher>();
+
+// Initialize the database schema
+await builder.Services.BuildServiceProvider().InitializeDatabaseAsync();
+```
+
+### 2. Publish an Event
+Resolve `IOutboxService` and publish your first event. The service handles transactional consistency and deduplication automatically.
+
+```csharp
+var scope = app.Services.CreateScope();
+var outboxService = scope.ServiceProvider.GetRequiredService<IOutboxService>();
+
+var publishableEvent = new PublishableEvent
+{
+    Event = new CustomDomainEvent 
+    { 
+        AggregateId = "order-123", 
+        Data = "New order created" 
+    },
+    Topic = "orders.created",
+    IdempotencyKey = Guid.NewGuid().ToString()
+};
+
+var publishedMessage = await outboxService.PublishEventAsync(publishableEvent);
+Console.WriteLine($"Event published with ID: {publishedMessage.Id}");
+```
+
 // =============================================================================
 // Utilities
 // =============================================================================
