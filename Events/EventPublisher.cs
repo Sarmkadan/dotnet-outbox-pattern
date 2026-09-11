@@ -12,7 +12,19 @@ namespace DotnetOutboxPattern.Events;
 /// </summary>
 public interface IEventPublisher
 {
+    /// <summary>
+    /// Publishes an event to all subscribers.
+    /// </summary>
+    /// <typeparam name="T">The type of the event.</typeparam>
+    /// <param name="event">The event to publish.</param>
+    /// <returns>A task that represents the asynchronous publish operation.</returns>
     Task PublishAsync<T>(T @event) where T : class;
+    /// <summary>
+    /// Subscribes to events of type T.
+    /// </summary>
+    /// <typeparam name="T">The type of the event to subscribe to.</typeparam>
+    /// <param name="handler">The handler to invoke when an event is published.</param>
+    /// <returns>An IDisposable that can be used to unsubscribe.</returns>
     IDisposable Subscribe<T>(Func<T, Task> handler) where T : class;
 }
 
@@ -26,11 +38,22 @@ public sealed class EventPublisher : IEventPublisher
     private readonly object _lock = new();
     private readonly ILogger<EventPublisher> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EventPublisher"/> class.
+    /// </summary>
+    /// <param name="logger">The logger to use for logging.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="logger"/> is null.</exception>
     public EventPublisher(ILogger<EventPublisher> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    /// <summary>
+    /// Publishes an event to all subscribers.
+    /// </summary>
+    /// <typeparam name="T">The type of the event.</typeparam>
+    /// <param name="event">The event to publish.</param>
+    /// <returns>A task that represents the asynchronous publish operation.</returns>
     public async Task PublishAsync<T>(T @event) where T : class
     {
         if (@event is null)
@@ -72,6 +95,12 @@ public sealed class EventPublisher : IEventPublisher
         }
     }
 
+    /// <summary>
+    /// Subscribes to events of type T.
+    /// </summary>
+    /// <typeparam name="T">The type of the event to subscribe to.</typeparam>
+    /// <param name="handler">The handler to invoke when an event is published.</param>
+    /// <returns>An IDisposable that can be used to unsubscribe.</returns>
     public IDisposable Subscribe<T>(Func<T, Task> handler) where T : class
     {
         if (handler is null)
@@ -124,12 +153,20 @@ public sealed class EventPublisher : IEventPublisher
         private readonly EventPublisher _publisher;
         private readonly Func<T, Task> _handler;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EventSubscription{T}"/> class.
+        /// </summary>
+        /// <param name="publisher">The publisher that created this subscription.</param>
+        /// <param name="handler">The handler to be unsubscribed when this subscription is disposed.</param>
         public EventSubscription(EventPublisher publisher, Func<T, Task> handler)
         {
             _publisher = publisher;
             _handler = handler;
         }
 
+        /// <summary>
+        /// Unsubscribes the handler from the publisher.
+        /// </summary>
         public void Dispose()
         {
             _publisher.Unsubscribe(_handler);
@@ -142,7 +179,13 @@ public sealed class EventPublisher : IEventPublisher
 /// </summary>
 public abstract class DomainEvent
 {
+    /// <summary>
+    /// Gets the unique identifier for the event.
+    /// </summary>
     public Guid EventId { get; } = Guid.NewGuid();
+    /// <summary>
+    /// Gets the date and time when the event occurred.
+    /// </summary>
     public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }
 
@@ -151,8 +194,17 @@ public abstract class DomainEvent
 /// </summary>
 public sealed class MessagePublishedEvent : DomainEvent
 {
+    /// <summary>
+    /// Gets or sets the identifier of the message that was published.
+    /// </summary>
     public Guid MessageId { get; set; }
+    /// <summary>
+    /// Gets or sets the identifier of the aggregate associated with the message.
+    /// </summary>
     public string AggregateId { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the number of attempts made to publish the message.
+    /// </summary>
     public int PublishAttempts { get; set; }
 }
 
@@ -161,9 +213,21 @@ public sealed class MessagePublishedEvent : DomainEvent
 /// </summary>
 public sealed class MessagePublishFailedEvent : DomainEvent
 {
+    /// <summary>
+    /// Gets or sets the identifier of the message that failed to publish.
+    /// </summary>
     public Guid MessageId { get; set; }
+    /// <summary>
+    /// Gets or sets the identifier of the aggregate associated with the message.
+    /// </summary>
     public string AggregateId { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the error message associated with the publishing failure.
+    /// </summary>
     public string ErrorMessage { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the number of attempts made to publish the message.
+    /// </summary>
     public int PublishAttempts { get; set; }
 }
 
@@ -172,7 +236,16 @@ public sealed class MessagePublishFailedEvent : DomainEvent
 /// </summary>
 public sealed class MessageMovedToDeadLetterEvent : DomainEvent
 {
+    /// <summary>
+    /// Gets or sets the identifier of the message that was moved to the dead letter queue.
+    /// </summary>
     public Guid MessageId { get; set; }
+    /// <summary>
+    /// Gets or sets the identifier of the aggregate associated with the message.
+    /// </summary>
     public string AggregateId { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the reason why the message was moved to the dead letter queue.
+    /// </summary>
     public string Reason { get; set; } = string.Empty;
 }
