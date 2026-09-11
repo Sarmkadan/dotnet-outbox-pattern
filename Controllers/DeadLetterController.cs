@@ -36,6 +36,12 @@ public sealed class DeadLetterController : ControllerBase
     /// <summary>
     /// Gets unreviewed dead letters - messages awaiting operator review
     /// </summary>
+    /// <remarks>
+    /// Route: GET api/deadletters/unreviewed
+    /// </remarks>
+    /// <param name="limit">The maximum number of unreviewed dead letters to return (default 100).</param>
+    /// <response code="200">Returns the list of unreviewed dead letters.</response>
+    /// <response code="500">If an error occurs while retrieving the dead letters.</response>
     [HttpGet("unreviewed")]
     [ProducesResponseType(typeof(List<DeadLetter>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUnreviewedAsync([FromQuery] int limit = 100)
@@ -56,6 +62,15 @@ public sealed class DeadLetterController : ControllerBase
     /// <summary>
     /// Gets dead letters with optional filtering and pagination
     /// </summary>
+    /// <remarks>
+    /// Route: GET api/deadletters
+    /// </remarks>
+    /// <param name="page">The page number to retrieve (default 1).</param>
+    /// <param name="pageSize">The number of items per page (default 50, max 500).</param>
+    /// <param name="status">Optional status filter for dead letters.</param>
+    /// <response code="200">Returns the paginated list of dead letters.</response>
+    /// <response code="400">If pagination parameters are invalid.</response>
+    /// <response code="500">If an error occurs while retrieving the dead letters.</response>
     [HttpGet]
     [ProducesResponseType(typeof(PaginatedResponse<DeadLetter>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetDeadLettersAsync(
@@ -91,6 +106,13 @@ public sealed class DeadLetterController : ControllerBase
     /// <summary>
     /// Gets a specific dead letter entry with full details
     /// </summary>
+    /// <remarks>
+    /// Route: GET api/deadletters/{id}
+    /// </remarks>
+    /// <param name="id">The unique identifier of the dead letter.</param>
+    /// <response code="200">Returns the dead letter with the specified ID.</response>
+    /// <response code="404">If no dead letter is found with the specified ID.</response>
+    /// <response code="500">If an error occurs while retrieving the dead letter.</response>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(DeadLetter), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -116,6 +138,15 @@ public sealed class DeadLetterController : ControllerBase
     /// <summary>
     /// Reviews a dead letter - marks it as reviewed with notes
     /// </summary>
+    /// <remarks>
+    /// Route: PUT api/deadletters/{id}/review
+    /// </remarks>
+    /// <param name="id">The unique identifier of the dead letter to review.</param>
+    /// <param name="request">The review request containing notes.</param>
+    /// <response code="204">If the dead letter was successfully reviewed.</response>
+    /// <response code="400">If the request is null or notes are empty.</response>
+    /// <response code="404">If no dead letter is found with the specified ID.</response>
+    /// <response code="500">If an error occurs while reviewing the dead letter.</response>
     [HttpPut("{id:guid}/review")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -150,6 +181,15 @@ public sealed class DeadLetterController : ControllerBase
     /// <summary>
     /// Requeues a dead letter for retry - moves it back to pending
     /// </summary>
+    /// <remarks>
+    /// Route: POST api/deadletters/{id}/requeue
+    /// </remarks>
+    /// <param name="id">The unique identifier of the dead letter to requeue.</param>
+    /// <param name="request">The requeue request containing reason.</param>
+    /// <response code="204">If the dead letter was successfully requeued.</response>
+    /// <response code="400">If the request is null or reason is empty.</response>
+    /// <response code="404">If no dead letter is found with the specified ID.</response>
+    /// <response code="500">If an error occurs while requeuing the dead letter.</response>
     [HttpPost("{id:guid}/requeue")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -184,6 +224,11 @@ public sealed class DeadLetterController : ControllerBase
     /// <summary>
     /// Gets statistics about the dead letter queue
     /// </summary>
+    /// <remarks>
+    /// Route: GET api/deadletters/statistics
+    /// </remarks>
+    /// <response code="200">Returns the dead letter queue statistics.</response>
+    /// <response code="500">If an error occurs while retrieving the statistics.</response>
     [HttpGet("statistics")]
     [ProducesResponseType(typeof(DeadLetterStatistics), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetStatisticsAsync()
@@ -212,6 +257,12 @@ public sealed class DeadLetterController : ControllerBase
     /// <summary>
     /// Permanently deletes a dead letter entry
     /// </summary>
+    /// <remarks>
+    /// Route: DELETE api/deadletters/{id}
+    /// </remarks>
+    /// <param name="id">The unique identifier of the dead letter to delete.</param>
+    /// <response code="204">If the dead letter was successfully deleted.</response>
+    /// <response code="500">If an error occurs while deleting the dead letter.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> DeleteAsync(Guid id)
@@ -233,6 +284,12 @@ public sealed class DeadLetterController : ControllerBase
     /// <summary>
     /// Exports dead letters in specified format
     /// </summary>
+    /// <remarks>
+    /// Route: POST api/deadletters/export
+    /// </remarks>
+    /// <param name="request">The export request containing format specification.</param>
+    /// <response code="200">Returns the exported dead letters as a file download.</response>
+    /// <response code="500">If an error occurs while exporting the dead letters.</response>
     [HttpPost("export")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     public async Task<IActionResult> ExportAsync([FromBody] ExportRequest request)
