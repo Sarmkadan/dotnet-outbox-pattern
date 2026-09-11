@@ -1,0 +1,6 @@
+
+## Implementation Details
+- **Filtering**: Messages are filtered by `StartDate`, `EndDate`, and `Status` (case-insensitive enum matching against `Domain.OutboxMessageState`).
+- **Formatting**: Delegates to registered `IDataFormatter` implementations. Throws if the format is unsupported.
+- **File Output**: Creates the `exports` directory if it doesn't exist. Uses UTC timestamps for filenames.
+- **Logging**: Logs export counts, file paths, and errors via `ILogger<ExportService>`.
