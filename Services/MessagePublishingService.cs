@@ -258,6 +258,8 @@ public sealed class MessagePublishingService : IMessagePublishingService
         int batchSize,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(partitionKey);
+
         var result = new OutboxProcessingResult { StartedAt = DateTime.UtcNow };
 
         try
@@ -465,6 +467,8 @@ public sealed class MessagePublishingService : IMessagePublishingService
         string? stackTrace,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(errorMessage);
+
         if (message is null) return;
 
         try
