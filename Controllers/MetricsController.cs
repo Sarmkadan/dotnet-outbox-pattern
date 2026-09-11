@@ -35,6 +35,11 @@ public sealed class MetricsController : ControllerBase
     /// <summary>
     /// Gets comprehensive system health metrics - useful for dashboards and alerting
     /// </summary>
+    /// <remarks>
+    /// GET api/metrics/health
+    /// </remarks>
+    /// <response code="200">Returns the system health</response>
+    /// <response code="500">If an error occurs while retrieving health metrics</response>
     [HttpGet("health")]
     [ProducesResponseType(typeof(SystemHealthDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetHealthAsync()
@@ -55,6 +60,13 @@ public sealed class MetricsController : ControllerBase
     /// <summary>
     /// Gets performance metrics - throughput, latency, success rates over time periods
     /// </summary>
+    /// <remarks>
+    /// GET api/metrics/performance
+    /// </remarks>
+    /// <param name="period">Time period for metrics (1h, 24h, 7d, 30d). Default is 24h.</param>
+    /// <response code="200">Returns performance metrics</response>
+    /// <response code="400">If the period parameter is invalid</response>
+    /// <response code="500">If an error occurs while retrieving performance metrics</response>
     [HttpGet("performance")]
     [ProducesResponseType(typeof(PerformanceMetricsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPerformanceAsync(
@@ -80,6 +92,12 @@ public sealed class MetricsController : ControllerBase
     /// <summary>
     /// Gets error rate analysis - failures, dead letters, error distribution
     /// </summary>
+    /// <remarks>
+    /// GET api/metrics/errors
+    /// </remarks>
+    /// <param name="limit">Maximum number of error records to return. Default is 100.</param>
+    /// <response code="200">Returns error analytics</response>
+    /// <response code="500">If an error occurs while retrieving error analytics</response>
     [HttpGet("errors")]
     [ProducesResponseType(typeof(ErrorAnalyticsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetErrorAnalyticsAsync(
@@ -101,6 +119,13 @@ public sealed class MetricsController : ControllerBase
     /// <summary>
     /// Gets message throughput metrics - messages published per time unit
     /// </summary>
+    /// <remarks>
+    /// GET api/metrics/throughput
+    /// </remarks>
+    /// <param name="granularity">Time granularity for throughput (minute, hour, day). Default is hour.</param>
+    /// <response code="200">Returns throughput metrics</response>
+    /// <response code="400">If the granularity parameter is invalid</response>
+    /// <response code="500">If an error occurs while retrieving throughput metrics</response>
     [HttpGet("throughput")]
     [ProducesResponseType(typeof(ThroughputMetricsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetThroughputAsync(
@@ -126,6 +151,11 @@ public sealed class MetricsController : ControllerBase
     /// <summary>
     /// Gets latency percentiles - P50, P95, P99 for message publishing
     /// </summary>
+    /// <remarks>
+    /// GET api/metrics/latency
+    /// </remarks>
+    /// <response code="200">Returns latency metrics</response>
+    /// <response code="500">If an error occurs while retrieving latency metrics</response>
     [HttpGet("latency")]
     [ProducesResponseType(typeof(LatencyMetricsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetLatencyAsync()
@@ -146,6 +176,11 @@ public sealed class MetricsController : ControllerBase
     /// <summary>
     /// Prometheus-compatible metrics endpoint for monitoring integrations
     /// </summary>
+    /// <remarks>
+    /// GET api/metrics/prometheus
+    /// </remarks>
+    /// <response code="200">Returns Prometheus-formatted metrics</response>
+    /// <response code="500">If an error occurs while generating Prometheus metrics</response>
     [HttpGet("prometheus")]
     [Produces("text/plain")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
@@ -166,6 +201,11 @@ public sealed class MetricsController : ControllerBase
     /// <summary>
     /// Gets alert summary - current alerts based on system thresholds
     /// </summary>
+    /// <remarks>
+    /// GET api/metrics/alerts
+    /// </remarks>
+    /// <response code="200">Returns list of active alerts</response>
+    /// <response code="500">If an error occurs while retrieving alerts</response>
     [HttpGet("alerts")]
     [ProducesResponseType(typeof(List<AlertDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAlertsAsync()
@@ -186,6 +226,11 @@ public sealed class MetricsController : ControllerBase
     /// <summary>
     /// Gets detailed resource consumption metrics - CPU, memory, database connections
     /// </summary>
+    /// <remarks>
+    /// GET api/metrics/resources
+    /// </remarks>
+    /// <response code="200">Returns resource metrics</response>
+    /// <response code="500">If an error occurs while retrieving resource metrics</response>
     [HttpGet("resources")]
     [ProducesResponseType(typeof(ResourceMetricsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetResourceMetricsAsync()
