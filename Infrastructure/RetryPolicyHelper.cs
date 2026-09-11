@@ -26,6 +26,8 @@ public static class RetryPolicyHelper
         if (attemptNumber <= 0)
             throw new ArgumentException("Attempt number must be greater than 0", nameof(attemptNumber));
 
+        ArgumentNullException.ThrowIfNull(options);
+
         // Short-circuit for NoRetry - no delay should be applied
         if (options.RetryPolicy == RetryPolicyType.NoRetry)
             return TimeSpan.Zero;
@@ -69,6 +71,8 @@ public static class RetryPolicyHelper
     /// <returns>Retry statistics containing delay information</returns>
     public static RetryStatistics CalculateStatistics(PublishingOptions options, int maxAttempts)
     {
+        ArgumentNullException.ThrowIfNull(options);
+
         var stats = new RetryStatistics
         {
             RetryPolicy = options.RetryPolicy,
