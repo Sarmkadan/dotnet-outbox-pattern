@@ -119,6 +119,12 @@ public sealed class OutboxProcessor : BackgroundService
     private DateTime _lastExpiredLockCheck = DateTime.UtcNow;
     private int _consecutiveEmptyBatches;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OutboxProcessor"/> class.
+    /// </summary>
+    /// <param name="serviceProvider">The service provider for resolving dependencies.</param>
+    /// <param name="options">The configuration options for the outbox processor.</param>
+    /// <param name="logger">The logger for logging events.</param>
     public OutboxProcessor(
         IServiceProvider serviceProvider,
         IOutboxProcessorOptions options,
@@ -232,6 +238,8 @@ public sealed class OutboxProcessor : BackgroundService
     /// Processes pending outbox messages. Returns <c>true</c> when at least one message was
     /// processed, so the caller can reset its idle-backoff streak.
     /// </summary>
+    /// <param name="cancellationToken">The cancellation token indicating when the operation should be cancelled.</param>
+    /// <returns><c>true</c> if at least one message was processed or failed; otherwise, <c>false</c>.</returns>
     private async Task<bool> ProcessPendingMessagesAsync(CancellationToken cancellationToken)
     {
         // Check circuit breaker before attempting to publish
@@ -275,6 +283,8 @@ public sealed class OutboxProcessor : BackgroundService
     /// Processes messages scheduled for future delivery. Returns <c>true</c> when at least one
     /// message was processed, so the caller can reset its idle-backoff streak.
     /// </summary>
+    /// <param name="cancellationToken">The cancellation token indicating when the operation should be cancelled.</param>
+    /// <returns><c>true</c> if at least one message was processed or failed; otherwise, <c>false</c>.</returns>
     private async Task<bool> ProcessScheduledMessagesAsync(CancellationToken cancellationToken)
     {
         // Check circuit breaker before attempting to publish
@@ -303,6 +313,7 @@ public sealed class OutboxProcessor : BackgroundService
     /// Releases locks on messages that have expired
     /// Allows them to be retried by other processors
     /// </summary>
+    /// <param name="cancellationToken">The cancellation token indicating when the operation should be cancelled.</param>
     private async Task ReleaseExpiredLocksAsync(CancellationToken cancellationToken)
     {
         try
@@ -345,6 +356,7 @@ public sealed class OutboxProcessor : BackgroundService
     /// Updates <see cref="HealthMetrics.OldestMessageAge"/> so health-check consumers
     /// can surface this data.
     /// </summary>
+    /// <param name="cancellationToken">The cancellation token indicating when the operation should be cancelled.</param>
     private async Task CheckOldestMessageAgeAsync(CancellationToken cancellationToken)
     {
         try
@@ -382,5 +394,6 @@ public sealed class OutboxProcessor : BackgroundService
     /// <summary>
     /// Gets current health status of the processor
     /// </summary>
+    /// <returns>The current health metrics of the outbox processor.</returns>
     public HealthMetrics GetHealth() => _health;
 }
