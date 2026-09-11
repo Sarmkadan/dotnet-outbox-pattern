@@ -31,8 +31,15 @@ public sealed class ExportController : ControllerBase
 
     /// <summary>
     /// Exports messages in the specified format
-    /// Returns the export as a downloadable file
     /// </summary>
+    /// <remarks>
+    /// POST /api/export/messages
+    /// </remarks>
+    /// <param name="request">The export request containing format and date range.</param>
+    /// <returns>The export as a downloadable file.</returns>
+    /// <response code="200">Returns the export file</response>
+    /// <response code="400">If the request is null or the format is unsupported</response>
+    /// <response code="500">If an unexpected error occurs</response>
     [HttpPost("messages")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -82,6 +89,12 @@ public sealed class ExportController : ControllerBase
     /// <summary>
     /// Gets supported export formats
     /// </summary>
+    /// <remarks>
+    /// GET /api/export/formats
+    /// </remarks>
+    /// <returns>A list of supported export formats.</returns>
+    /// <response code="200">Returns the list of supported formats</response>
+    /// <response code="500">If an unexpected error occurs</response>
     [HttpGet("formats")]
     [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
     public IActionResult GetSupportedFormatsAsync()
@@ -102,6 +115,14 @@ public sealed class ExportController : ControllerBase
     /// <summary>
     /// Gets export format details
     /// </summary>
+    /// <remarks>
+    /// GET /api/export/formats/{format}
+    /// </remarks>
+    /// <param name="format">The format to get details for (json, csv, xml).</param>
+    /// <returns>The export format details.</returns>
+    /// <response code="200">Returns the format details</response>
+    /// <response code="404">If the format is not found</response>
+    /// <response code="500">If an unexpected error occurs</response>
     [HttpGet("formats/{format}")]
     [ProducesResponseType(typeof(ExportFormatInfo), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -127,6 +148,12 @@ public sealed class ExportController : ControllerBase
     /// <summary>
     /// Gets information about available export options and limitations
     /// </summary>
+    /// <remarks>
+    /// GET /api/export/info
+    /// </remarks>
+    /// <returns>Information about export options and limitations.</returns>
+    /// <response code="200">Returns the export information</response>
+    /// <response code="500">If an unexpected error occurs</response>
     [HttpGet("info")]
     [ProducesResponseType(typeof(ExportInfo), StatusCodes.Status200OK)]
     public IActionResult GetExportInfoAsync()
