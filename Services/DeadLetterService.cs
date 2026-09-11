@@ -144,6 +144,7 @@ public sealed class DeadLetterService : IDeadLetterService
     {
         if (deadLetterId == Guid.Empty)
             throw new ArgumentException("Dead letter ID cannot be empty.", nameof(deadLetterId));
+        ArgumentNullException.ThrowIfNull(notes);
         ArgumentException.ThrowIfNullOrWhiteSpace(notes);
 
         try
@@ -171,6 +172,7 @@ public sealed class DeadLetterService : IDeadLetterService
     {
         if (deadLetterId == Guid.Empty)
             throw new ArgumentException("Dead letter ID cannot be empty.", nameof(deadLetterId));
+        ArgumentNullException.ThrowIfNull(reason);
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
 
         try
@@ -258,6 +260,7 @@ public sealed class DeadLetterService : IDeadLetterService
     /// </summary>
     public async Task<List<DeadLetter>> GetByTopicAsync(string topic, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(topic);
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
         try
