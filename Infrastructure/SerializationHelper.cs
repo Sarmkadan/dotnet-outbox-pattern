@@ -57,6 +57,7 @@ public static class SerializationHelper
     /// <exception cref="SerializationException">Thrown when serialization fails</exception>
     public static string Serialize<T>(T obj) where T : class
     {
+        ArgumentNullException.ThrowIfNull(obj);
         try
         {
             return JsonSerializer.Serialize(obj, DefaultOptions);
@@ -80,6 +81,7 @@ public static class SerializationHelper
     /// <exception cref="SerializationException">Thrown when deserialization fails or results in null</exception>
     public static T Deserialize<T>(string json) where T : class
     {
+        ArgumentNullException.ThrowIfNull(json);
         try
         {
             var result = JsonSerializer.Deserialize<T>(json, DefaultOptions);
@@ -111,6 +113,7 @@ public static class SerializationHelper
     /// <exception cref="SerializationException">Thrown when deserialization fails</exception>
     public static object? DeserializeDynamic(string json, Type targetType)
     {
+        ArgumentNullException.ThrowIfNull(targetType);
         try
         {
             return JsonSerializer.Deserialize(json, targetType, DefaultOptions);
