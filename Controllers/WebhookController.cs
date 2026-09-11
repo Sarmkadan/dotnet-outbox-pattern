@@ -36,6 +36,13 @@ public sealed class WebhookController : ControllerBase
     /// <summary>
     /// Registers a new webhook subscription - external systems use this to subscribe to events
     /// </summary>
+    /// <remarks>
+    /// POST /api/webhooks/subscriptions
+    /// </remarks>
+    /// <param name="request">The webhook registration request containing URL and events to subscribe to.</param>
+    /// <response code="201">Returns the created webhook subscription</response>
+    /// <response code="400">If the request is null or URL is not well-formed</response>
+    /// <response code="500">If an unexpected error occurs</response>
     [HttpPost("subscriptions")]
     [ProducesResponseType(typeof(WebhookSubscriptionDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -66,6 +73,13 @@ public sealed class WebhookController : ControllerBase
     /// <summary>
     /// Gets details of a specific webhook subscription
     /// </summary>
+    /// <remarks>
+    /// GET /api/webhooks/subscriptions/{id}
+    /// </remarks>
+    /// <param name="id">The unique identifier of the webhook subscription.</param>
+    /// <response code="200">Returns the webhook subscription details</response>
+    /// <response code="404">If the webhook subscription is not found</response>
+    /// <response code="500">If an unexpected error occurs</response>
     [HttpGet("subscriptions/{id:guid}")]
     [ProducesResponseType(typeof(WebhookSubscriptionDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -91,6 +105,12 @@ public sealed class WebhookController : ControllerBase
     /// <summary>
     /// Lists all registered webhook subscriptions
     /// </summary>
+    /// <remarks>
+    /// GET /api/webhooks/subscriptions
+    /// </remarks>
+    /// <param name="active">Optional filter to return only active or inactive subscriptions</param>
+    /// <response code="200">Returns the list of webhook subscriptions</response>
+    /// <response code="500">If an unexpected error occurs</response>
     [HttpGet("subscriptions")]
     [ProducesResponseType(typeof(List<WebhookSubscriptionDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListSubscriptionsAsync([FromQuery] bool? active = null)
@@ -137,6 +157,13 @@ public sealed class WebhookController : ControllerBase
     /// <summary>
     /// Gets delivery history for a webhook subscription - shows past deliveries and failures
     /// </summary>
+    /// <remarks>
+    /// GET /api/webhooks/subscriptions/{id}/deliveries
+    /// </remarks>
+    /// <param name="id">The unique identifier of the webhook subscription.</param>
+    /// <param name="limit">The maximum number of deliveries to return (default 100).</param>
+    /// <response code="200">Returns the list of webhook deliveries</response>
+    /// <response code="500">If an unexpected error occurs</response>
     [HttpGet("subscriptions/{id:guid}/deliveries")]
     [ProducesResponseType(typeof(List<WebhookDeliveryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetDeliveriesAsync(Guid id, [FromQuery] int limit = 100)
@@ -193,6 +220,13 @@ public sealed class WebhookController : ControllerBase
     /// Tests a webhook subscription by sending a test payload
     /// Useful for validating webhook configurations
     /// </summary>
+    /// <remarks>
+    /// POST /api/webhooks/subscriptions/{id}/test
+    /// </remarks>
+    /// <param name="id">The unique identifier of the webhook subscription to test.</param>
+    /// <response code="200">Returns the result of the webhook test</response>
+    /// <response code="404">If the webhook subscription is not found</response>
+    /// <response code="500">If an unexpected error occurs</response>
     [HttpPost("subscriptions/{id:guid}/test")]
     [ProducesResponseType(typeof(WebhookTestResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
