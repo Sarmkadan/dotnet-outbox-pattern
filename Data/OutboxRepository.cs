@@ -95,6 +95,8 @@ public sealed class OutboxRepository : IOutboxRepository
     /// </summary>
     public async Task<OutboxMessage> AddAsync(OutboxMessage message, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(message);
+
         try
         {
             message.Validate();
@@ -141,6 +143,8 @@ public sealed class OutboxRepository : IOutboxRepository
     /// </summary>
     public async Task<OutboxMessage?> GetByIdempotencyKeyAsync(string idempotencyKey, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(idempotencyKey);
+
         try
         {
             var message = await _context.OutboxMessages.AsNoTracking()
@@ -187,6 +191,8 @@ public sealed class OutboxRepository : IOutboxRepository
     /// </summary>
     public async Task<List<OutboxMessage>> GetPendingByPartitionAsync(string partitionKey, int batchSize, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(partitionKey);
+
         try
         {
             var messages = await _context.OutboxMessages.AsNoTracking()
@@ -407,6 +413,8 @@ public sealed class OutboxRepository : IOutboxRepository
     /// </summary>
     public async Task<List<OutboxMessage>> GetByAggregateIdAsync(string aggregateId, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(aggregateId);
+
         try
         {
             var messages = await _context.OutboxMessages.AsNoTracking()
@@ -427,6 +435,8 @@ public sealed class OutboxRepository : IOutboxRepository
     /// </summary>
     public async Task<List<OutboxMessage>> GetByTopicAsync(string topic, int limit = 1000, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(topic);
+
         try
         {
             var messages = await _context.OutboxMessages.AsNoTracking()
@@ -448,6 +458,8 @@ public sealed class OutboxRepository : IOutboxRepository
     /// </summary>
     public async Task<List<OutboxMessage>> GetByCorrelationIdAsync(string correlationId, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(correlationId);
+
         try
         {
             var messages = await _context.OutboxMessages.AsNoTracking()
@@ -468,6 +480,7 @@ public sealed class OutboxRepository : IOutboxRepository
     /// </summary>
     public async Task<List<OutboxMessage>> GetByStateAsync(OutboxMessageState state, CancellationToken cancellationToken = default)
     {
+        // Note: OutboxMessageState is an enum, not a reference type, so no null check needed
         try
         {
             var messages = await _context.OutboxMessages.AsNoTracking()
@@ -649,6 +662,8 @@ ORDER BY om.[Priority] DESC, om.[CreatedAt] ASC
     /// </summary>
     public async Task<List<OutboxMessage>> ClaimPendingMessagesByPartitionBatchAsync(string partitionKey, int batchSize, int lockDurationSeconds, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(partitionKey);
+
         try
         {
             var now = DateTime.UtcNow;
