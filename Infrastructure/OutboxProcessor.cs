@@ -130,9 +130,12 @@ public sealed class OutboxProcessor : BackgroundService
         IOutboxProcessorOptions options,
         ILogger<OutboxProcessor> logger)
     {
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(serviceProvider);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(logger);
+        _serviceProvider = serviceProvider;
+        _options = options;
+        _logger = logger;
         _health = new HealthMetrics();
         _circuitBreaker = new CircuitBreaker(new CircuitBreakerOptions(), _logger);
     }
