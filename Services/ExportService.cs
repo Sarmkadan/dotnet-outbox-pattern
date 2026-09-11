@@ -150,6 +150,8 @@ public sealed class ExportService : IExportService
 
     private async Task<List<Domain.OutboxMessage>> GetMessagesToExportAsync(ExportRequest request)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         IEnumerable<Domain.OutboxMessage> messages =
             await _outboxService.GetAllMessagesAsync() ?? [];
 
