@@ -212,6 +212,7 @@ public sealed class OutboxService : IOutboxService
         string? partitionKey = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(domainEvent);
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
         var publishable = new PublishableEvent
@@ -316,6 +317,8 @@ public sealed class OutboxService : IOutboxService
     /// </summary>
     public async Task<List<OutboxMessage>> GetMessagesByTopicAsync(string topic, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(topic);
+
         try
         {
             return await _repository.GetByTopicAsync(topic, cancellationToken: cancellationToken);
@@ -332,6 +335,8 @@ public sealed class OutboxService : IOutboxService
     /// </summary>
     public async Task<List<OutboxMessage>> GetMessagesByAggregateAsync(string aggregateId, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(aggregateId);
+
         try
         {
             return await _repository.GetByAggregateIdAsync(aggregateId, cancellationToken);
