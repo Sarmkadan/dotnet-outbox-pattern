@@ -19,6 +19,10 @@ public sealed class DefaultMessagePublisher : IMessagePublisher
 {
     private readonly ILogger<DefaultMessagePublisher> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DefaultMessagePublisher"/> class.
+    /// </summary>
+    /// <param name="logger">The logger.</param>
     public DefaultMessagePublisher(ILogger<DefaultMessagePublisher> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -28,6 +32,9 @@ public sealed class DefaultMessagePublisher : IMessagePublisher
     /// Publishes a message to the configured message broker
     /// This is a stub implementation that logs the message
     /// </summary>
+    /// <param name="message">The outbox message to publish.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous publish operation.</returns>
     public Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken = default)
     {
         // Simulate some work
@@ -53,6 +60,8 @@ public static class MessagePublisherFactory
     /// <summary>
     /// Creates a publisher that logs messages (for testing)
     /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <returns>An instance of IMessagePublisher.</returns>
     public static IMessagePublisher CreateLoggingPublisher(ILogger logger)
     {
         return new LoggingPublisher(logger);
