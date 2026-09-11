@@ -151,6 +151,10 @@ public sealed class BatchProcessingService : IBatchProcessingService
         Func<int, int, CancellationToken, Task<BatchChunkResult>> processChunk,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(chunks);
+        ArgumentNullException.ThrowIfNull(summary);
+        ArgumentNullException.ThrowIfNull(processChunk);
+
         for (var i = 0; i < chunks.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -175,6 +179,10 @@ public sealed class BatchProcessingService : IBatchProcessingService
         Func<int, int, CancellationToken, Task<BatchChunkResult>> processChunk,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(chunks);
+        ArgumentNullException.ThrowIfNull(summary);
+        ArgumentNullException.ThrowIfNull(processChunk);
+
         var results = new BatchChunkResult[chunks.Count];
 
         await Parallel.ForEachAsync(
