@@ -1,79 +1,80 @@
-# RateLimitingMiddleware
+# Rate-Limiting Middleware
 
-Middleware component that enforces a sliding-window rate limit on incoming HTTP requests. Each instance tracks the number of requests within a configurable time window and rejects requests that exceed the configured limit.
+## Purpose
 
-## API
+`Middleware/RateLimitingMiddleware.cs` limits incoming HTTP requests separately for each client. It identifies a client from the `X-Api-Key` request header when that header is present and otherwise uses `HttpContext.Connection.RemoteIpAddress`. If neither provides an address, it uses `ip:unknown`.
 
-### `public RateLimitingMiddleware(int requestsPerWindow, int windowSeconds)`
+Allowed responses receive `X-RateLimit-Limit` and `X-RateLimit-Remaining` headers. When a client has exhausted its request count, the middleware stops the pipeline and returns:
 
-Constructs a new rate-limiting middleware instance.
+- HTTP status `429 Too Many Requests`
+- `Retry-After`, set to the configured window length in seconds
+- `X-RateLimit-Limit`, set to the configured request limit
+- `X-RateLimit-Remaining: 0`
+- a plain response body of `Rate limit exceeded`
 
-- **requestsPerWindow**: Maximum allowed requests within the sliding window.
-- **windowSeconds**: Duration of the sliding window in seconds.
+The middleware stores its counters in memory, so limits are local to the middleware instance and are not shared between application processes or servers.
 
-Throws `ArgumentOutOfRangeException` if `requestsPerWindow` is zero or negative, or if `windowSeconds` is zero or negative.
+## Algorithm
 
----
+Although the class summary calls the implementation a "sliding window token bucket," the code implements a per-client fixed-window counter:
 
-### `public async Task InvokeAsync(HttpContext context, RequestDelegate next)`
+1. Build a client key as `api-key:<header value>` when `X-Api-Key` exists, or as `ip:<remote IP>` otherwise.
+2. Get or create that client's state in a `ConcurrentDictionary`. New state starts its window at the current UTC time.
+3. Lock the client's state so concurrent requests for the same client update it atomically.
+4. If `WindowStart` is earlier than the current UTC time minus `WindowSeconds`, start a new window and reset the request count to zero.
+5. Record the current UTC time as `LastRequest`.
+6. Reject the request if the count is already greater than or equal to `RequestsPerWindow`. Otherwise increment the count and continue to the next middleware.
 
-Invokes the middleware logic to evaluate the request against the rate limit.
+The remaining count on an allowed request is `RequestsPerWindow - RequestCount` after the increment, with a minimum of zero.
 
-- **context**: The `HttpContext` for the current request.
-- **next**: The delegate representing the next middleware in the pipeline.
+A background loop starts when the middleware is constructed. Every minute it removes clients whose last request is older than twice the configured window length. Exceptions within the loop are logged and the loop continues; an unexpected terminal fault is also logged.
 
-Returns a `Task` representing the asynchronous operation. If the rate limit is exceeded, the middleware short-circuits the pipeline and returns a `429 Too Many Requests` response.
+## Configuration
 
----
+`RateLimitingOptions` exposes two mutable properties:
 
-### `public int RequestsPerWindow`
+| Property | Default | Used for |
+| --- | ---: | --- |
+| `RequestsPerWindow` | `1000` | Maximum allowed requests for one client in its current window. |
+| `WindowSeconds` | `60` | Window duration, `Retry-After` value, and cleanup-expiration calculation. |
 
-Gets the maximum number of requests allowed within the sliding window.
+Passing `null` to `UseRateLimiting` or constructing the middleware without an options instance selects these defaults. The code does not validate either property.
 
-- **Returns**: The configured request limit.
+`UseOutboxPatternMiddleware(rateLimitingOptions)` applies the rate limiter after error handling and request logging, and before performance monitoring. It forwards the supplied options directly to `UseRateLimiting`. Calling `UseOutboxPatternMiddleware()` therefore uses the defaults.
 
----
+`ConfigureRateLimiting(requestsPerWindow, windowSeconds)` registers `IOptions<RateLimitingOptions>` in the service collection. The middleware constructor does not consume `IOptions<RateLimitingOptions>`; it consumes the `RateLimitingOptions` object passed during middleware registration. Consequently, the values registered by `ConfigureRateLimiting` are not read by this middleware implementation unless they are separately retrieved and passed to `UseRateLimiting` or `UseOutboxPatternMiddleware`.
 
-### `public int WindowSeconds`
+## Usage Example
 
-Gets the duration of the sliding window in seconds.
+Pass the desired options when adding the middleware to the request pipeline:
 
-- **Returns**: The configured window duration in seconds.
+```csharp
+using DotnetOutboxPattern.Middleware;
 
----
-### `public DateTime WindowStart`
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
 
-Gets the start time of the current sliding window.
+app.UseRateLimiting(new RateLimitingOptions
+{
+    RequestsPerWindow = 200,
+    WindowSeconds = 60
+});
 
-- **Returns**: The `DateTime` marking the beginning of the current window.
+app.MapGet("/", () => "Hello");
+app.Run();
+```
 
----
-### `public int RequestCount`
+The combined middleware extension accepts the same options:
 
-Gets the number of requests counted in the current sliding window.
+```csharp
+using DotnetOutboxPattern.Configuration;
+using DotnetOutboxPattern.Middleware;
 
-- **Returns**: The current request count within the window.
+app.UseOutboxPatternMiddleware(new RateLimitingOptions
+{
+    RequestsPerWindow = 200,
+    WindowSeconds = 60
+});
+```
 
----
-### `public DateTime LastRequest`
-
-Gets the timestamp of the most recent request processed by this middleware.
-
-- **Returns**: The `DateTime` of the last request, or `DateTime.MinValue` if no requests have been processed.
-
----
-### `public static IApplicationBuilder UseRateLimiting(this IApplicationBuilder builder, int requestsPerWindow, int windowSeconds)`
-
-Registers the `RateLimitingMiddleware` in the ASP.NET Core pipeline.
-
-- **builder**: The `IApplicationBuilder` instance.
-- **requestsPerWindow**: Maximum allowed requests within the sliding window.
-- **windowSeconds**: Duration of the sliding window in seconds.
-
-Returns the `IApplicationBuilder` for method chaining.
-
-Throws `ArgumentOutOfRangeException` if `requestsPerWindow` is zero or negative, or if `windowSeconds` is zero or negative.
-
-## Usage
-
-### Basic Setup in `Program.cs`
+Middleware order matters: only endpoints and middleware registered after the rate limiter are subject to it.
