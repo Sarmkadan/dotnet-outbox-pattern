@@ -30,6 +30,9 @@ public sealed class QueryBuilder : IEquatable<QueryBuilder>
     /// </summary>
     public QueryBuilder Where(string field, object value)
     {
+        ArgumentNullException.ThrowIfNull(field);
+        ArgumentNullException.ThrowIfNull(value);
+
         _conditions.Add(new FilterCondition
         {
             Field = field,
@@ -44,6 +47,9 @@ public sealed class QueryBuilder : IEquatable<QueryBuilder>
     /// </summary>
     public QueryBuilder WhereGreaterThan(string field, object value)
     {
+        ArgumentNullException.ThrowIfNull(field);
+        ArgumentNullException.ThrowIfNull(value);
+
         _conditions.Add(new FilterCondition
         {
             Field = field,
@@ -58,6 +64,9 @@ public sealed class QueryBuilder : IEquatable<QueryBuilder>
     /// </summary>
     public QueryBuilder WhereLessThan(string field, object value)
     {
+        ArgumentNullException.ThrowIfNull(field);
+        ArgumentNullException.ThrowIfNull(value);
+
         _conditions.Add(new FilterCondition
         {
             Field = field,
@@ -72,6 +81,9 @@ public sealed class QueryBuilder : IEquatable<QueryBuilder>
     /// </summary>
     public QueryBuilder WhereContains(string field, string value)
     {
+        ArgumentNullException.ThrowIfNull(field);
+        ArgumentNullException.ThrowIfNull(value);
+
         _conditions.Add(new FilterCondition
         {
             Field = field,
@@ -86,6 +98,9 @@ public sealed class QueryBuilder : IEquatable<QueryBuilder>
     /// </summary>
     public QueryBuilder WhereIn(string field, params object[] values)
     {
+        ArgumentNullException.ThrowIfNull(field);
+        ArgumentNullException.ThrowIfNull(values);
+
         _conditions.Add(new FilterCondition
         {
             Field = field,
@@ -100,6 +115,10 @@ public sealed class QueryBuilder : IEquatable<QueryBuilder>
     /// </summary>
     public QueryBuilder WhereBetween(string field, object minValue, object maxValue)
     {
+        ArgumentNullException.ThrowIfNull(field);
+        ArgumentNullException.ThrowIfNull(minValue);
+        ArgumentNullException.ThrowIfNull(maxValue);
+
         _conditions.Add(new FilterCondition
         {
             Field = field,
@@ -114,6 +133,8 @@ public sealed class QueryBuilder : IEquatable<QueryBuilder>
     /// </summary>
     public QueryBuilder WhereIsNull(string field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         _conditions.Add(new FilterCondition
         {
             Field = field,
@@ -128,6 +149,8 @@ public sealed class QueryBuilder : IEquatable<QueryBuilder>
     /// </summary>
     public QueryBuilder WhereIsNotNull(string field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         _conditions.Add(new FilterCondition
         {
             Field = field,
@@ -142,6 +165,8 @@ public sealed class QueryBuilder : IEquatable<QueryBuilder>
     /// </summary>
     public QueryBuilder OrderBy(string field, bool descending = false)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         _orderBy = field;
         _orderDescending = descending;
         return this;
