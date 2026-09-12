@@ -53,6 +53,8 @@ public sealed class ExternalApiClient : IExternalApiClient
         if (string.IsNullOrWhiteSpace(url))
             throw new ArgumentException("URL cannot be empty", nameof(url));
 
+        ArgumentNullException.ThrowIfNull(payload);
+
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         try
