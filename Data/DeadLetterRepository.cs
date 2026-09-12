@@ -15,17 +15,53 @@ namespace DotnetOutboxPattern.Data;
 /// </summary>
 public interface IDeadLetterRepository
 {
+    /// <summary>
+    /// Adds a new dead letter record to the database
+    /// </summary>
     Task<DeadLetter> AddAsync(DeadLetter deadLetter, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Retrieves a dead letter by its ID
+    /// </summary>
     Task<DeadLetter?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Retrieves a dead letter by its associated outbox message ID
+    /// </summary>
     Task<DeadLetter?> GetByOutboxMessageIdAsync(Guid outboxMessageId, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Retrieves unreviewed dead letters that require operator attention
+    /// </summary>
     Task<List<DeadLetter>> GetUnreviewedAsync(int limit = 100, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Retrieves all dead letters with pagination
+    /// </summary>
     Task<List<DeadLetter>> GetAllAsync(int skip = 0, int limit = 1000, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Retrieves dead letters for a specific topic
+    /// </summary>
     Task<List<DeadLetter>> GetByTopicAsync(string topic, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Retrieves dead letters for a specific aggregate
+    /// </summary>
     Task<List<DeadLetter>> GetByAggregateIdAsync(string aggregateId, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Updates an existing dead letter record
+    /// </summary>
     Task UpdateAsync(DeadLetter deadLetter, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Deletes a dead letter record
+    /// </summary>
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Gets the total count of dead letters
+    /// </summary>
     Task<int> GetCountAsync(CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Gets the count of unreviewed dead letters
+    /// </summary>
     Task<int> GetUnreviewedCountAsync(CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Gets the count of requeued dead letters
+    /// </summary>
     Task<int> GetRequeuedCountAsync(CancellationToken cancellationToken = default);
 }
 
