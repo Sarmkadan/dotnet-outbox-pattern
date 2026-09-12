@@ -109,6 +109,7 @@ public sealed class DotnetOutboxPatternOptions
     /// <summary>
     /// Validates the configuration options
     /// </summary>
+    /// <param name="validationContext">The validation context.</param>
     /// <returns>Validation result</returns>
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
