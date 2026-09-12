@@ -21,6 +21,7 @@ public sealed class CliCommandParser
     /// <param name="command">The command to register.</param>
     public void RegisterCommand(CliCommand command)
     {
+        ArgumentNullException.ThrowIfNull(command);
         _commands[command.Name.ToLower()] = command;
     }
 
@@ -31,6 +32,7 @@ public sealed class CliCommandParser
     /// <returns>A context describing the resolved command, options, and validation result.</returns>
     public CliCommandContext Parse(string[] args)
     {
+        ArgumentNullException.ThrowIfNull(args);
         if (args.Length == 0)
             return new CliCommandContext { IsValid = false, ErrorMessage = "No command provided" };
 
