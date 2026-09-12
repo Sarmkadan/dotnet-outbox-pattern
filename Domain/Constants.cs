@@ -176,3 +176,64 @@ public static class HttpHeaders
     public const string IdempotencyKey = "X-Idempotency-Key";
     public const string RequestId = "X-Request-Id";
 }
+
+/// <summary>
+/// Database schema constants for outbox tables and columns
+/// </summary>
+public static class DatabaseSchema
+{
+    /// <summary>
+    /// Name of the outbox messages table
+    /// </summary>
+    public const string OutboxMessages = "OutboxMessages";
+
+    /// <summary>
+    /// Name of the outbox message ID column
+    /// </summary>
+    public const string Id = "Id";
+
+    /// <summary>
+    /// Name of the outbox message state column
+    /// </summary>
+    public const string State = "State";
+
+    /// <summary>
+    /// Name of the outbox message lock flag column
+    /// </summary>
+    public const string IsLocked = "IsLocked";
+
+    /// <summary>
+    /// Name of the outbox message lock expiration column
+    /// </summary>
+    public const string LockExpiresAt = "LockExpiresAt";
+
+    /// <summary>
+    /// Name of the outbox message priority column
+    /// </summary>
+    public const string Priority = "Priority";
+
+    /// <summary>
+    /// Name of the outbox message creation timestamp column
+    /// </summary>
+    public const string CreatedAt = "CreatedAt";
+
+    /// <summary>
+    /// Name of the outbox message scheduled timestamp column
+    /// </summary>
+    public const string ScheduledFor = "ScheduledFor";
+
+    /// <summary>
+    /// Name of the outbox message last processed timestamp column
+    /// </summary>
+    public const string LastProcessedAt = "LastProcessedAt";
+
+    /// <summary>
+    /// Name of the outbox message partition key column
+    /// </summary>
+    public const string PartitionKey = "PartitionKey";
+
+    /// <summary>
+    /// Name of the outbox message topic column
+    /// </summary>
+    public const string Topic = "Topic";
+}

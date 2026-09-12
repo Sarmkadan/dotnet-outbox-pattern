@@ -727,7 +727,7 @@ public sealed class OutboxRepository : IOutboxRepository
     /// <param name="limit">Maximum number of messages to retrieve (default: 10000)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of outbox messages</returns>
-    public async Task<List<OutboxMessage>> GetAllAsync(int limit = 10000, CancellationToken cancellationToken = default)
+    public async Task<List<OutboxMessage>> GetAllAsync(int limit = DotnetOutboxPattern.Domain.OutboxConstants.MaxBatchSize, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -790,16 +790,16 @@ DECLARE @LockExpiresAt DATETIME2 = DATEADD(SECOND, {lockDurationSeconds}, @Now);
 -- Claim messages with row-level locking to prevent other instances from processing them
 UPDATE TOP (@BatchSize) om
 SET
-    om.State = {(int)OutboxMessageState.Processing},
-    om.IsLocked = 1,
-    om.LockExpiresAt = @LockExpiresAt,
-    om.LastProcessedAt = @Now
-OUTPUT inserted.Id AS Id
-FROM [OutboxMessages] om WITH (UPDLOCK, ROWLOCK, READPAST)
-WHERE om.[State] = {(int)OutboxMessageState.Pending}
-    AND (om.[ScheduledFor] IS NULL OR om.[ScheduledFor] <= @Now)
-    AND om.[IsLocked] = 0
-ORDER BY om.[Priority] DESC, om.[CreatedAt] ASC
+    om.[{DatabaseSchema.State}] = {(int)OutboxMessageState.Processing},
+    om.[{DatabaseSchema.IsLocked}] = 1,
+    om.[{DatabaseSchema.LockExpiresAt}] = @LockExpiresAt,
+    om.[{DatabaseSchema.LastProcessedAt}] = @Now
+OUTPUT inserted.[{DatabaseSchema.Id}] AS [{DatabaseSchema.Id}]
+FROM [{DatabaseSchema.OutboxMessages}] om WITH (UPDLOCK, ROWLOCK, READPAST)
+WHERE om.[{DatabaseSchema.State}] = {(int)OutboxMessageState.Pending}
+    AND (om.[{DatabaseSchema.ScheduledFor}] IS NULL OR om.[{DatabaseSchema.ScheduledFor}] <= @Now)
+    AND om.[{DatabaseSchema.IsLocked}] = 0
+ORDER BY om.[{DatabaseSchema.Priority}] DESC, om.[{DatabaseSchema.CreatedAt}] ASC
 ";
 
             // Execute the SQL to get claimed message IDs
@@ -846,17 +846,17 @@ DECLARE @PartitionKey NVARCHAR(256) = '{partitionKey}';
 -- Claim messages with row-level locking to prevent other instances from processing them
 UPDATE TOP (@BatchSize) om
 SET
-    om.State = {(int)OutboxMessageState.Processing},
-    om.IsLocked = 1,
-    om.LockExpiresAt = @LockExpiresAt,
-    om.LastProcessedAt = @Now
-OUTPUT inserted.Id AS Id
-FROM [OutboxMessages] om WITH (UPDLOCK, ROWLOCK, READPAST)
-WHERE om.[PartitionKey] = @PartitionKey
-    AND om.[State] = {(int)OutboxMessageState.Pending}
-    AND (om.[ScheduledFor] IS NULL OR om.[ScheduledFor] <= @Now)
-    AND om.[IsLocked] = 0
-ORDER BY om.[CreatedAt] ASC
+    om.[{DatabaseSchema.State}] = {(int)OutboxMessageState.Processing},
+    om.[{DatabaseSchema.IsLocked}] = 1,
+    om.[{DatabaseSchema.LockExpiresAt}] = @LockExpiresAt,
+    om.[{DatabaseSchema.LastProcessedAt}] = @Now
+OUTPUT inserted.[{DatabaseSchema.Id}] AS [{DatabaseSchema.Id}]
+FROM [{DatabaseSchema.OutboxMessages}] om WITH (UPDLOCK, ROWLOCK, READPAST)
+WHERE om.[{DatabaseSchema.PartitionKey}] = @PartitionKey
+    AND om.[{DatabaseSchema.State}] = {(int)OutboxMessageState.Pending}
+    AND (om.[{DatabaseSchema.ScheduledFor}] IS NULL OR om.[{DatabaseSchema.ScheduledFor}] <= @Now)
+    AND om.[{DatabaseSchema.IsLocked}] = 0
+ORDER BY om.[{DatabaseSchema.CreatedAt}] ASC
 ";
 
             // Execute the SQL to get claimed message IDs
@@ -899,17 +899,17 @@ DECLARE @LockExpiresAt DATETIME2 = DATEADD(SECOND, {lockDurationSeconds}, @Now);
 -- Claim messages with row-level locking to prevent other instances from processing them
 UPDATE TOP (@BatchSize) om
 SET
-    om.State = {(int)OutboxMessageState.Processing},
-    om.IsLocked = 1,
-    om.LockExpiresAt = @LockExpiresAt,
-    om.LastProcessedAt = @Now
-OUTPUT inserted.Id AS Id
-FROM [OutboxMessages] om WITH (UPDLOCK, ROWLOCK, READPAST)
-WHERE om.[State] = {(int)OutboxMessageState.Pending}
-    AND [ScheduledFor] IS NOT NULL
-    AND [ScheduledFor] <= @Now
-    AND [IsLocked] = 0
-ORDER BY om.[ScheduledFor] ASC
+    om.[{DatabaseSchema.State}] = {(int)OutboxMessageState.Processing},
+    om.[{DatabaseSchema.IsLocked}] = 1,
+    om.[{DatabaseSchema.LockExpiresAt}] = @LockExpiresAt,
+    om.[{DatabaseSchema.LastProcessedAt}] = @Now
+OUTPUT inserted.[{DatabaseSchema.Id}] AS [{DatabaseSchema.Id}]
+FROM [{DatabaseSchema.OutboxMessages}] om WITH (UPDLOCK, ROWLOCK, READPAST)
+WHERE om.[{DatabaseSchema.State}] = {(int)OutboxMessageState.Pending}
+    AND [{DatabaseSchema.ScheduledFor}] IS NOT NULL
+    AND [{DatabaseSchema.ScheduledFor}] <= @Now
+    AND [{DatabaseSchema.IsLocked}] = 0
+ORDER BY om.[{DatabaseSchema.ScheduledFor}] ASC
 ";
 
             // Execute the SQL to get claimed message IDs
