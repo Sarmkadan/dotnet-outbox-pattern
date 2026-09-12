@@ -29,9 +29,13 @@ public sealed class HealthCheckService : BackgroundService
         ICacheService cacheService,
         HealthCheckOptions? options = null)
     {
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
+        ArgumentNullException.ThrowIfNull(serviceProvider);
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(cacheService);
+
+        _serviceProvider = serviceProvider;
+        _logger = logger;
+        _cacheService = cacheService;
         _options = options ?? new HealthCheckOptions();
     }
 
@@ -150,6 +154,9 @@ public sealed class HealthCheckService : BackgroundService
 
     private void RaiseAlert(string alertType, string message)
     {
+        ArgumentNullException.ThrowIfNull(alertType);
+        ArgumentNullException.ThrowIfNull(message);
+
         if (!_activeAlerts.Any(a => a.Type == alertType))
         {
             _activeAlerts.Add(new HealthAlert
@@ -165,6 +172,8 @@ public sealed class HealthCheckService : BackgroundService
 
     private void ClearAlert(string alertType)
     {
+        ArgumentNullException.ThrowIfNull(alertType);
+
         var alert = _activeAlerts.FirstOrDefault(a => a.Type == alertType);
         if (alert is not null)
         {
