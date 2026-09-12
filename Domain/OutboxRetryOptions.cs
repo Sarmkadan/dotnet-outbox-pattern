@@ -20,7 +20,8 @@ namespace DotnetOutboxPattern.Domain;
 public sealed class OutboxRetryOptions
 {
     /// <summary>
-    /// Maximum number of publish attempts before a message is dead-lettered.
+    /// Maximum number of publish attempts before a message is dead-lettered. The default is
+    /// <see cref="OutboxConstants.DefaultMaxPublishAttempts"/>.
     /// </summary>
     /// <remarks>
     /// Must be between 1 and 20 inclusive to prevent unbounded retry loops.
@@ -41,12 +42,13 @@ public sealed class OutboxRetryOptions
 
     /// <summary>
     /// Backoff strategy applied between attempts, reusing <see cref="RetryHelper"/>'s strategy set.
+    /// The default is <see cref="RetryStrategy.ExponentialBackoff"/>.
     /// </summary>
     public RetryStrategy BackoffStrategy { get; set; } = RetryStrategy.ExponentialBackoff;
 
     /// <summary>
     /// Delay used for the first retry (and the fixed interval when <see cref="BackoffStrategy"/>
-    /// is <see cref="RetryStrategy.FixedDelay"/>).
+    /// is <see cref="RetryStrategy.FixedDelay"/>). The default is one second.
     /// </summary>
     /// <remarks>
     /// Must be between 0 and 30 seconds inclusive to prevent excessive delays.
@@ -66,7 +68,8 @@ public sealed class OutboxRetryOptions
     private TimeSpan _initialDelay = TimeSpan.FromSeconds(1);
 
     /// <summary>
-    /// Hard ceiling applied to every computed delay, regardless of strategy.
+    /// Hard ceiling applied to every computed delay, regardless of strategy. The default is five
+    /// minutes.
     /// </summary>
     /// <remarks>
     /// Must be between 0 and 30 seconds inclusive to prevent excessive delays.
@@ -86,7 +89,7 @@ public sealed class OutboxRetryOptions
     private TimeSpan _maxDelay = TimeSpan.FromMinutes(5);
 
     /// <summary>
-    /// Growth factor used by the exponential and jittered strategies.
+    /// Growth factor used by the exponential and jittered strategies. The default is 2.0.
     /// </summary>
     /// <remarks>
     /// Must be between 1.0 and 10.0 inclusive to prevent unbounded exponential growth.
@@ -106,7 +109,7 @@ public sealed class OutboxRetryOptions
     private double _backoffMultiplier = 2.0;
 
     /// <summary>
-    /// Fixed increment added per attempt by the linear strategy.
+    /// Fixed increment added per attempt by the linear strategy. The default is one second.
     /// </summary>
     /// <remarks>
     /// Must be between 0 and 30 seconds inclusive to prevent excessive delays.
