@@ -111,6 +111,12 @@ public enum BackoffStrategy
 /// </summary>
 public sealed class OutboxProcessor : BackgroundService
 {
+    /// <summary>
+    /// Delay (milliseconds) before retrying after an error, so a downed downstream
+    /// service is not hammered immediately.
+    /// </summary>
+    private const int RetryDelayMilliseconds = 10000;
+
     private readonly IServiceProvider _serviceProvider;
     private readonly IOutboxProcessorOptions _options;
     private readonly ILogger<OutboxProcessor> _logger;
@@ -214,7 +220,7 @@ public sealed class OutboxProcessor : BackgroundService
                 _circuitBreaker.RecordFailure(ex);
 
                 // Wait a bit longer before retrying after an error
-                await Task.Delay(10000, stoppingToken);
+                await Task.Delay(RetryDelayMilliseconds, stoppingToken);
             }
         }
 
