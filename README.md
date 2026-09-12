@@ -40,6 +40,40 @@ var publishedMessage = await outboxService.PublishEventAsync(publishableEvent);
 Console.WriteLine($"Event published with ID: {publishedMessage.Id}");
 ```
 
+## Export
+
+`ExportController` exposes downloadable outbox-message exports under `/api/export`. The registered formatters support JSON, CSV, and XML; format names are matched case-insensitively.
+
+| Format | Content type | Output |
+| --- | --- | --- |
+| `json` | `application/json` | An indented object containing `messages`, `exportedAt`, and `count`. Each message includes identifiers, aggregate and event information, state and attempt data, timestamps, optional error and tracing fields, parsed `eventData`, and parsed `metadata`. Event data or metadata that is not valid JSON is emitted as a string. |
+| `csv` | `text/csv` | A header row followed by one row per message. Columns are `MessageId`, `IdempotencyKey`, `AggregateId`, `AggregateType`, `EventType`, `Topic`, `State`, `PublishAttempts`, `MaxAttempts`, `CreatedAt`, `PublishedAt`, and `ErrorMessage`. Commas, quotes, and newlines are CSV-escaped. |
+| `xml` | `application/xml` | An `OutboxMessages` root element with `count` and `exportedAt` attributes, containing one `Message` element per item. Each message includes its core identifiers, aggregate and event information, state and attempt data, and timestamps; `PublishedAt`, `ErrorMessage`, `PartitionKey`, `CorrelationId`, and `EventData` are omitted when absent. |
+
+Create an export by posting an `ExportRequest` to `POST /api/export/messages`. `format` defaults to `json`; `startDate` and `endDate` optionally filter on `CreatedAt` (inclusively), while `status` optionally matches an `OutboxMessageState` name case-insensitively. The request also accepts `includeEventData`, although the current formatters determine their own fields: JSON and XML include event data, while CSV does not.
+
+```bash
+curl -X POST https://localhost:5001/api/export/messages \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "format": "csv",
+    "startDate": "2025-01-01T00:00:00Z",
+    "endDate": "2025-01-31T23:59:59Z",
+    "status": "Published"
+  }' \
+  --output outbox_messages.csv
+```
+
+Successful requests return a UTF-8 download named `outbox_messages_yyyyMMdd_HHmmss.<format>`. A missing request, unsupported format, or unknown status returns HTTP `400`; unexpected export failures return HTTP `500`.
+
+Use the discovery endpoints to inspect the available options:
+
+| Request | Result |
+| --- | --- |
+| `GET /api/export/formats` | Registered format names. |
+| `GET /api/export/formats/{format}` | Content type, extension, and description for `json`, `csv`, or `xml`; unknown formats return HTTP `404`. |
+| `GET /api/export/info` | General export metadata, including the advertised 100,000-message maximum, default format, and filterable fields. |
+
 ## Metrics & Monitoring
 
 The outbox provides both OpenTelemetry instruments for metric collectors and HTTP endpoints for dashboards, alerting, and operational inspection.
