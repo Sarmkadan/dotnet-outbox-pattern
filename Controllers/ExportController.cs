@@ -25,8 +25,11 @@ public sealed class ExportController : ControllerBase
         IExportService exportService,
         ILogger<ExportController> logger)
     {
-        _exportService = exportService ?? throw new ArgumentNullException(nameof(exportService));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(exportService);
+        ArgumentNullException.ThrowIfNull(logger);
+
+        _exportService = exportService;
+        _logger = logger;
     }
 
     /// <summary>
