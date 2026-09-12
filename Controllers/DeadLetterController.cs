@@ -28,9 +28,13 @@ public sealed class DeadLetterController : ControllerBase
         INotificationService notificationService,
         ILogger<DeadLetterController> logger)
     {
-        _dlService = dlService ?? throw new ArgumentNullException(nameof(dlService));
-        _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(dlService);
+        ArgumentNullException.ThrowIfNull(notificationService);
+        ArgumentNullException.ThrowIfNull(logger);
+
+        _dlService = dlService;
+        _notificationService = notificationService;
+        _logger = logger;
     }
 
     /// <summary>
