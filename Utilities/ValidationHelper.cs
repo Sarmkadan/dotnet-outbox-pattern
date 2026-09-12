@@ -18,6 +18,9 @@ public static class ValidationHelper
     /// <param name="paramName">The name of the parameter being validated.</param>
     public static void ValidateNotEmpty(string? value, string paramName)
     {
+        ArgumentNullException.ThrowIfNull(value);
+        ArgumentNullException.ThrowIfNull(paramName);
+
         if (string.IsNullOrWhiteSpace(value))
             throw new ArgumentException($"{paramName} cannot be null or empty", paramName);
     }
@@ -30,6 +33,9 @@ public static class ValidationHelper
     /// <param name="paramName">The name of the parameter being validated.</param>
     public static void ValidateNotNull<T>(T? value, string paramName) where T : class
     {
+        ArgumentNullException.ThrowIfNull(value);
+        ArgumentNullException.ThrowIfNull(paramName);
+
         if (value is null)
             throw new ArgumentNullException(paramName);
     }
@@ -41,6 +47,8 @@ public static class ValidationHelper
     /// <param name="paramName">The name of the parameter being validated.</param>
     public static void ValidatePositive(int value, string paramName)
     {
+        ArgumentNullException.ThrowIfNull(paramName);
+
         if (value <= 0)
             throw new ArgumentException($"{paramName} must be positive", paramName);
     }
@@ -54,6 +62,8 @@ public static class ValidationHelper
     /// <param name="paramName">The name of the parameter being validated.</param>
     public static void ValidateRange(int value, int min, int max, string paramName)
     {
+        ArgumentNullException.ThrowIfNull(paramName);
+
         if (value < min || value > max)
             throw new ArgumentException($"{paramName} must be between {min} and {max}", paramName);
     }
@@ -67,6 +77,9 @@ public static class ValidationHelper
     /// <param name="paramName">The name of the parameter being validated.</param>
     public static void ValidateLength(string? value, int minLength, int maxLength, string paramName)
     {
+        ArgumentNullException.ThrowIfNull(value);
+        ArgumentNullException.ThrowIfNull(paramName);
+
         if (string.IsNullOrEmpty(value) || value.Length < minLength || value.Length > maxLength)
             throw new ArgumentException(
                 $"{paramName} length must be between {minLength} and {maxLength}",
@@ -82,6 +95,10 @@ public static class ValidationHelper
     /// <param name="errorMessage">The error message to throw if validation fails.</param>
     public static void ValidateAny<T>(IEnumerable<T> collection, Func<T, bool> predicate, string errorMessage)
     {
+        ArgumentNullException.ThrowIfNull(collection);
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(errorMessage);
+
         if (!collection.Any(predicate))
             throw new ArgumentException(errorMessage);
     }
@@ -95,6 +112,10 @@ public static class ValidationHelper
     /// <param name="errorMessage">The error message to throw if validation fails.</param>
     public static void ValidateAll<T>(IEnumerable<T> collection, Func<T, bool> predicate, string errorMessage)
     {
+        ArgumentNullException.ThrowIfNull(collection);
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(errorMessage);
+
         if (!collection.All(predicate))
             throw new ArgumentException(errorMessage);
     }
@@ -108,6 +129,8 @@ public static class ValidationHelper
     /// <param name="paramName">The name of the parameter being validated.</param>
     public static void ValidateEqual<T>(T expected, T actual, string paramName) where T : IEquatable<T>
     {
+        ArgumentNullException.ThrowIfNull(paramName);
+
         if (!expected.Equals(actual))
             throw new ArgumentException($"{paramName} value mismatch", paramName);
     }
@@ -119,6 +142,8 @@ public static class ValidationHelper
     /// <param name="errorMessage">The error message to throw if validation fails.</param>
     public static void ValidateCondition(bool condition, string errorMessage)
     {
+        ArgumentNullException.ThrowIfNull(errorMessage);
+
         if (!condition)
             throw new ArgumentException(errorMessage);
     }
@@ -156,6 +181,8 @@ public sealed class ValidationContext<T>
     /// <returns>The validation context for chaining.</returns>
     public ValidationContext<T> NotNull(string fieldName)
     {
+        ArgumentNullException.ThrowIfNull(fieldName);
+
         if (_value is null)
             _errors.Add($"{fieldName} cannot be null");
         return this;
@@ -163,6 +190,9 @@ public sealed class ValidationContext<T>
 
     public ValidationContext<T> NotEmpty(Func<T, string?> accessor, string fieldName)
     {
+        ArgumentNullException.ThrowIfNull(accessor);
+        ArgumentNullException.ThrowIfNull(fieldName);
+
         var value = accessor(_value);
         if (string.IsNullOrWhiteSpace(value))
             _errors.Add($"{fieldName} cannot be empty");
@@ -171,6 +201,9 @@ public sealed class ValidationContext<T>
 
     public ValidationContext<T> MinLength(Func<T, string?> accessor, int minLength, string fieldName)
     {
+        ArgumentNullException.ThrowIfNull(accessor);
+        ArgumentNullException.ThrowIfNull(fieldName);
+
         var value = accessor(_value);
         if (value?.Length < minLength)
             _errors.Add($"{fieldName} must be at least {minLength} characters");
@@ -179,6 +212,9 @@ public sealed class ValidationContext<T>
 
     public ValidationContext<T> MaxLength(Func<T, string?> accessor, int maxLength, string fieldName)
     {
+        ArgumentNullException.ThrowIfNull(accessor);
+        ArgumentNullException.ThrowIfNull(fieldName);
+
         var value = accessor(_value);
         if (value?.Length > maxLength)
             _errors.Add($"{fieldName} cannot exceed {maxLength} characters");
@@ -187,6 +223,8 @@ public sealed class ValidationContext<T>
 
     public ValidationContext<T> Condition(bool condition, string errorMessage)
     {
+        ArgumentNullException.ThrowIfNull(errorMessage);
+
         if (!condition)
             _errors.Add(errorMessage);
         return this;
