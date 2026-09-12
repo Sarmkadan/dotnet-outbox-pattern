@@ -74,6 +74,9 @@ public sealed class NotificationService : INotificationService
 
     public async Task SendToChannelAsync(Notification notification, string channel)
     {
+        ArgumentNullException.ThrowIfNull(notification);
+        ArgumentNullException.ThrowIfNull(channel);
+
         if (!_channels.TryGetValue(channel, out var handler))
         {
             _logger.LogWarning("Unknown notification channel: {Channel}", channel);
@@ -118,6 +121,7 @@ public sealed class InMemoryNotificationChannel : INotificationChannel
 
     public InMemoryNotificationChannel(List<Notification> notifications)
     {
+        ArgumentNullException.ThrowIfNull(notifications);
         _notifications = notifications;
     }
 
@@ -145,6 +149,7 @@ public sealed class ConsoleNotificationChannel : INotificationChannel
 
     public ConsoleNotificationChannel(ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
@@ -176,6 +181,7 @@ public sealed class FileNotificationChannel : INotificationChannel
 
     public FileNotificationChannel(ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
