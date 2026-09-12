@@ -28,9 +28,13 @@ public sealed class WebhookController : ControllerBase
         IWebhookHandler webhookHandler,
         ILogger<WebhookController> logger)
     {
-        _webhookService = webhookService ?? throw new ArgumentNullException(nameof(webhookService));
-        _webhookHandler = webhookHandler ?? throw new ArgumentNullException(nameof(webhookHandler));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(webhookService);
+        ArgumentNullException.ThrowIfNull(webhookHandler);
+        ArgumentNullException.ThrowIfNull(logger);
+
+        _webhookService = webhookService;
+        _webhookHandler = webhookHandler;
+        _logger = logger;
     }
 
     /// <summary>
