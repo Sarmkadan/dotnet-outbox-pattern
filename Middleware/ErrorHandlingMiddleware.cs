@@ -20,12 +20,22 @@ public sealed class ErrorHandlingMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<ErrorHandlingMiddleware> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ErrorHandlingMiddleware"/> class.
+    /// </summary>
+    /// <param name="next">The next middleware in the pipeline.</param>
+    /// <param name="logger">The logger for error handling middleware.</param>
     public ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorHandlingMiddleware> logger)
     {
         _next = next ?? throw new ArgumentNullException(nameof(next));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    /// <summary>
+    /// Processes the HTTP request and catches any unhandled exceptions.
+    /// </summary>
+    /// <param name="context">The HTTP context.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     public async Task InvokeAsync(HttpContext context)
     {
         try
@@ -40,8 +50,11 @@ public sealed class ErrorHandlingMiddleware
     }
 
     /// <summary>
-    /// Maps exceptions to appropriate HTTP responses with consistent error formatting
+    /// Maps exceptions to appropriate HTTP responses with consistent error formatting.
     /// </summary>
+    /// <param name="context">The HTTP context.</param>
+    /// <param name="exception">The exception to handle.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     private static Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         context.Response.ContentType = "application/json";
@@ -92,10 +105,15 @@ public sealed class ErrorHandlingMiddleware
 }
 
 /// <summary>
-/// Extension method to register error handling middleware
+/// Extension methods for registering error handling middleware.
 /// </summary>
 public static class ErrorHandlingMiddlewareExtensions
 {
+    /// <summary>
+    /// Adds the error handling middleware to the application pipeline.
+    /// </summary>
+    /// <param name="app">The application builder.</param>
+    /// <returns>The application builder with error handling middleware added.</returns>
     public static IApplicationBuilder UseErrorHandling(this IApplicationBuilder app)
     {
         return app.UseMiddleware<ErrorHandlingMiddleware>();
