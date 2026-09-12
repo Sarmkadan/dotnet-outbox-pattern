@@ -40,6 +40,67 @@ var publishedMessage = await outboxService.PublishEventAsync(publishableEvent);
 Console.WriteLine($"Event published with ID: {publishedMessage.Id}");
 ```
 
+## Metrics & Monitoring
+
+The outbox provides both OpenTelemetry instruments for metric collectors and HTTP endpoints for dashboards, alerting, and operational inspection.
+
+### OpenTelemetry metrics
+
+`OutboxMetrics` creates the `DotnetOutboxPattern.Outbox` meter (version `1.0.0`) and exposes these instruments:
+
+| Instrument | Type | Unit | Description |
+| --- | --- | --- | --- |
+| `outbox_publish_errors_total` | Counter | messages | Failed message publications. |
+| `outbox_dead_letter_total` | Counter | messages | Messages moved to the dead-letter queue. |
+| `outbox_processing_duration_seconds` | Histogram | seconds | Outbox message processing duration. |
+| `outbox_pending_messages_total` | Observable gauge | messages | Current pending-message count, queried from `IOutboxRepository` when observed. |
+
+`AddOutboxPatternPhase2()` registers `OutboxMetrics` as a singleton and configures OpenTelemetry to collect its meter. Application code can resolve that singleton and update the counters and histogram at the point where work occurs:
+
+```csharp
+var metrics = serviceProvider.GetRequiredService<OutboxMetrics>();
+
+metrics.PublishErrorsTotal.Add(1);
+metrics.DeadLettersTotal.Add(1);
+metrics.ProcessingDurationSeconds.Record(elapsed.TotalSeconds);
+```
+
+The pending gauge is automatic; consumers should not update it. Each collection creates a dependency-injection scope and reads the current repository count. If that query fails, the error is logged and that observation is omitted rather than disrupting the metrics pipeline.
+
+The sample host maps the OpenTelemetry Prometheus exporter at `GET /metrics`, which can be used as a Prometheus scrape target:
+
+```yaml
+scrape_configs:
+  - job_name: dotnet-outbox-pattern
+    static_configs:
+      - targets: ["localhost:5000"]
+```
+
+### Metrics API
+
+`MetricsController` is available under `/api/metrics` and exposes the following operational views through `IMetricsService`:
+
+| Request | Result |
+| --- | --- |
+| `GET /api/metrics/health` | Overall system and outbox health. |
+| `GET /api/metrics/performance?period=24h` | Throughput, latency, and success/error data. Valid periods are `1h`, `24h`, `7d`, and `30d`; the default is `24h`. |
+| `GET /api/metrics/errors?limit=100` | Failure, dead-letter, and error-distribution analytics. |
+| `GET /api/metrics/throughput?granularity=hour` | Message throughput. Valid granularities are `minute`, `hour`, and `day`; the default is `hour`. |
+| `GET /api/metrics/latency` | Message-publishing latency metrics. |
+| `GET /api/metrics/prometheus` | Repository statistics formatted for Prometheus. |
+| `GET /api/metrics/alerts` | Currently active threshold-based alerts. |
+| `GET /api/metrics/resources` | CPU, memory, and database-connection metrics. |
+
+Consume the JSON endpoints with any HTTP client, or fetch the controller's Prometheus-formatted snapshot as text:
+
+```bash
+curl https://localhost:5001/api/metrics/health
+curl 'https://localhost:5001/api/metrics/performance?period=1h'
+curl https://localhost:5001/api/metrics/prometheus
+```
+
+Invalid `period` or `granularity` values return HTTP `400`; failures while collecting a view are logged and return HTTP `500`.
+
 ## Dead Letter Handling
 
 When a message exhausts its configured `MaxPublishAttempts` without being published, the dispatch loop stops retrying it and moves it out of the hot pending set into the dead-letter store. This prevents a poison message (bad payload, permanently rejecting broker, or any other unrecoverable error) from being redelivered forever while still preserving it for operator inspection.
