@@ -14,13 +14,27 @@ namespace DotnetOutboxPattern.Data;
 /// </summary>
 public sealed class OutboxDbContext : DbContext
 {
+    /// <summary>
+    /// Gets or sets the DbSet for OutboxMessage entities.
+    /// </summary>
     public DbSet<OutboxMessage> OutboxMessages { get; set; } = null!;
+    /// <summary>
+    /// Gets or sets the DbSet for DeadLetter entities.
+    /// </summary>
     public DbSet<DeadLetter> DeadLetters { get; set; } = null!;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OutboxDbContext"/> class.
+    /// </summary>
+    /// <param name="options">The options to be used by a <see cref="DbContext"/>.</param>
     public OutboxDbContext(DbContextOptions<OutboxDbContext> options) : base(options)
     {
     }
 
+    /// <summary>
+    /// Configures the schema needed for the outbox pattern.
+    /// </summary>
+    /// <param name="modelBuilder">The builder being used to construct the model for this context.</param>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
