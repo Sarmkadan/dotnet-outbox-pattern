@@ -230,4 +230,13 @@ public sealed class OutboxMessage
     public bool CanRetry() =>
         PublishAttempts < MaxPublishAttempts &&
         State is OutboxMessageState.Pending or OutboxMessageState.Processing;
+
+    /// <summary>
+    /// Returns a string representation of the outbox message for logging/debugging
+    /// </summary>
+    /// <returns>A concise representation containing Id, State, and EventTypeName</returns>
+    public override string ToString()
+    {
+        return $"OutboxMessage {{ Id={Id}, State={State}, Type={EventTypeName} }}";
+    }
 }
