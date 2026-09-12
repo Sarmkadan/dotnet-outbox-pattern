@@ -45,7 +45,8 @@ public sealed class EventPublisher : IEventPublisher
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="logger"/> is null.</exception>
     public EventPublisher(ILogger<EventPublisher> logger)
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
     }
 
     /// <summary>
@@ -56,8 +57,7 @@ public sealed class EventPublisher : IEventPublisher
     /// <returns>A task that represents the asynchronous publish operation.</returns>
     public async Task PublishAsync<T>(T @event) where T : class
     {
-        if (@event is null)
-            throw new ArgumentNullException(nameof(@event));
+        ArgumentNullException.ThrowIfNull(@event);
 
         var eventType = typeof(T);
         List<Delegate>? handlersCopy = null;
@@ -103,8 +103,7 @@ public sealed class EventPublisher : IEventPublisher
     /// <returns>An IDisposable that can be used to unsubscribe.</returns>
     public IDisposable Subscribe<T>(Func<T, Task> handler) where T : class
     {
-        if (handler is null)
-            throw new ArgumentNullException(nameof(handler));
+        ArgumentNullException.ThrowIfNull(handler);
 
         lock (_lock)
         {
