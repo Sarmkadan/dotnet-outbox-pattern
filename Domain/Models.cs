@@ -7,310 +7,307 @@
 namespace DotnetOutboxPattern.Domain;
 
 /// <summary>
-/// Circuit breaker state enumeration
+/// Defines the operating states of a circuit breaker.
 /// </summary>
 public enum CircuitState
 {
     /// <summary>
-    /// The circuit is closed and requests are allowed to pass through
+    /// The circuit is closed, and requests are allowed to pass through.
     /// </summary>
     Closed,
 
     /// <summary>
-    /// The circuit is open and requests are blocked
+    /// The circuit is open, and requests are blocked.
     /// </summary>
     Open,
 
     /// <summary>
-    /// The circuit is in half-open state, allowing a limited number of requests
-    /// to test if the downstream service has recovered
+    /// The circuit is half-open, allowing a limited number of requests to test whether the downstream service has recovered.
     /// </summary>
     HalfOpen
 }
 
 /// <summary>
-/// Result of processing an outbox message
+/// Represents the result of processing a batch of outbox messages.
 /// </summary>
 public sealed class OutboxProcessingResult
 {
     /// <summary>
-    /// Whether the processing was successful
+    /// Gets or sets a value indicating whether processing was successful.
     /// </summary>
     public bool Success { get; set; }
 
     /// <summary>
-    /// Number of messages processed
+    /// Gets or sets the number of messages that were processed.
     /// </summary>
     public int ProcessedCount { get; set; }
 
     /// <summary>
-    /// Number of messages that failed
+    /// Gets or sets the number of messages that failed.
     /// </summary>
     public int FailedCount { get; set; }
 
     /// <summary>
-    /// Number of messages moved to dead letter
+    /// Gets or sets the number of messages moved to the dead-letter queue.
     /// </summary>
     public int DeadLetterCount { get; set; }
 
     /// <summary>
-    /// Error message if processing failed
+    /// Gets or sets the error message when processing fails.
     /// </summary>
     public string? ErrorMessage { get; set; }
 
     /// <summary>
-    /// Stack trace of any error
+    /// Gets or sets the stack trace associated with the processing error.
     /// </summary>
     public string? StackTrace { get; set; }
 
     /// <summary>
-    /// When the processing started
+    /// Gets or sets the time at which processing started.
     /// </summary>
     public DateTime StartedAt { get; set; }
 
     /// <summary>
-    /// When the processing completed
+    /// Gets or sets the time at which processing completed.
     /// </summary>
     public DateTime CompletedAt { get; set; }
 
     /// <summary>
-    /// Duration of processing
+    /// Gets the duration of processing.
     /// </summary>
     public TimeSpan Duration => CompletedAt - StartedAt;
 
     /// <summary>
-    /// IDs of messages that were processed
+    /// Gets or sets the identifiers of messages that were processed.
     /// </summary>
     public List<Guid> ProcessedMessageIds { get; set; } = new();
 
     /// <summary>
-    /// IDs of messages that failed
+    /// Gets or sets the identifiers of messages that failed.
     /// </summary>
     public List<Guid> FailedMessageIds { get; set; } = new();
 }
 
 /// <summary>
-/// Configuration for an outbox processor
+/// Represents configuration for an outbox processor.
 /// </summary>
 public sealed class OutboxProcessorConfig
 {
     /// <summary>
-    /// How many messages to process in a batch
+    /// Gets or sets the number of messages to process in each batch.
     /// </summary>
     public int BatchSize { get; set; } = 100;
 
     /// <summary>
-    /// How long to lock a message while processing it
+    /// Gets or sets how long a message remains locked while it is processed.
     /// </summary>
     public TimeSpan LockDuration { get; set; } = TimeSpan.FromMinutes(5);
 
     /// <summary>
-    /// Delay between processing batches
+    /// Gets or sets the delay between processing batches.
     /// </summary>
     public TimeSpan DelayBetweenBatches { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
-    /// How many messages to process before taking a break
+    /// Gets or sets the number of messages to process before taking a break.
     /// </summary>
     public int MessagesBeforeBreak { get; set; } = 1000;
 
     /// <summary>
-    /// Duration of the break after reaching MessagesBeforeBreak
+    /// Gets or sets the duration of the break taken after processing <see cref="MessagesBeforeBreak"/> messages.
     /// </summary>
     public TimeSpan BreakDuration { get; set; } = TimeSpan.FromSeconds(10);
 
     /// <summary>
-    /// Whether to process messages in parallel
+    /// Gets or sets a value indicating whether messages are processed in parallel.
     /// </summary>
     public bool EnableParallelProcessing { get; set; } = true;
 
     /// <summary>
-    /// Maximum degree of parallelism
+    /// Gets or sets the maximum degree of parallelism.
     /// </summary>
     public int MaxDegreeOfParallelism { get; set; } = 4;
 
     /// <summary>
-    /// Whether to enable dead letter processing
+    /// Gets or sets a value indicating whether dead-letter processing is enabled.
     /// </summary>
     public bool EnableDeadLetterProcessing { get; set; } = true;
 }
 
 /// <summary>
-/// Statistics about the outbox
+/// Represents statistics about messages in the outbox.
 /// </summary>
 public sealed class OutboxStatistics
 {
     /// <summary>
-    /// Total number of messages
+    /// Gets or sets the total number of messages.
     /// </summary>
     public long TotalMessages { get; set; }
 
     /// <summary>
-    /// Number of pending messages
+    /// Gets or sets the number of pending messages.
     /// </summary>
     public long PendingMessages { get; set; }
 
     /// <summary>
-    /// Number of messages being processed
+    /// Gets or sets the number of messages being processed.
     /// </summary>
     public long ProcessingMessages { get; set; }
 
     /// <summary>
-    /// Number of published messages
+    /// Gets or sets the number of published messages.
     /// </summary>
     public long PublishedMessages { get; set; }
 
     /// <summary>
-    /// Number of failed messages
+    /// Gets or sets the number of failed messages.
     /// </summary>
     public long FailedMessages { get; set; }
 
     /// <summary>
-    /// Number of archived messages
+    /// Gets or sets the number of archived messages.
     /// </summary>
     public long ArchivedMessages { get; set; }
 
     /// <summary>
-    /// Number of messages in dead letter queue
+    /// Gets or sets the number of messages in the dead-letter queue.
     /// </summary>
     public long DeadLetterCount { get; set; }
 
     /// <summary>
-    /// Average time to publish a message
+    /// Gets or sets the average time required to publish a message.
     /// </summary>
     public TimeSpan AveragePublishTime { get; set; }
 
     /// <summary>
-    /// The oldest pending message age
+    /// Gets or sets the age of the oldest pending message.
     /// </summary>
     public TimeSpan? OldestPendingAge { get; set; }
 
     /// <summary>
-    /// Percentage of messages that were successfully published
+    /// Gets the percentage of messages that were successfully published.
     /// </summary>
     public double SuccessRate => TotalMessages > 0 ? (double)PublishedMessages / TotalMessages * 100 : 0;
 }
 
 /// <summary>
-/// Message publishing options
+/// Represents options that control message publishing.
 /// </summary>
 public sealed class PublishingOptions
 {
     /// <summary>
-    /// Maximum number of retries
+    /// Gets or sets the maximum number of retry attempts.
     /// </summary>
     public int MaxRetries { get; set; } = 5;
 
     /// <summary>
-    /// Type of retry policy
+    /// Gets or sets the retry policy to use.
     /// </summary>
     public RetryPolicyType RetryPolicy { get; set; } = RetryPolicyType.ExponentialBackoff;
 
     /// <summary>
-    /// Initial delay before first retry
+    /// Gets or sets the initial delay before the first retry.
     /// </summary>
     public TimeSpan InitialRetryDelay { get; set; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
-    /// Maximum delay between retries
+    /// Gets or sets the maximum delay between retries.
     /// </summary>
     public TimeSpan MaxRetryDelay { get; set; } = TimeSpan.FromMinutes(5);
 
     /// <summary>
-    /// Multiplier for exponential backoff
+    /// Gets or sets the multiplier used for exponential backoff.
     /// </summary>
     public double BackoffMultiplier { get; set; } = 2.0;
 
     /// <summary>
-    /// Delivery guarantee level
+    /// Gets or sets the delivery guarantee level.
     /// </summary>
     public DeliveryGuarantee DeliveryGuarantee { get; set; } = DeliveryGuarantee.AtLeastOnce;
 
     /// <summary>
-    /// Whether to add jitter to retry delays
+    /// Gets or sets a value indicating whether jitter is added to retry delays.
     /// </summary>
     public bool UseJitter { get; set; } = true;
 
     /// <summary>
-    /// Timeout for publishing a single message
+    /// Gets or sets the timeout for publishing a single message.
     /// </summary>
     public TimeSpan PublishTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
-    /// Clock skew tolerance for deduplication window (how far in the past/future to consider messages as duplicates)
+    /// Gets or sets the clock-skew tolerance applied to the deduplication window.
     /// </summary>
     public TimeSpan ClockSkewTolerance { get; set; } = TimeSpan.FromMinutes(1);
 
-/// <summary>
-/// Whether to use batch claiming with row-level locking for competing consumers
-/// When enabled, messages are atomically claimed in batches using SQL Server's UPDLOCK/ROWLOCK/READPAST
-/// to prevent multiple instances from processing the same messages
-/// </summary>
-public bool UseBatchClaiming { get; set; } = true;
+    /// <summary>
+    /// Gets or sets a value indicating whether competing consumers claim batches by using row-level locking.
+    /// </summary>
+    public bool UseBatchClaiming { get; set; } = true;
 
-/// <summary>
-/// Maximum number of messages to claim in a single batch when UseBatchClaiming is enabled
-/// </summary>
-public int MaxBatchClaimSize { get; set; } = 100;
+    /// <summary>
+    /// Gets or sets the maximum number of messages to claim when <see cref="UseBatchClaiming"/> is enabled.
+    /// </summary>
+    public int MaxBatchClaimSize { get; set; } = 100;
 
-/// <summary>
-/// Lock duration for processing (seconds) when using batch claiming
-/// </summary>
-public int LockDurationSeconds { get; set; } = 300;
+    /// <summary>
+    /// Gets or sets the message lock duration, in seconds, used during batch claiming.
+    /// </summary>
+    public int LockDurationSeconds { get; set; } = 300;
 }
 
 /// <summary>
-/// Publication health metrics
+/// Represents health metrics for outbox message publication.
 /// </summary>
 public sealed class HealthMetrics
 {
     /// <summary>
-    /// Whether the outbox processor is healthy
+    /// Gets or sets a value indicating whether the outbox processor is healthy.
     /// </summary>
     public bool IsHealthy { get; set; } = true;
 
     /// <summary>
-    /// Last time a message was successfully published
+    /// Gets or sets the time at which a message was last published successfully.
     /// </summary>
     public DateTime? LastSuccessfulPublish { get; set; }
 
     /// <summary>
-    /// Number of consecutive failures
+    /// Gets or sets the number of consecutive publication failures.
     /// </summary>
     public int ConsecutiveFailures { get; set; }
 
     /// <summary>
-    /// Current error message if unhealthy
+    /// Gets or sets the current error message when the processor is unhealthy.
     /// </summary>
     public string? ErrorMessage { get; set; }
 
     /// <summary>
-    /// When the health check was last run
+    /// Gets or sets the time at which the health check was last run.
     /// </summary>
     public DateTime LastHealthCheckAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// How many messages are currently locked
+    /// Gets or sets the number of messages that are currently locked.
     /// </summary>
     public int LockedMessagesCount { get; set; }
 
     /// <summary>
-    /// Whether there are messages with expired locks
+    /// Gets or sets a value indicating whether any messages have expired locks.
     /// </summary>
     public bool HasExpiredLocks { get; set; }
 
     /// <summary>
-    /// Age of the oldest unprocessed pending message, or <c>null</c> if there are no pending messages
+    /// Gets or sets the age of the oldest unprocessed pending message, or <c>null</c> when there are no pending messages.
     /// </summary>
     public TimeSpan? OldestMessageAge { get; set; }
 
     /// <summary>
-    /// Current circuit breaker state
+    /// Gets or sets the current circuit-breaker state.
     /// </summary>
     public CircuitState CircuitState { get; set; } = CircuitState.Closed;
 
     /// <summary>
-    /// Whether the circuit breaker is currently open
+    /// Gets a value indicating whether the circuit breaker is currently open.
     /// </summary>
     public bool IsCircuitOpen => CircuitState == CircuitState.Open;
 }
