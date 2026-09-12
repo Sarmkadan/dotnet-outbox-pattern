@@ -13,9 +13,21 @@ namespace DotnetOutboxPattern.Dtos;
 /// </summary>
 public sealed class ErrorResponse
 {
+    /// <summary>
+    /// Gets or sets the error message.
+    /// </summary>
     public string Message { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the error code.
+    /// </summary>
     public string Code { get; set; } = "ERROR";
+    /// <summary>
+    /// Gets or sets the timestamp.
+    /// </summary>
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    /// <summary>
+    /// Gets or sets the trace identifier.
+    /// </summary>
     public string? TraceId { get; set; }
 }
 
@@ -24,19 +36,61 @@ public sealed class ErrorResponse
 /// </summary>
 public sealed class OutboxMessageDto
 {
+    /// <summary>
+    /// Gets or sets the unique identifier.
+    /// </summary>
     public Guid Id { get; set; }
+    /// <summary>
+    /// Gets or sets the idempotency key.
+    /// </summary>
     public string IdempotencyKey { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the aggregate identifier.
+    /// </summary>
     public string AggregateId { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the aggregate type.
+    /// </summary>
     public string AggregateType { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the event type.
+    /// </summary>
     public string EventType { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the topic.
+    /// </summary>
     public string Topic { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the state.
+    /// </summary>
     public string State { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the number of publish attempts.
+    /// </summary>
     public int PublishAttempts { get; set; }
+    /// <summary>
+    /// Gets or sets the maximum publish attempts.
+    /// </summary>
     public int MaxPublishAttempts { get; set; }
+    /// <summary>
+    /// Gets or sets the creation timestamp.
+    /// </summary>
     public DateTime CreatedAt { get; set; }
+    /// <summary>
+    /// Gets or sets the published timestamp.
+    /// </summary>
     public DateTime? PublishedAt { get; set; }
+    /// <summary>
+    /// Gets or sets the error message.
+    /// </summary>
     public string? ErrorMessage { get; set; }
+    /// <summary>
+    /// Gets or sets the partition key.
+    /// </summary>
     public string? PartitionKey { get; set; }
+    /// <summary>
+    /// Gets or sets the correlation identifier.
+    /// </summary>
     public string? CorrelationId { get; set; }
 
     public OutboxMessageDto() { }
@@ -65,10 +119,25 @@ public sealed class OutboxMessageDto
 /// </summary>
 public sealed class PaginatedResponse<T>
 {
+    /// <summary>
+    /// Gets or sets the current page number.
+    /// </summary>
     public int Page { get; set; }
+    /// <summary>
+    /// Gets or sets the page size.
+    /// </summary>
     public int PageSize { get; set; }
+    /// <summary>
+    /// Gets or sets the items in the current page.
+    /// </summary>
     public List<T> Items { get; set; } = new();
+    /// <summary>
+    /// Gets or sets the total number of items.
+    /// </summary>
     public int TotalItems { get; set; }
+    /// <summary>
+    /// Gets the total number of pages.
+    /// </summary>
     public int TotalPages => (int)Math.Ceiling(TotalItems / (double)PageSize);
 }
 
@@ -77,14 +146,41 @@ public sealed class PaginatedResponse<T>
 /// </summary>
 public sealed class OutboxStatisticsDto
 {
+    /// <summary>
+    /// Gets or sets the total number of messages.
+    /// </summary>
     public int TotalMessages { get; set; }
+    /// <summary>
+    /// Gets or sets the pending message count.
+    /// </summary>
     public int PendingCount { get; set; }
+    /// <summary>
+    /// Gets or sets the processing message count.
+    /// </summary>
     public int ProcessingCount { get; set; }
+    /// <summary>
+    /// Gets or sets the published message count.
+    /// </summary>
     public int PublishedCount { get; set; }
+    /// <summary>
+    /// Gets or sets the failed message count.
+    /// </summary>
     public int FailedCount { get; set; }
+    /// <summary>
+    /// Gets or sets the dead letter count.
+    /// </summary>
     public int DeadLetterCount { get; set; }
+    /// <summary>
+    /// Gets or sets the average publish attempts.
+    /// </summary>
     public double AveragePublishAttempts { get; set; }
+    /// <summary>
+    /// Gets or sets the oldest pending message timestamp.
+    /// </summary>
     public DateTime? OldestPendingMessage { get; set; }
+    /// <summary>
+    /// Gets or sets the success rate.
+    /// </summary>
     public double SuccessRate { get; set; }
 
     public OutboxStatisticsDto() { }
@@ -107,8 +203,17 @@ public sealed class OutboxStatisticsDto
 /// </summary>
 public sealed class ArchiveResult
 {
+    /// <summary>
+    /// Gets or sets the number of archived items.
+    /// </summary>
     public int ArchivedCount { get; set; }
+    /// <summary>
+    /// Gets or sets the execution timestamp.
+    /// </summary>
     public DateTime ExecutedAt { get; set; } = DateTime.UtcNow;
+    /// <summary>
+    /// Gets or sets the operation status.
+    /// </summary>
     public string Status { get; set; } = "Success";
 }
 
@@ -117,13 +222,37 @@ public sealed class ArchiveResult
 /// </summary>
 public sealed class WebhookSubscriptionDto
 {
+    /// <summary>
+    /// Gets or sets the unique identifier.
+    /// </>
     public Guid Id { get; set; }
+    /// <summary>
+    /// Gets or sets the webhook URL.
+    /// </summary>
     public string Url { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the list of events to subscribe to.
+    /// </summary>
     public List<string> Events { get; set; } = new();
+    /// <summary>
+    /// Gets or sets whether the subscription is active.
+    /// </summary>
     public bool IsActive { get; set; }
+    /// <summary>
+    /// Gets or sets the creation timestamp.
+    /// </summary>
     public DateTime CreatedAt { get; set; }
+    /// <summary>
+    /// Gets or sets the last delivery timestamp.
+    /// </summary>
     public DateTime? LastDeliveryAt { get; set; }
+    /// <summary>
+    /// Gets or sets the number of successful deliveries.
+    /// </summary>
     public int SuccessfulDeliveries { get; set; }
+    /// <summary>
+    /// Gets or sets the number of failed deliveries.
+    /// </summary>
     public int FailedDeliveries { get; set; }
 
     public WebhookSubscriptionDto() { }
@@ -146,11 +275,29 @@ public sealed class WebhookSubscriptionDto
 /// </summary>
 public sealed class WebhookDeliveryDto
 {
+    /// <summary>
+    /// Gets or sets the unique identifier.
+    /// </summary>
     public Guid Id { get; set; }
+    /// <summary>
+    /// Gets or sets the HTTP status code.
+    /// </summary>
     public int HttpStatusCode { get; set; }
+    /// <summary>
+    /// Gets or sets whether the delivery was successful.
+    /// </summary>
     public bool IsSuccessful { get; set; }
+    /// <summary>
+    /// Gets or sets the delivery timestamp.
+    /// </summary>
     public DateTime DeliveredAt { get; set; }
+    /// <summary>
+    /// Gets or sets the duration in milliseconds.
+    /// </summary>
     public int DurationMs { get; set; }
+    /// <summary>
+    /// Gets or sets the response body.
+    /// </summary>
     public string? ResponseBody { get; set; }
 
     public WebhookDeliveryDto() { }
@@ -171,11 +318,29 @@ public sealed class WebhookDeliveryDto
 /// </summary>
 public sealed class WebhookTestResult
 {
+    /// <summary>
+    /// Gets or sets whether the test was successful.
+    /// </summary>
     public bool IsSuccessful { get; set; }
+    /// <summary>
+    /// Gets or sets the HTTP status code.
+    /// </summary>
     public int HttpStatusCode { get; set; }
+    /// <summary>
+    /// Gets or sets the duration in milliseconds.
+    /// </summary>
     public int DurationMs { get; set; }
+    /// <summary>
+    /// Gets or sets the response body.
+    /// </summary>
     public string? ResponseBody { get; set; }
+    /// <summary>
+    /// Gets or sets the error message.
+    /// </summary>
     public string? ErrorMessage { get; set; }
+    /// <summary>
+    /// Gets or sets the test timestamp.
+    /// </summary>
     public DateTime TestedAt { get; set; } = DateTime.UtcNow;
 }
 
