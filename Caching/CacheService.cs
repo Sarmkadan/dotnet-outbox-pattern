@@ -216,7 +216,11 @@ public static class CacheKeyBuilder
     public const string DeadLetterPrefix = "deadletter:";
 
     public static string BuildMessageKey(Guid messageId) => $"{OutboxMessagePrefix}{messageId}";
-    public static string BuildStatsKey(string aggregateType) => $"{OutboxStatsPrefix}{aggregateType}";
+    public static string BuildStatsKey(string aggregateType)
+    {
+        ArgumentNullException.ThrowIfNull(aggregateType);
+        return $"{OutboxStatsPrefix}{aggregateType}";
+    }
     public static string BuildWebhookKey(Guid webhookId) => $"{WebhookPrefix}{webhookId}";
     public static string BuildDeadLetterKey(Guid deadLetterId) => $"{DeadLetterPrefix}{deadLetterId}";
 
