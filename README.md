@@ -84,6 +84,48 @@ await dlq.RequeueAsync(deadLetterId, reason: "Transient broker outage resolved")
 await dlq.ReviewAsync(deadLetterId, notes: "Confirmed invalid payload, discarding");
 ```
 
+## Circuit Breaker
+
+`CircuitBreaker` protects a downstream message broker from repeated calls while it is failing. Calls made through `ExecuteAsync` are allowed only when the circuit permits them; exceptions are recorded internally and converted to `false` (for actions) or `default` (for functions). The most recent failure is available through `LastException`.
+
+### States
+
+- **Closed** — operations are allowed. Consecutive failures are counted, a success resets the count, and reaching `FailureThreshold` opens the circuit.
+- **Open** — operations are blocked. After `OpenDuration` has elapsed, reading `State` or `IsAllowed` transitions the circuit to half-open. `ForceHalfOpen()` can also make this transition for testing.
+- **HalfOpen** — operations are allowed as recovery probes. `HalfOpenTestRequests` successful operations close and reset the circuit; any failure immediately reopens it.
+
+Setting `Enabled` to `false` makes `State` report `Closed` and allows operations regardless of the internal circuit state.
+
+### Configuration
+
+Configure the breaker with `CircuitBreakerOptions` and optionally provide an `ILogger`:
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `Enabled` | `true` | Enables circuit-state checks. |
+| `FailureThreshold` | `5` | Consecutive failures required to move from closed to open. |
+| `OpenDuration` | `1 minute` | Time the circuit remains open before it can transition to half-open. |
+| `HalfOpenTestRequests` | `2` | Successful half-open operations required to close the circuit. |
+| `HalfOpenSuccessDuration` | `30 seconds` | Exposed by the options type, but not currently used by the state-transition logic. |
+| `HalfOpenFailureDuration` | `10 seconds` | Exposed by the options type, but not currently used by the state-transition logic. |
+
+```csharp
+var circuitBreaker = new CircuitBreaker(new CircuitBreakerOptions
+{
+    FailureThreshold = 5,
+    OpenDuration = TimeSpan.FromMinutes(1),
+    HalfOpenTestRequests = 2
+}, logger);
+
+var published = await circuitBreaker.ExecuteAsync(
+    () => messagePublisher.PublishAsync(message));
+
+if (!published)
+{
+    // The operation failed or the open circuit blocked it.
+}
+```
+
 // =============================================================================
 // Utilities
 // =============================================================================
