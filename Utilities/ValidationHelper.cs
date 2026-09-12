@@ -12,8 +12,10 @@ namespace DotnetOutboxPattern.Utilities;
 public static class ValidationHelper
 {
     /// <summary>
-    /// Throws an ArgumentException if value is null or empty
+    /// Throws an ArgumentException if value is null or empty.
     /// </summary>
+    /// <param name="value">The string value to validate.</param>
+    /// <param name="paramName">The name of the parameter being validated.</param>
     public static void ValidateNotEmpty(string? value, string paramName)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -21,8 +23,11 @@ public static class ValidationHelper
     }
 
     /// <summary>
-    /// Throws an ArgumentNullException if value is null
+    /// Throws an ArgumentNullException if value is null.
     /// </summary>
+    /// <typeparam name="T">The type of the value to validate.</typeparam>
+    /// <param name="value">The value to validate.</param>
+    /// <param name="paramName">The name of the parameter being validated.</param>
     public static void ValidateNotNull<T>(T? value, string paramName) where T : class
     {
         if (value is null)
@@ -30,8 +35,10 @@ public static class ValidationHelper
     }
 
     /// <summary>
-    /// Throws an ArgumentException if value is not positive
+    /// Throws an ArgumentException if value is not positive.
     /// </summary>
+    /// <param name="value">The integer value to validate.</param>
+    /// <param name="paramName">The name of the parameter being validated.</param>
     public static void ValidatePositive(int value, string paramName)
     {
         if (value <= 0)
@@ -39,8 +46,12 @@ public static class ValidationHelper
     }
 
     /// <summary>
-    /// Throws an ArgumentException if value is not in valid range
+    /// Throws an ArgumentException if value is not in valid range.
     /// </summary>
+    /// <param name="value">The integer value to validate.</param>
+    /// <param name="min">The minimum allowed value (inclusive).</param>
+    /// <param name="max">The maximum allowed value (inclusive).</param>
+    /// <param name="paramName">The name of the parameter being validated.</param>
     public static void ValidateRange(int value, int min, int max, string paramName)
     {
         if (value < min || value > max)
@@ -48,8 +59,12 @@ public static class ValidationHelper
     }
 
     /// <summary>
-    /// Throws an ArgumentException if value is not within the specified length
+    /// Throws an ArgumentException if value is not within the specified length.
     /// </summary>
+    /// <param name="value">The string value to validate.</param>
+    /// <param name="minLength">The minimum allowed length.</param>
+    /// <param name="maxLength">The maximum allowed length.</param>
+    /// <param name="paramName">The name of the parameter being validated.</param>
     public static void ValidateLength(string? value, int minLength, int maxLength, string paramName)
     {
         if (string.IsNullOrEmpty(value) || value.Length < minLength || value.Length > maxLength)
@@ -59,8 +74,12 @@ public static class ValidationHelper
     }
 
     /// <summary>
-    /// Validates that a collection contains at least one item matching predicate
+    /// Validates that a collection contains at least one item matching predicate.
     /// </summary>
+    /// <typeparam name="T">The type of elements in the collection.</typeparam>
+    /// <param name="collection">The collection to validate.</param>
+    /// <param name="predicate">The predicate to test each element against.</param>
+    /// <param name="errorMessage">The error message to throw if validation fails.</param>
     public static void ValidateAny<T>(IEnumerable<T> collection, Func<T, bool> predicate, string errorMessage)
     {
         if (!collection.Any(predicate))
@@ -68,8 +87,12 @@ public static class ValidationHelper
     }
 
     /// <summary>
-    /// Validates that all items in a collection match a predicate
+    /// Validates that all items in a collection match a predicate.
     /// </summary>
+    /// <typeparam name="T">The type of elements in the collection.</typeparam>
+    /// <param name="collection">The collection to validate.</param>
+    /// <param name="predicate">The predicate to test each element against.</param>
+    /// <param name="errorMessage">The error message to throw if validation fails.</param>
     public static void ValidateAll<T>(IEnumerable<T> collection, Func<T, bool> predicate, string errorMessage)
     {
         if (!collection.All(predicate))
@@ -77,8 +100,12 @@ public static class ValidationHelper
     }
 
     /// <summary>
-    /// Validates that two values are equal
+    /// Validates that two values are equal.
     /// </summary>
+    /// <typeparam name="T">The type of the values to compare.</typeparam>
+    /// <param name="expected">The expected value.</param>
+    /// <param name="actual">The actual value to validate.</param>
+    /// <param name="paramName">The name of the parameter being validated.</param>
     public static void ValidateEqual<T>(T expected, T actual, string paramName) where T : IEquatable<T>
     {
         if (!expected.Equals(actual))
@@ -86,8 +113,10 @@ public static class ValidationHelper
     }
 
     /// <summary>
-    /// Validates that a value matches a specific pattern/condition
+    /// Validates that a value matches a specific pattern/condition.
     /// </summary>
+    /// <param name="condition">The condition to validate.</param>
+    /// <param name="errorMessage">The error message to throw if validation fails.</param>
     public static void ValidateCondition(bool condition, string errorMessage)
     {
         if (!condition)
@@ -111,11 +140,20 @@ public sealed class ValidationContext<T>
     private readonly T _value;
     private readonly List<string> _errors = new();
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ValidationContext{T}"/> class.
+    /// </summary>
+    /// <param name="value">The value to validate.</param>
     public ValidationContext(T value)
     {
         _value = value;
     }
 
+    /// <summary>
+    /// Validates that the value is not null.
+    /// </summary>
+    /// <param name="fieldName">The name of the field being validated.</param>
+    /// <returns>The validation context for chaining.</returns>
     public ValidationContext<T> NotNull(string fieldName)
     {
         if (_value is null)
