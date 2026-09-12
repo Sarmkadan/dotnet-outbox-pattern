@@ -25,7 +25,8 @@ public sealed class DefaultMessagePublisher : IMessagePublisher
     /// <param name="logger">The logger.</param>
     public DefaultMessagePublisher(ILogger<DefaultMessagePublisher> logger)
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
     }
 
     /// <summary>
@@ -37,6 +38,8 @@ public sealed class DefaultMessagePublisher : IMessagePublisher
     /// <returns>A task representing the asynchronous publish operation.</returns>
     public Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(message);
+
         // Simulate some work
         _logger.LogInformation(
             "Publishing message {MessageId} to topic {Topic}. AggregateId: {AggregateId}, EventType: {EventType}",
@@ -64,6 +67,7 @@ public static class MessagePublisherFactory
     /// <returns>An instance of IMessagePublisher.</returns>
     public static IMessagePublisher CreateLoggingPublisher(ILogger logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         return new LoggingPublisher(logger);
     }
 
@@ -76,11 +80,14 @@ public static class MessagePublisherFactory
 
         public LoggingPublisher(ILogger logger)
         {
+            ArgumentNullException.ThrowIfNull(logger);
             _logger = logger;
         }
 
         public Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken = default)
         {
+            ArgumentNullException.ThrowIfNull(message);
+
             _logger.LogInformation(
                 "PUBLISHED: MessageId={MessageId}, Topic={Topic}, AggregateId={AggregateId}, Attempts={Attempts}",
                 message.Id, message.Topic, message.AggregateId, message.PublishAttempts + 1);
