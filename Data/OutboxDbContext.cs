@@ -29,6 +29,7 @@ public sealed class OutboxDbContext : DbContext
     /// <param name="options">The options to be used by a <see cref="DbContext"/>.</param>
     public OutboxDbContext(DbContextOptions<OutboxDbContext> options) : base(options)
     {
+        ArgumentNullException.ThrowIfNull(options);
     }
 
     /// <summary>
