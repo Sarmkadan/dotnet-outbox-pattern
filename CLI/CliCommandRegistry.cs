@@ -7,8 +7,8 @@
 namespace DotnetOutboxPattern.CLI;
 
 /// <summary>
-/// Registers and manages CLI commands for administrative tasks
-/// Provides command infrastructure for database operations, cleanup, diagnostics
+/// Registers and executes CLI commands for database administration, maintenance,
+/// and diagnostics.
 /// </summary>
 public sealed class CliCommandRegistry
 {
@@ -16,6 +16,14 @@ public sealed class CliCommandRegistry
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<CliCommandRegistry> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CliCommandRegistry"/> class.
+    /// </summary>
+    /// <param name="serviceProvider">The service provider used to resolve command dependencies.</param>
+    /// <param name="logger">The logger used to record command execution warnings and errors.</param>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="serviceProvider"/> or <paramref name="logger"/> is <see langword="null"/>.
+    /// </exception>
     public CliCommandRegistry(IServiceProvider serviceProvider, ILogger<CliCommandRegistry> logger)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
@@ -26,8 +34,12 @@ public sealed class CliCommandRegistry
     }
 
     /// <summary>
-    /// Executes a CLI command
+    /// Parses and executes the CLI command represented by the specified arguments.
     /// </summary>
+    /// <param name="args">The command-line arguments to parse and execute.</param>
+    /// <returns>
+    /// A task whose result is <c>0</c> when the command succeeds; otherwise, <c>1</c>.
+    /// </returns>
     public async Task<int> ExecuteAsync(string[] args)
     {
         try
