@@ -53,6 +53,7 @@ public sealed class IntegrationEventPublisher : IIntegrationEventPublisher
 
     public async Task PublishAsync<T>(T @event) where T : class
     {
+        ArgumentNullException.ThrowIfNull(@event);
         var eventType = typeof(T);
 
         if (!_publishers.TryGetValue(eventType, out var channelPublishers))
@@ -74,6 +75,8 @@ public sealed class IntegrationEventPublisher : IIntegrationEventPublisher
 
     public async Task PublishToChannelAsync<T>(T @event, string channel) where T : class
     {
+        ArgumentNullException.ThrowIfNull(@event);
+        ArgumentNullException.ThrowIfNull(channel);
         var eventType = typeof(T);
 
         if (!_publishers.TryGetValue(eventType, out var channelPublishers) ||
@@ -152,6 +155,7 @@ public sealed class WebhookIntegrationEventPublisher : IIntegrationEventPublishe
 
     public async Task PublishAsync(DomainEvent @event)
     {
+        ArgumentNullException.ThrowIfNull(@event);
         try
         {
             var eventType = @event.GetType().Name;
@@ -187,6 +191,7 @@ public sealed class ExternalApiIntegrationEventPublisher : IIntegrationEventPubl
 
     public async Task PublishAsync(DomainEvent @event)
     {
+        ArgumentNullException.ThrowIfNull(@event);
         try
         {
             var result = await _apiClient.CallAsync(_apiUrl, @event);
