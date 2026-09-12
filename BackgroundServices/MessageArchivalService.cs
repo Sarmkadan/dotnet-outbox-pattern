@@ -24,8 +24,11 @@ public sealed class MessageArchivalService : BackgroundService
         ILogger<MessageArchivalService> logger,
         MessageArchivalOptions? options = null)
     {
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(serviceProvider);
+        ArgumentNullException.ThrowIfNull(logger);
+
+        _serviceProvider = serviceProvider;
+        _logger = logger;
         _options = options ?? new MessageArchivalOptions();
     }
 
