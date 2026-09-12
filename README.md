@@ -40,6 +40,50 @@ var publishedMessage = await outboxService.PublishEventAsync(publishableEvent);
 Console.WriteLine($"Event published with ID: {publishedMessage.Id}");
 ```
 
+## Dead Letter Handling
+
+When a message exhausts its configured `MaxPublishAttempts` without being published, the dispatch loop stops retrying it and moves it out of the hot pending set into the dead-letter store. This prevents a poison message (bad payload, permanently rejecting broker, or any other unrecoverable error) from being redelivered forever while still preserving it for operator inspection.
+
+### How messages move to the dead-letter store
+
+`DeadLetterService.MoveToDlqAsync` is the entry point. It snapshots the failed `OutboxMessage` into a `DeadLetter` record via `DeadLetter.FromOutboxMessage` and persists it through `DeadLetterRepository.AddAsync`. The original message is left in the `Failed` state, so it is no longer picked up by `GetPendingMessagesAsync` and stops being redelivered. The dead letter retains the original message's topic, aggregate, event data, correlation/causation IDs, and the final error message so the failure can be diagnosed later.
+
+### Inspecting dead letters
+
+`DeadLetterRepository` (backed by EF Core against the `DeadLetters` table) provides read access:
+
+- `GetUnreviewedAsync(limit)` — dead letters awaiting operator review, oldest first.
+- `GetAllAsync(skip, limit)` — all dead letters, newest first, with pagination.
+- `GetByTopicAsync(topic)` / `GetByAggregateIdAsync(aggregateId)` — filter by topic or aggregate.
+- `GetByOutboxMessageIdAsync(outboxMessageId)` — find the dead letter for a specific outbox message.
+- `GetCountAsync`, `GetUnreviewedCountAsync`, `GetRequeuedCountAsync` — counts for dashboards and health checks.
+
+`DeadLetterService` wraps these with validation and logging, and `GetHealthAsync` reports the queue as unhealthy whenever unreviewed dead letters exist.
+
+### Reviewing and requeuing
+
+- **Review** — `DeadLetterService.ReviewAsync(deadLetterId, notes)` marks a dead letter as reviewed with operator notes (`MarkAsReviewed`). Reviewing does not change delivery; it just records that the failure has been investigated.
+- **Requeue** — `DeadLetterService.RequeueAsync(deadLetterId, reason)` pushes the message back into the outbox for another attempt. If the original outbox message still exists it is reset to `Pending` with `PublishAttempts = 0` and its error cleared; otherwise a fresh `OutboxMessage` is reconstructed from the dead letter data. In both cases `MaxPublishAttempts` is reset to `OutboxRetryOptions.MaxAttempts`, so the requeued message is bound by the same attempt ceiling as a new message. The dead letter is then marked as requeued (`MarkAsRequeued`).
+- **Delete** — `DeadLetterService.DeleteAsync(deadLetterId)` permanently removes a dead letter record once the failure is resolved.
+
+```csharp
+// Resolve the dead letter service from DI
+var dlq = scope.ServiceProvider.GetRequiredService<IDeadLetterService>();
+
+// Inspect what needs attention
+var unreviewed = await dlq.GetUnreviewedAsync(limit: 50);
+foreach (var deadLetter in unreviewed)
+{
+    Console.WriteLine($"{deadLetter.Id}: {deadLetter.Topic} — {deadLetter.ErrorMessage}");
+}
+
+// Investigate, then requeue once the underlying issue is fixed
+await dlq.RequeueAsync(deadLetterId, reason: "Transient broker outage resolved");
+
+// Or record the investigation without redelivering
+await dlq.ReviewAsync(deadLetterId, notes: "Confirmed invalid payload, discarding");
+```
+
 // =============================================================================
 // Utilities
 // =============================================================================
