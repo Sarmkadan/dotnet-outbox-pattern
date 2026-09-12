@@ -19,6 +19,13 @@ public sealed class QueryBuilder : IEquatable<QueryBuilder>
     private bool _orderDescending = true;
 
     /// <summary>
+    /// Initializes a new instance of the <see cref="QueryBuilder"/> class.
+    /// </summary>
+    public QueryBuilder()
+    {
+    }
+
+    /// <summary>
     /// Adds an equality filter condition
     /// </summary>
     public QueryBuilder Where(string field, object value)
@@ -188,6 +195,11 @@ public sealed class QueryBuilder : IEquatable<QueryBuilder>
     // Equality members
     // ------------------------------------------------------------------------
 
+    /// <summary>
+    /// Indicates whether the current object is equal to another object of the same type.
+    /// </summary>
+    /// <param name="other">An object to compare with this object.</param>
+    /// <returns>true if the current object is equal to the <paramref name="other">parameter</paramref>; otherwise, false.</returns>
     public bool Equals(QueryBuilder? other)
     {
         if (other is null) return false;
@@ -225,9 +237,18 @@ public sealed class QueryBuilder : IEquatable<QueryBuilder>
         return true;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as QueryBuilder);
+    /// <summary>
+/// Determines whether the specified object is equal to the current object.
+/// </summary>
+/// <param name="obj">The object to compare with the current object.</param>
+/// <returns>true if the specified object is equal to the current object; otherwise, false.</returns>
+public override bool Equals(object? obj) => Equals(obj as QueryBuilder);
 
-    public override int GetHashCode()
+    /// <summary>
+/// Returns the hash code for this instance.
+/// </summary>
+/// <returns>A 32-bit signed integer that is the hash code for this instance.</returns>
+public override int GetHashCode()
     {
         var hash = new HashCode();
         hash.Add(_orderBy);
@@ -265,15 +286,28 @@ public sealed class QueryBuilder : IEquatable<QueryBuilder>
 /// </summary>
 public sealed class FilterCondition
 {
+    /// <summary>
+    /// Gets or sets the field name for the filter condition.
+    /// </summary>
     [JsonPropertyName("field")]
     public string Field { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Gets or sets the filter operator for the condition.
+    /// </summary>
     [JsonPropertyName("operator")]
     public FilterOperator Operator { get; set; }
 
+    /// <summary>
+    /// Gets or sets the value for the filter condition.
+    /// </summary>
     [JsonPropertyName("value")]
     public object? Value { get; set; }
 
+    /// <summary>
+    /// Returns a string representation of the filter condition.
+    /// </summary>
+    /// <returns>A string that represents the filter condition.</returns>
     public override string ToString()
     {
         return Operator switch
@@ -297,17 +331,68 @@ public sealed class FilterCondition
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum FilterOperator
 {
+    /// <summary>
+    /// Equality operator (=)
+    /// </summary>
     Equals = 0,
+
+    /// <summary>
+    /// Greater than operator (>)
+    /// </summary>
     GreaterThan = 1,
+
+    /// <summary>
+    /// Less than operator (<)
+    /// </summary>
     LessThan = 2,
+
+    /// <summary>
+    /// Greater than or equal operator (>=)
+    /// </summary>
     GreaterThanOrEqual = 3,
+
+    /// <summary>
+    /// Less than or equal operator (<=)
+    /// </summary>
     LessThanOrEqual = 4,
+
+    /// <summary>
+    /// Contains operator (LIKE '%value%')
+    /// </summary>
     Contains = 5,
+
+    /// <summary>
+    /// Starts with operator (LIKE 'value%')
+    /// </summary>
     StartsWith = 6,
+
+    /// <summary>
+    /// Ends with operator (LIKE '%value')
+    /// </summary>
     EndsWith = 7,
+
+    /// <summary>
+    /// In operator (matches any value in a list)
+    /// </summary>
     In = 8,
+
+    /// <summary>
+    /// Between operator (inclusive range)
+    /// </summary>
     Between = 9,
+
+    /// <summary>
+    /// Is null operator
+    /// </summary>
     IsNull = 10,
+
+    /// <summary>
+    /// Is not null operator
+    /// </summary>
     IsNotNull = 11,
+
+    /// <summary>
+    /// Not equal operator (<>)
+    /// </summary>
     NotEqual = 12
 }
