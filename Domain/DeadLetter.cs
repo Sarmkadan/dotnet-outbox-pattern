@@ -202,4 +202,13 @@ public sealed class DeadLetter
         RequeuedAt = DateTime.UtcNow;
         RequeueReason = reason.Trim();
     }
+
+    /// <summary>
+    /// Returns a string representation of the dead letter for logging/debugging
+    /// </summary>
+    /// <returns>A concise representation containing identifiers, event type, topic, and attempts</returns>
+    public override string ToString()
+    {
+        return $"DeadLetter {{ Id={Id}, OutboxMessageId={OutboxMessageId}, Type={EventTypeName}, Topic={Topic}, Attempts={TotalAttempts} }}";
+    }
 }
