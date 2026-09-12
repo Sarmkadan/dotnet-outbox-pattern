@@ -18,9 +18,14 @@ public sealed class CircuitBreakerOptions
     private const bool DefaultEnabled = true;
     private const int DefaultFailureThreshold = 5;
     private const int DefaultHalfOpenTestRequests = 2;
-    private static readonly TimeSpan DefaultOpenDuration = TimeSpan.FromMinutes(1);
-    private static readonly TimeSpan DefaultHalfOpenSuccessDuration = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan DefaultHalfOpenFailureDuration = TimeSpan.FromSeconds(10);
+    private const int DefaultOpenDurationMinutes = 1;
+    private const int DefaultHalfOpenSuccessDurationSeconds = 30;
+    private const int DefaultHalfOpenFailureDurationSeconds = 10;
+    private static readonly TimeSpan DefaultOpenDuration = TimeSpan.FromMinutes(DefaultOpenDurationMinutes);
+    private static readonly TimeSpan DefaultHalfOpenSuccessDuration =
+        TimeSpan.FromSeconds(DefaultHalfOpenSuccessDurationSeconds);
+    private static readonly TimeSpan DefaultHalfOpenFailureDuration =
+        TimeSpan.FromSeconds(DefaultHalfOpenFailureDurationSeconds);
 
     /// <summary>
     /// Whether the circuit breaker is enabled
