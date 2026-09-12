@@ -174,6 +174,15 @@ public sealed class MessageContext
             Activity.Current.SetTag("otel.status_code", "ERROR");
         }
     }
+
+    /// <summary>
+    /// Returns a concise representation of the message context for logging/debugging.
+    /// </summary>
+    /// <returns>A representation containing the configured activity source.</returns>
+    public override string ToString()
+    {
+        return $"MessageContext {{ ActivitySource={ActivitySource.Name} }}";
+    }
 }
 
 /// <summary>
