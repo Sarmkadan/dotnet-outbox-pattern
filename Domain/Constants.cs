@@ -138,14 +138,49 @@ public static class StandardTopics
 /// </summary>
 public static class LogProperties
 {
+    /// <summary>
+    /// Identifies the structured log property containing the outbox message identifier.
+    /// </summary>
     public const string MessageId = "MessageId";
+
+    /// <summary>
+    /// Identifies the structured log property containing the correlation identifier.
+    /// </summary>
     public const string CorrelationId = "CorrelationId";
+
+    /// <summary>
+    /// Identifies the structured log property containing the causation identifier.
+    /// </summary>
     public const string CausationId = "CausationId";
+
+    /// <summary>
+    /// Identifies the structured log property containing the aggregate identifier.
+    /// </summary>
     public const string AggregateId = "AggregateId";
+
+    /// <summary>
+    /// Identifies the structured log property containing the message topic.
+    /// </summary>
     public const string Topic = "Topic";
+
+    /// <summary>
+    /// Identifies the structured log property containing the message state.
+    /// </summary>
     public const string State = "State";
+
+    /// <summary>
+    /// Identifies the structured log property containing the number of processing attempts.
+    /// </summary>
     public const string Attempts = "Attempts";
+
+    /// <summary>
+    /// Identifies the structured log property containing an operation's duration.
+    /// </summary>
     public const string Duration = "Duration";
+
+    /// <summary>
+    /// Identifies the structured log property indicating whether an operation succeeded.
+    /// </summary>
     public const string Success = "Success";
 }
 
@@ -154,15 +189,54 @@ public static class LogProperties
 /// </summary>
 public static class ErrorCodes
 {
+    /// <summary>
+    /// Indicates that the requested outbox message could not be found.
+    /// </summary>
     public const string MessageNotFound = "MSG_NOT_FOUND";
+
+    /// <summary>
+    /// Indicates that publishing an outbox message failed.
+    /// </summary>
     public const string PublishingFailed = "PUBLISH_FAILED";
+
+    /// <summary>
+    /// Indicates that message serialization failed.
+    /// </summary>
     public const string SerializationError = "SERIALIZATION_ERROR";
+
+    /// <summary>
+    /// Indicates that message deserialization failed.
+    /// </summary>
     public const string DeserializationError = "DESERIALIZATION_ERROR";
+
+    /// <summary>
+    /// Indicates that a database operation failed.
+    /// </summary>
     public const string DatabaseError = "DATABASE_ERROR";
+
+    /// <summary>
+    /// Indicates that an outbox message is invalid.
+    /// </summary>
     public const string InvalidMessage = "INVALID_MESSAGE";
+
+    /// <summary>
+    /// Indicates that the outbox configuration is invalid.
+    /// </summary>
     public const string InvalidConfiguration = "INVALID_CONFIG";
+
+    /// <summary>
+    /// Indicates that an operation exceeded its allowed execution time.
+    /// </summary>
     public const string OperationTimeout = "OPERATION_TIMEOUT";
+
+    /// <summary>
+    /// Indicates that an operation encountered a concurrency conflict.
+    /// </summary>
     public const string ConcurrencyConflict = "CONCURRENCY_CONFLICT";
+
+    /// <summary>
+    /// Indicates that an operation involving the dead-letter queue failed.
+    /// </summary>
     public const string DeadLetterQueueError = "DLQ_ERROR";
 }
 
@@ -171,9 +245,24 @@ public static class ErrorCodes
 /// </summary>
 public static class HttpHeaders
 {
+    /// <summary>
+    /// Names the HTTP header used to propagate a correlation identifier.
+    /// </summary>
     public const string CorrelationId = "X-Correlation-Id";
+
+    /// <summary>
+    /// Names the HTTP header used to propagate a causation identifier.
+    /// </summary>
     public const string CausationId = "X-Causation-Id";
+
+    /// <summary>
+    /// Names the HTTP header used to provide an idempotency key.
+    /// </summary>
     public const string IdempotencyKey = "X-Idempotency-Key";
+
+    /// <summary>
+    /// Names the HTTP header used to propagate a request identifier.
+    /// </summary>
     public const string RequestId = "X-Request-Id";
 }
 
