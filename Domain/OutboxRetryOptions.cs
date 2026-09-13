@@ -187,4 +187,13 @@ public sealed class OutboxRetryOptions
         var jitter = _jitterSource.NextDouble() * baseDelay;
         return baseDelay + jitter;
     }
+
+    /// <summary>
+    /// Returns a string that summarizes the current retry settings.
+    /// </summary>
+    /// <returns>A string summarizing the retry settings.</returns>
+    public override string ToString()
+    {
+        return $"OutboxRetryOptions: MaxAttempts={MaxAttempts}, BackoffStrategy={BackoffStrategy}, InitialDelay={InitialDelay}, MaxDelay={MaxDelay}, BackoffMultiplier={BackoffMultiplier}, LinearIncrement={LinearIncrement}";
+    }
 }
