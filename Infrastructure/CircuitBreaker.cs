@@ -383,4 +383,17 @@ public sealed class CircuitBreaker : IDisposable
         _disposed = true;
         GC.SuppressFinalize(this);
     }
+
+    /// <summary>
+    /// Returns a string representation of the circuit breaker state
+    /// </summary>
+    /// <returns>Current state and failure count</returns>
+    public override string ToString()
+    {
+        lock (_lock)
+        {
+            var state = GetCurrentState();
+            return $"State: {state}, FailureCount: {_failureCount}";
+        }
+    }
 }
