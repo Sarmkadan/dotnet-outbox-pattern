@@ -180,9 +180,9 @@ public sealed class OutboxService : IOutboxService
                 State = OutboxMessageState.Pending
             };
 
-        // Capture W3C trace-context from the current activity into message headers
-        // This enables distributed tracing correlation across service boundaries
-        MessageContext.CaptureTraceContext(message);
+            // Capture W3C trace-context from the current activity into message headers
+            // This enables distributed tracing correlation across service boundaries
+            MessageContext.CaptureTraceContext(message);
 
             var result = await _repository.AddAsync(message, cancellationToken);
 
