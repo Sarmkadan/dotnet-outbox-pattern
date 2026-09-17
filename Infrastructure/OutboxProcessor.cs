@@ -45,16 +45,16 @@ public sealed class OutboxProcessorOptions : IOutboxProcessorOptions
     public int LockDurationSeconds { get; set; } = 300;
 
         /// <summary>
-        /// Whether to use batch claiming with row-level locking for competing consumers
-        /// When enabled, messages are claimed in batches using SQL Server's UPDLOCK/ROWLOCK/READPAST
-        /// to prevent multiple instances from processing the same messages
-        /// </summary>
-        public bool UseBatchClaiming { get; set; } = true;
+    /// Whether to use batch claiming with row-level locking for competing consumers
+    /// When enabled, messages are claimed in batches using SQL Server's UPDLOCK/ROWLOCK/READPAST
+    /// to prevent multiple instances from processing the same messages
+    /// </summary>
+    public bool UseBatchClaiming { get; set; } = true;
 
-        /// <summary>
-        /// Maximum number of messages to claim in a single batch when UseBatchClaiming is enabled
-        /// </summary>
-        public int MaxBatchClaimSize { get; set; } = 100;
+    /// <summary>
+    /// Maximum number of messages to claim in a single batch when UseBatchClaiming is enabled
+    /// </summary>
+    public int MaxBatchClaimSize { get; set; } = 100;
 
     /// <summary>
     /// Whether to process partitioned messages sequentially
@@ -165,14 +165,14 @@ public sealed class OutboxProcessor : BackgroundService
                 // Update circuit breaker state in health metrics
                 _health.CircuitState = (Domain.CircuitState)_circuitBreaker.State;
 
-			// When circuit is open, sleep until it's ready to try again
-			// This prevents hammering a downed downstream service
-			if (!_circuitBreaker.IsAllowed)
-			{
-				_logger.LogDebug("Circuit breaker is open, sleeping to allow recovery");
-				await Task.Delay(_options.DelayBetweenBatches, stoppingToken);
-				continue;
-			}
+                // When circuit is open, sleep until it's ready to try again
+                // This prevents hammering a downed downstream service
+                if (!_circuitBreaker.IsAllowed)
+                {
+                    _logger.LogDebug("Circuit breaker is open, sleeping to allow recovery");
+                    await Task.Delay(_options.DelayBetweenBatches, stoppingToken);
+                    continue;
+                }
 
                 // Check for and release expired locks
                 if (DateTime.UtcNow - _lastExpiredLockCheck > TimeSpan.FromMilliseconds(_options.CheckExpiredLocksInterval))
