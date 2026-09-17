@@ -122,7 +122,9 @@ public sealed class DeadLetterService : IDeadLetterService
     /// <summary>
     /// Retrieves unreviewed dead letters that require operator action
     /// </summary>
-    public async Task<List<DeadLetter>> GetUnreviewedAsync(int limit = 100, CancellationToken cancellationToken = default)
+    public async Task<List<DeadLetter>> GetUnreviewedAsync(
+        int limit = 100,
+        CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
 
