@@ -54,7 +54,7 @@ public class OutboxSerializerBenchmarks
     public PublishableEvent DeserializeEvent()
     {
         var json = _serializer.Serialize(_publishableEvent);
-        return _serializer.Deserialize<PublishableEvent>(json);
+        return _serializer.Deserialize<PublishableEvent>(json)!;
     }
 
     /// <summary>

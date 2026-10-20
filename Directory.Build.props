@@ -2,11 +2,18 @@
 <Project>
 
   <PropertyGroup>
-    <LangVersion>latest</LangVersion>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <NoWarn>NU1510;NU1603;NU1902;NU1903</NoWarn>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- NU1510: dependency resolution fallback; NU1603: version fallback; NU1902/NU1903: preview SDK warnings;
+         EF1002: SqlQueryRaw with interpolation - suppressed because the interpolated values are schema constants and enums, not user input;
+         CS1591: missing XML doc on public members - too noisy for a library with partial doc coverage;
+         CS1574: unresolved cref in XML doc comments -->
+    <NoWarn>NU1510;NU1603;NU1902;NU1903;EF1002;CS1591;CS1574;CS1573</NoWarn>
     <Authors>Vladyslav Zaiets</Authors>
     <PackageProjectUrl>https://github.com/sarmkadan/dotnet-outbox-pattern</PackageProjectUrl>
   </PropertyGroup>

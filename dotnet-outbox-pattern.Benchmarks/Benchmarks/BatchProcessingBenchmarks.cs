@@ -82,7 +82,7 @@ public class BatchProcessingBenchmarks : IDisposable
             });
         }
 
-        _context.OutboxMessages.AddRange(messages);
+        _context!.OutboxMessages.AddRange(messages);
         _context.SaveChanges();
     }
 

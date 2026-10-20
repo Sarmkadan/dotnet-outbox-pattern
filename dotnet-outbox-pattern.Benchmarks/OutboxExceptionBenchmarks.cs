@@ -7,10 +7,10 @@ namespace DotnetOutboxPattern.Benchmarks;
 [MemoryDiagnoser]
 public class OutboxExceptionBenchmarks
 {
-    private OutboxException _outboxException;
-    private string _message;
-    private string _errorCode;
-    private string _resourceId;
+    private OutboxException _outboxException = default!;
+    private string _message = default!;
+    private string _errorCode = default!;
+    private string _resourceId = default!;
 
     [Params(10, 100, 1000)]
     public int ExceptionCount { get; set; }

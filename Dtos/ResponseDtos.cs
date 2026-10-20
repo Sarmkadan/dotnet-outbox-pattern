@@ -224,7 +224,7 @@ public sealed class WebhookSubscriptionDto
 {
     /// <summary>
     /// Gets or sets the unique identifier.
-    /// </>
+    /// </summary>
     public Guid Id { get; set; }
     /// <summary>
     /// Gets or sets the webhook URL.

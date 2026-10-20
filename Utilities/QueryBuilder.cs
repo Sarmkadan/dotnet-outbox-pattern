@@ -362,22 +362,22 @@ public enum FilterOperator
     Equals = 0,
 
     /// <summary>
-    /// Greater than operator (>)
+    /// Greater than operator (&gt;)
     /// </summary>
     GreaterThan = 1,
 
     /// <summary>
-    /// Less than operator (<)
+    /// Less than operator (&lt;)
     /// </summary>
     LessThan = 2,
 
     /// <summary>
-    /// Greater than or equal operator (>=)
+    /// Greater than or equal operator (&gt;=)
     /// </summary>
     GreaterThanOrEqual = 3,
 
     /// <summary>
-    /// Less than or equal operator (<=)
+    /// Less than or equal operator (&lt;=)
     /// </summary>
     LessThanOrEqual = 4,
 
@@ -417,7 +417,7 @@ public enum FilterOperator
     IsNotNull = 11,
 
     /// <summary>
-    /// Not equal operator (<>)
+    /// Not equal operator (&lt;&gt;)
     /// </summary>
     NotEqual = 12
 }

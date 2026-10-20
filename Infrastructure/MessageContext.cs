@@ -55,7 +55,7 @@ public sealed class MessageContext
         if (activity is null)
             return;
 
-        message.Headers[TraceParentHeader] = activity.Id ?? activity.Context.ToString();
+        message.Headers[TraceParentHeader] = activity.Id ?? activity.Context.ToString()!;
 
         if (!string.IsNullOrEmpty(activity.TraceStateString))
             message.Headers[TraceStateHeader] = activity.TraceStateString;

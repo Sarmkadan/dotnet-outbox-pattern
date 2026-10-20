@@ -75,7 +75,7 @@ public static class OutboxExceptionExtensions
         var diagnostics = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         diagnostics.Add("ErrorCode", exception.ErrorCode);
         diagnostics.Add("Message", exception.Message);
-        diagnostics.Add("ExceptionType", exception.GetType().FullName ?? typeof(OutboxException).FullName);
+        diagnostics.Add("ExceptionType", exception.GetType().FullName ?? typeof(OutboxException).FullName!);
 
         if (!string.IsNullOrEmpty(exception.ResourceId))
         {

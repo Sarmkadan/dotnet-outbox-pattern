@@ -6,8 +6,8 @@ namespace DotnetOutboxPattern.Benchmarks;
 [MemoryDiagnoser]
 public class OutboxProcessorOptionsBenchmarks
 {
-    private OutboxProcessorOptions _validOptions;
-    private OutboxProcessorOptions _invalidOptions;
+    private OutboxProcessorOptions _validOptions = default!;
+    private OutboxProcessorOptions _invalidOptions = default!;
 
     [Params(0, 1, 5, 10)]
     public int EmptyBatches { get; set; }

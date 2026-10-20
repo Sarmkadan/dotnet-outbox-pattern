@@ -23,7 +23,7 @@ public class HealthCheckServiceValidationTests
         HealthAlert? nullAlert = null;
 
         // Act
-        Action act = () => HealthCheckServiceValidation.Validate(nullAlert);
+        Action act = () => HealthCheckServiceValidation.Validate(nullAlert!);
 
         // Assert
         act.Should().Throw<ArgumentNullException>("null HealthAlert should throw ArgumentNullException");
@@ -56,7 +56,7 @@ public class HealthCheckServiceValidationTests
         // Arrange
         var alert = new HealthAlert
         {
-            Type = invalidType,
+            Type = invalidType!,
             Message = "Valid message",
             RaisedAt = DateTime.UtcNow
         };
@@ -79,7 +79,7 @@ public class HealthCheckServiceValidationTests
         var alert = new HealthAlert
         {
             Type = "ValidType",
-            Message = invalidMessage,
+            Message = invalidMessage!,
             RaisedAt = DateTime.UtcNow
         };
 
@@ -135,7 +135,7 @@ public class HealthCheckServiceValidationTests
         // Arrange
         var alert = new HealthAlert
         {
-            Type = null,
+            Type = null!,
             Message = "",
             RaisedAt = default
         };
@@ -157,7 +157,7 @@ public class HealthCheckServiceValidationTests
         HealthAlert? nullAlert = null;
 
         // Act
-        Action act = () => HealthCheckServiceValidation.IsValid(nullAlert);
+        Action act = () => HealthCheckServiceValidation.IsValid(nullAlert!);
 
         // Assert
         act.Should().Throw<ArgumentNullException>("null HealthAlert should throw ArgumentNullException");
@@ -206,7 +206,7 @@ public class HealthCheckServiceValidationTests
         HealthAlert? nullAlert = null;
 
         // Act
-        Action act = () => HealthCheckServiceValidation.EnsureValid(nullAlert);
+        Action act = () => HealthCheckServiceValidation.EnsureValid(nullAlert!);
 
         // Assert
         act.Should().Throw<ArgumentNullException>("null HealthAlert should throw ArgumentNullException");
@@ -260,7 +260,7 @@ public class HealthCheckServiceValidationTests
         HealthCheckOptions? nullOptions = null;
 
         // Act
-        Action act = () => HealthCheckServiceValidation.Validate(nullOptions);
+        Action act = () => HealthCheckServiceValidation.Validate(nullOptions!);
 
         // Assert
         act.Should().Throw<ArgumentNullException>("null HealthCheckOptions should throw ArgumentNullException");
@@ -425,7 +425,7 @@ public class HealthCheckServiceValidationTests
         HealthCheckOptions? nullOptions = null;
 
         // Act
-        Action act = () => HealthCheckServiceValidation.IsValid(nullOptions);
+        Action act = () => HealthCheckServiceValidation.IsValid(nullOptions!);
 
         // Assert
         act.Should().Throw<ArgumentNullException>("null HealthCheckOptions should throw ArgumentNullException");
@@ -476,7 +476,7 @@ public class HealthCheckServiceValidationTests
         HealthCheckOptions? nullOptions = null;
 
         // Act
-        Action act = () => HealthCheckServiceValidation.EnsureValid(nullOptions);
+        Action act = () => HealthCheckServiceValidation.EnsureValid(nullOptions!);
 
         // Assert
         act.Should().Throw<ArgumentNullException>("null HealthCheckOptions should throw ArgumentNullException");
