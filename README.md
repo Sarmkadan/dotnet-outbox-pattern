@@ -1,3 +1,5 @@
+[![CI](https://github.com/sarmkadan/dotnet-outbox-pattern/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sarmkadan/dotnet-outbox-pattern/actions/workflows/ci.yml)
+
 ## Quick Start
 
 Get up and running with the Outbox Pattern in minutes.
