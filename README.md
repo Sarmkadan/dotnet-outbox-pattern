@@ -2010,3 +2010,7 @@ persisted.State.Should().Be(OutboxMessageState.Published);
 // Cleanup
 connection.Dispose();
 ```
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
