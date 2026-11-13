@@ -74,7 +74,9 @@ public sealed class RequestLoggingMiddleware
                 stopwatch.ElapsedMilliseconds,
                 context.TraceIdentifier);
 
-            // Copy response back to original stream
+            // Copy response back to original stream. CopyToAsync reads from the current position,
+            // which is at the end after the writes above, so rewind first or nothing is sent.
+            responseMemoryStream.Position = 0;
             await responseMemoryStream.CopyToAsync(originalBodyStream);
         }
         catch (Exception ex)

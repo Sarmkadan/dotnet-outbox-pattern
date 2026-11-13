@@ -78,7 +78,10 @@ public sealed class DeadLetterRepository : IDeadLetterRepository
     }
 
     /// <summary>
-    /// Adds a new dead letter record to the database
+    /// Adds a new dead letter record to the database.
+    /// The store holds at most one dead letter per outbox message (unique index on
+    /// <c>OutboxMessageId</c>), so a message that was requeued and has exhausted its retries again
+    /// replaces its previous dead letter record.
     /// </summary>
     public async Task<DeadLetter> AddAsync(DeadLetter deadLetter, CancellationToken cancellationToken = default)
     {
@@ -86,6 +89,17 @@ public sealed class DeadLetterRepository : IDeadLetterRepository
 
         try
         {
+            var previous = await _context.DeadLetters
+                .Where(x => x.OutboxMessageId == deadLetter.OutboxMessageId)
+                .ToListAsync(cancellationToken);
+
+            if (previous.Count > 0)
+            {
+                // Delete before inserting in a separate save, so the unique index never sees both rows.
+                _context.DeadLetters.RemoveRange(previous);
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+
             _context.DeadLetters.Add(deadLetter);
             await _context.SaveChangesAsync(cancellationToken);
             return deadLetter;

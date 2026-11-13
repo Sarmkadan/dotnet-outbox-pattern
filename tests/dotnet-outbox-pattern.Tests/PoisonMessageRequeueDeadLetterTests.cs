@@ -13,6 +13,7 @@
 using DotnetOutboxPattern.Data;
 using DotnetOutboxPattern.Domain;
 using DotnetOutboxPattern.Services;
+using DotnetOutboxPattern.Utilities;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -56,23 +57,36 @@ public sealed class PoisonMessageRequeueDeadLetterTests : IDisposable
         }
     }
 
+    // Each tick is driven back-to-back, so a failed message must be due again immediately
+    // rather than waiting out its backoff delay.
+    private static OutboxRetryOptions ImmediateRetry(int maxAttempts = OutboxConstants.DefaultMaxPublishAttempts) => new()
+    {
+        MaxAttempts = maxAttempts,
+        BackoffStrategy = RetryStrategy.FixedDelay,
+        InitialDelay = TimeSpan.Zero
+    };
+
     private OutboxDbContext NewContext() => new(_dbOptions);
 
     private (MessagePublishingService service, OutboxRepository outbox, DeadLetterRepository dlqRepo, DeadLetterService dlqService) NewProcess(
         OutboxDbContext context,
         IMessagePublisher publisher,
-        PublishingOptions? options = null)
+        OutboxRetryOptions? retryOptions = null)
     {
         var outbox = new OutboxRepository(context);
         var dlqRepo = new DeadLetterRepository(context);
         var outboxService = new OutboxService(outbox, NullLogger<OutboxService>.Instance, new SystemTextJsonOutboxSerializer());
-        var dlqService = new DeadLetterService(dlqRepo, outbox, outboxService, NullLogger<DeadLetterService>.Instance);
+        // The retry policy is shared: requeue stamps the new MaxPublishAttempts from the DLQ service's copy.
+        retryOptions ??= ImmediateRetry();
+        var dlqService = new DeadLetterService(dlqRepo, outbox, outboxService, NullLogger<DeadLetterService>.Instance, retryOptions);
         var service = new MessagePublishingService(
             outbox,
             dlqRepo,
             publisher,
             NullLogger<MessagePublishingService>.Instance,
-            options ?? new PublishingOptions { PublishTimeout = TimeSpan.FromSeconds(5) });
+            // Batch claiming runs SQL Server-only row-locking SQL, so use the plain query path on SQLite.
+            new PublishingOptions { PublishTimeout = TimeSpan.FromSeconds(5), UseBatchClaiming = false },
+            retryOptions);
         return (service, outbox, dlqRepo, dlqService);
     }
 
@@ -134,7 +148,7 @@ public sealed class PoisonMessageRequeueDeadLetterTests : IDisposable
         // Requeue the dead-lettered message with a new MaxPublishAttempts configuration
         using (var requeueCtx = NewContext())
         {
-            var (_, outbox, dlqRepo, dlqService) = NewProcess(requeueCtx, publisher);
+            var (_, outbox, dlqRepo, dlqService) = NewProcess(requeueCtx, publisher, ImmediateRetry(newMaxAttempts));
             var deadLetters = await dlqService.GetUnreviewedAsync(limit: 10);
             deadLetters.Should().HaveCount(1);
 
@@ -146,7 +160,7 @@ public sealed class PoisonMessageRequeueDeadLetterTests : IDisposable
         for (var tick = 0; tick < newMaxAttempts; tick++)
         {
             using var ctx = NewContext();
-            var (service, _, _, _) = NewProcess(ctx, publisher);
+            var (service, _, _, _) = NewProcess(ctx, publisher, ImmediateRetry(newMaxAttempts));
             await service.ProcessPendingMessagesAsync(batchSize: 10);
         }
 
@@ -158,7 +172,7 @@ public sealed class PoisonMessageRequeueDeadLetterTests : IDisposable
         {
             var (_, outbox, _, _) = NewProcess(finalVerify, publisher);
             var messages = await outbox.GetAllAsync(limit: 100);
-            var requeuedMessage = messages.FirstOrDefault(m => m.IdempotencyKey.StartsWith(idempotencyKey + "_requeue_"));
+            var requeuedMessage = messages.FirstOrDefault(m => m.IdempotencyKey == idempotencyKey);
             requeuedMessage.Should().NotBeNull();
             requeuedMessage!.State.Should().Be(OutboxMessageState.Failed);
             requeuedMessage.PublishAttempts.Should().Be(newMaxAttempts);
@@ -225,7 +239,7 @@ public sealed class PoisonMessageRequeueDeadLetterTests : IDisposable
         {
             var (_, outbox, _, _) = NewProcess(finalVerify, publisher);
             var messages = await outbox.GetAllAsync(limit: 100);
-            var requeuedMessage = messages.FirstOrDefault(m => m.IdempotencyKey.StartsWith(idempotencyKey + "_requeue_"));
+            var requeuedMessage = messages.FirstOrDefault(m => m.IdempotencyKey == idempotencyKey);
             requeuedMessage.Should().NotBeNull();
             requeuedMessage!.State.Should().Be(OutboxMessageState.Failed);
             requeuedMessage.PublishAttempts.Should().Be(5);

@@ -141,10 +141,11 @@ public static class OutboxBackoffExtensions
             return TimeSpan.FromMilliseconds(baseDelay);
         }
 
-        // Delegate the exponential calculation to the shared BackoffMath implementation.
+        // Delegate the exponential calculation to the shared BackoffMath implementation. It rejects a
+        // ceiling below the base delay, so keep the ceiling at or above the normalised base instead.
         var delayMs = BackoffMath.ComputeExponentialDelay(
-            baseDelayMs: options.DelayBetweenBatches,
-            maxDelayMs: options.MaxDelayBetweenBatches,
+            baseDelayMs: baseDelay,
+            maxDelayMs: Math.Max(baseDelay, options.MaxDelayBetweenBatches),
             multiplier: options.BackoffMultiplier,
             attempt: consecutiveEmptyBatches);
 

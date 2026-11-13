@@ -110,13 +110,13 @@ act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
 
 [Fact]
 /// <summary>
-/// Tests that MoveToDlqAsync throws DeadLetterException when message is null.
+/// Tests that MoveToDlqAsync throws ArgumentNullException when message is null.
 /// </summary>
-public async Task MoveToDlqAsync_WithNullMessage_ThrowsDeadLetterException()
+public async Task MoveToDlqAsync_WithNullMessage_ThrowsArgumentNullException()
 {
 var act = async () => await _sut.MoveToDlqAsync(null!);
 
-await act.Should().ThrowAsync<DeadLetterException>();
+await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("message");
 }
 
 [Fact]

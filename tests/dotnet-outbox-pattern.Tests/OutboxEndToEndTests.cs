@@ -75,7 +75,8 @@ public sealed class OutboxEndToEndTests : IDisposable
     }
 
     private ProcessScope NewProcess(IMessagePublisher publisher, PublishingOptions? options = null)
-        => new(_dbOptions, publisher, options ?? new PublishingOptions { PublishTimeout = TimeSpan.FromSeconds(5) });
+        // Batch claiming runs SQL Server-only row-locking SQL, so use the plain query path on SQLite.
+        => new(_dbOptions, publisher, options ?? new PublishingOptions { PublishTimeout = TimeSpan.FromSeconds(5), UseBatchClaiming = false });
 
     /// <summary>
     /// A publisher that records every delivery so tests can assert at-least-once delivery

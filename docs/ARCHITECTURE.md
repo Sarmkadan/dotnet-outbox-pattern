@@ -89,6 +89,9 @@ Domain/Enums.cs and `RetryPolicyHelper`); once retries are exhausted it creates 
 loop: list unreviewed entries, mark reviewed with notes, or requeue back into the outbox.
 The `ReviewRequest`/`RequeueRequest` DTOs live at the bottom of Program.cs.
 
+The dead-letter store keeps at most one record per outbox message. A requeued message that
+exhausts its retries again replaces its previous dead-letter record instead of adding a second one.
+
 ## Composition (Program.cs)
 
 Two registration layers, deliberately split:

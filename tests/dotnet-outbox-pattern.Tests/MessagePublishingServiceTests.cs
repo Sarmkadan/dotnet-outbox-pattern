@@ -34,7 +34,9 @@ public sealed class MessagePublishingServiceTests
         _dlRepoMock = new Mock<IDeadLetterRepository>();
         _publisherMock = new Mock<IMessagePublisher>();
         _loggerMock = new Mock<ILogger<MessagePublishingService>>();
-        _options = new PublishingOptions { MaxRetries = 5 };
+        // These tests mock the legacy GetPending/GetScheduled queries, so disable batch claiming
+        // (its default is on, and it runs SQL Server-only row-locking SQL).
+        _options = new PublishingOptions { MaxRetries = 5, UseBatchClaiming = false };
         _sut = new MessagePublishingService(
             _outboxRepoMock.Object,
             _dlRepoMock.Object,

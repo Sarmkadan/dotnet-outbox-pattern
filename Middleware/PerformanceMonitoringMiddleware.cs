@@ -200,7 +200,6 @@ public static class PerformanceMonitoringMiddlewareExtensions
         PerformanceMonitor? monitor = null)
     {
         var mon = monitor ?? new PerformanceMonitor();
-        app.ApplicationServices.GetRequiredService<IServiceCollection>();
         return app.UseMiddleware<PerformanceMonitoringMiddleware>(mon);
     }
 

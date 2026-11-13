@@ -7,6 +7,7 @@
 using DotnetOutboxPattern.Data;
 using DotnetOutboxPattern.Domain;
 using DotnetOutboxPattern.Services;
+using DotnetOutboxPattern.Utilities;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -53,6 +54,14 @@ public sealed class PoisonMessageDeadLetterTests : IDisposable
         }
     }
 
+    // Each tick is driven back-to-back, so a failed message must be due again immediately
+    // rather than waiting out its backoff delay.
+    private static readonly OutboxRetryOptions ImmediateRetryOptions = new()
+    {
+        BackoffStrategy = RetryStrategy.FixedDelay,
+        InitialDelay = TimeSpan.Zero
+    };
+
     private OutboxDbContext NewContext() => new(_dbOptions);
 
     /// <summary>
@@ -84,7 +93,9 @@ public sealed class PoisonMessageDeadLetterTests : IDisposable
             dlq,
             publisher,
             NullLogger<MessagePublishingService>.Instance,
-            new PublishingOptions { PublishTimeout = TimeSpan.FromSeconds(5) });
+            // Batch claiming runs SQL Server-only row-locking SQL, so use the plain query path on SQLite.
+            new PublishingOptions { PublishTimeout = TimeSpan.FromSeconds(5), UseBatchClaiming = false },
+            ImmediateRetryOptions);
         return (service, outbox, dlq);
     }
 

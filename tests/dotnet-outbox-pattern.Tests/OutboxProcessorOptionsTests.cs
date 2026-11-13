@@ -39,19 +39,17 @@ namespace DotnetOutboxPattern.Tests
 
             // Assert
             Assert.False(isValid);
-            Assert.Throws<OutboxException>(() => options.Validate());
+            Assert.Throws<ArgumentOutOfRangeException>(() => options.Validate());
         }
 
-        [Theory]
-        [InlineData(0)]
-        [InlineData(-10)]
-        public void DelayBetweenBatches_ShouldBePositive(int delayMs)
+        [Fact]
+        public void DelayBetweenBatches_Negative_IsInvalid()
         {
             // Arrange
             var options = new OutboxProcessorOptions
             {
                 BatchSize = 10,
-                DelayBetweenBatches = delayMs
+                DelayBetweenBatches = -10
             };
 
             // Act
@@ -59,7 +57,25 @@ namespace DotnetOutboxPattern.Tests
 
             // Assert
             Assert.False(isValid);
-            Assert.Throws<OutboxException>(() => options.Validate());
+            Assert.Throws<ArgumentOutOfRangeException>(() => options.Validate());
+        }
+
+        [Fact]
+        public void DelayBetweenBatches_Zero_IsValid()
+        {
+            // Arrange - a zero base delay is a legitimate configuration (see ConfigureBatch,
+            // WithFixedDelay and ValidateBackoff, which all accept it)
+            var options = new OutboxProcessorOptions
+            {
+                BatchSize = 10,
+                DelayBetweenBatches = 0
+            };
+
+            // Act
+            var isValid = options.IsValid();
+
+            // Assert
+            Assert.True(isValid);
         }
 
         [Fact]

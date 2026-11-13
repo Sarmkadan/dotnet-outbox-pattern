@@ -192,6 +192,8 @@ public static class RateLimitingMiddlewareExtensions
         this IApplicationBuilder app,
         RateLimitingOptions? options = null)
     {
-        return app.UseMiddleware<RateLimitingMiddleware>(options);
+        // A null argument cannot be matched to a constructor parameter by UseMiddleware's activator,
+        // so always pass a concrete instance (the middleware constructor would default it anyway).
+        return app.UseMiddleware<RateLimitingMiddleware>(options ?? new RateLimitingOptions());
     }
 }

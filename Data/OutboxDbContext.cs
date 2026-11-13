@@ -4,7 +4,9 @@
 // CTO & Software Architect
 // =============================================================================
 
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using DotnetOutboxPattern.Domain;
 
 namespace DotnetOutboxPattern.Data;
@@ -83,6 +85,18 @@ public sealed class OutboxDbContext : DbContext
 
         outboxMessageBuilder.Property(x => x.ErrorMessage)
             .HasMaxLength(2000);
+
+        // Headers carry the W3C trace-context captured at enqueue time, so they are stored as JSON.
+        // The comparer makes EF detect in-place edits to the dictionary (e.g. adding a trace header).
+        outboxMessageBuilder.Property(x => x.Headers)
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions?)null)
+                    ?? new Dictionary<string, string>())
+            .Metadata.SetValueComparer(new ValueComparer<IDictionary<string, string>>(
+                (a, b) => a!.SequenceEqual(b!),
+                v => v.Aggregate(0, (hash, kv) => HashCode.Combine(hash, kv.Key, kv.Value)),
+                v => new Dictionary<string, string>(v)));
 
         // Indexes for common queries
         outboxMessageBuilder.HasIndex(x => x.State)
